@@ -339,7 +339,7 @@ export default function AdmissionFormPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          © Vidyanekethan · All rights reserved
+          © Vidyaaniketan Professional Academy · All rights reserved
         </p>
       </div>
     </div>
