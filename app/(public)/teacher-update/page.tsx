@@ -330,7 +330,7 @@ export default function TeacherUpdatePage() {
         </div>
 
         <p className="mt-6 text-slate-600 text-xs text-center">
-          © Vidyanekethan· All rights reserved
+          © Vidyaaniketan Professional Academy· All rights reserved
         </p>
       </div>
     </div>
