@@ -20,7 +20,7 @@ export function ProfileContent() {
   useEffect(() => {
     profileApi.get().then((res: any) => {
       const d = res.data
-      setProfile({ name: d.name||"", email: d.email||"", institute: d.institute||"", address: d.address||"" })
+      setProfile({ name: d.name||"", email: d.email||"", institute: "", address: d.address||"" })
     }).catch(console.error).finally(() => setLoading(false))
   }, [])
 
