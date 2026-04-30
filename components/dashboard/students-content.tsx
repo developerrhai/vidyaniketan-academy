@@ -14,8 +14,8 @@ import { studentsApi, studentsUniversalApi } from "@/lib/api"
 import * as XLSX from "xlsx"
 
 interface Student {
-  id: number; name: string; phone: string; father_name: string; father_phone: string
-  board: string; standard: string; course: string; location: string; fee: number; paid_fee: number
+  id: number; name: string; phone: string; father_name: string; father_phone: string, gender: string; academic_year: string,
+   standard: string; course: string; branch: string; fee: number; paid_fee: number, hostel: string
 }
 
 // Fee status badge helper
@@ -34,8 +34,8 @@ export function StudentsContent() {
   const [importing,      setImporting]      = useState(false)
   const [searchTerm,     setSearchTerm]     = useState("")
   const [filterStandard, setFilterStandard] = useState("all")
-  const [filterBoard,    setFilterBoard]    = useState("all")
-  const [filterLocation, setFilterLocation] = useState("all")
+  const [filterCourse,   setFilterCourse]   = useState("all")
+  const [filterBranch, setFilterBranch] = useState("all")
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // View modal
@@ -60,8 +60,8 @@ export function StudentsContent() {
     try {
       const filters = {
         standard: filterStandard !== "all" ? filterStandard : undefined,
-        board:    filterBoard    !== "all" ? filterBoard    : undefined,
-        location: filterLocation !== "all" ? filterLocation : undefined,
+        course:    filterCourse    !== "all" ? filterCourse    : undefined,
+        branch: filterBranch !== "all" ? filterBranch : undefined,
         search:   searchTerm || undefined,
       }
       // Prefer universal listing. Fallback keeps UI working if universal route is not available yet.
@@ -77,7 +77,7 @@ export function StudentsContent() {
     } finally {
       setLoading(false)
     }
-  }, [filterStandard, filterBoard, filterLocation, searchTerm])
+  }, [filterStandard, filterCourse, filterBranch, searchTerm])
 
   useEffect(() => { load() }, [load])
 
@@ -170,13 +170,16 @@ export function StudentsContent() {
     const headers = [
       "ID",
       "Name",
+      "Gender", //new
+      "Academic Year", //new
       "Phone",
       "Father Name",
       "Father Phone",
-      "Board",
+      // "Board",
       "Standard",
       "Course",
-      "Location",
+      "Branch", // renamed from Location
+      "Hostel", //new
       "Total Fee",
       "Paid Fee",
       "Balance",
@@ -192,13 +195,16 @@ export function StudentsContent() {
       return [
         s.id,
         s.name || "",
+        s.gender || "", // new
+        s.academic_year || "", // new
         s.phone || "",
         s.father_name || "",
         s.father_phone || "",
-        s.board || "",
+        // s.board || "",
         s.standard || "",
         s.course || "",
-        s.location || "",
+        s.branch || "", // renamed from Location
+        s.hostel || "", // new
         totalFee,
         paidFee,
         balance,
@@ -272,13 +278,16 @@ export function StudentsContent() {
             phone: String(pickValue(row, ["phone", "student_phone", "mobile", "contact"])).trim(),
             father_name: String(pickValue(row, ["father_name", "parent_name", "guardian_name"])).trim(),
             father_phone: String(pickValue(row, ["father_phone", "parent_phone", "guardian_phone"])).trim(),
-            board: String(pickValue(row, ["board"])).trim(),
+            // board: String(pickValue(row, ["board"])).trim(),
             standard: String(pickValue(row, ["standard", "std", "class"])).trim(),
             course: String(pickValue(row, ["course", "batch"])).trim(),
-            location: String(pickValue(row, ["location", "branch"])).trim(),
+            branch: String(pickValue(row, ["branch"])).trim(),
             institute: String(pickValue(row, ["institute", "school", "college"])).trim(),
             fee: Number(pickValue(row, ["fee", "total_fee"])) || 0,
             paid_fee: Number(pickValue(row, ["paid_fee", "paid", "paidamount"])) || 0,
+            gender: String(pickValue(row, ["gender"])).trim(),
+            academic_year: String(pickValue(row, ["academic_year"])).trim(),
+            hostel: String(pickValue(row, ["hostel"])).trim(),
           }
         })
         .filter(Boolean) as Array<Record<string, unknown>>
@@ -333,26 +342,22 @@ export function StudentsContent() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={filterBoard} onValueChange={setFilterBoard}>
-              <SelectTrigger><SelectValue placeholder="All Boards" /></SelectTrigger>
+            <Select value={filterCourse} onValueChange={setFilterCourse}>
+              <SelectTrigger><SelectValue placeholder="All Courses" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Boards</SelectItem>
-                <SelectItem value="CBSE">CBSE</SelectItem>
-                <SelectItem value="ICSE">ICSE</SelectItem>
-                <SelectItem value="State">State Board</SelectItem>
-                <SelectItem value="IB">IB</SelectItem>
-                <SelectItem value="Cambridge">Cambridge Board</SelectItem>
-                <SelectItem value="IGCSE">IGCSE</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
+                <SelectItem value="all">All Courses</SelectItem>
+                <SelectItem value="JEE">JEE</SelectItem>
+                <SelectItem value="NEET">NEET</SelectItem>
+                <SelectItem value="Foundation">Foundation</SelectItem>
+                
               </SelectContent>
             </Select>
-            <Select value={filterLocation} onValueChange={setFilterLocation}>
-              <SelectTrigger><SelectValue placeholder="All Locations" /></SelectTrigger>
+            <Select value={filterBranch} onValueChange={setFilterBranch}>
+              <SelectTrigger><SelectValue placeholder="All Branches" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                <SelectItem value="Chinchwad">Chinchwad</SelectItem>
-                <SelectItem value="Wakad">Wakad</SelectItem>
-                <SelectItem value="Thergaon">Thergaon</SelectItem>
+                <SelectItem value="all">All Branches</SelectItem>
+                <SelectItem value="branch 1">Branch 1</SelectItem>
+                <SelectItem value="branch 2">Branch 2</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -387,10 +392,14 @@ export function StudentsContent() {
                   <TableRow className="bg-slate-900">
                     <TableHead className="text-white font-semibold">Name</TableHead>
                     <TableHead className="text-white font-semibold hidden sm:table-cell">Phone</TableHead>
+                    <TableHead className="text-white font-semibold hidden sm:table-cell">Gender</TableHead>
+                    <TableHead className="text-white font-semibold hidden sm:table-cell">Academic Year</TableHead>
+
                     <TableHead className="text-white font-semibold hidden md:table-cell">Father Name</TableHead>
-                    <TableHead className="text-white font-semibold hidden lg:table-cell">Board</TableHead>
+                    {/* <TableHead className="text-white font-semibold hidden lg:table-cell">Board</TableHead> */}
                     <TableHead className="text-white font-semibold">Std</TableHead>
-                    <TableHead className="text-white font-semibold hidden md:table-cell">Location</TableHead>
+                    <TableHead className="text-white font-semibold hidden md:table-cell">Branch</TableHead>
+                    <TableHead className="text-white font-semibold hidden md:table-cell">Hostel</TableHead>
                     {/* ── NEW columns ── */}
                     <TableHead className="text-white font-semibold hidden lg:table-cell">Total Fee</TableHead>
                     <TableHead className="text-white font-semibold hidden lg:table-cell">Paid</TableHead>
@@ -411,10 +420,13 @@ export function StudentsContent() {
                       <TableRow key={s.id} className="hover:bg-muted/50">
                         <TableCell className="font-medium">{s.name}</TableCell>
                         <TableCell className="hidden sm:table-cell">{s.phone}</TableCell>
+                        <TableCell className="hidden md:table-cell">{s.gender}</TableCell>
+                        <TableCell className="hidden md:table-cell">{s.academic_year}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.father_name}</TableCell>
-                        <TableCell className="hidden lg:table-cell">{s.board}</TableCell>
+                        {/* <TableCell className="hidden lg:table-cell">{s.board}</TableCell> */}
                         <TableCell>{s.standard}</TableCell>
-                        <TableCell className="hidden md:table-cell">{s.location}</TableCell>
+                        <TableCell className="hidden md:table-cell">{s.branch}</TableCell>
+                        <TableCell className="hidden md:table-cell">{s.hostel}</TableCell>
 
                         {/* ── Fee columns ── */}
                         <TableCell className="hidden lg:table-cell font-medium">
@@ -480,8 +492,12 @@ export function StudentsContent() {
                 { icon: Phone,    label: "Phone",            value: selected.phone },
                 { icon: User,     label: "Father Name",      value: selected.father_name },
                 { icon: Phone,    label: "Father Phone",     value: selected.father_phone },
-                { icon: BookOpen, label: "Board / Standard", value: `${selected.board} – ${selected.standard}th` },
-                { icon: MapPin,   label: "Location",         value: selected.location },
+                // { icon: BookOpen, label: "Board / Standard", value: `${selected.board} – ${selected.standard}th` },
+                { icon: MapPin,   label: "branch",         value: selected.branch },
+                { icon: MapPin,   label: "Gender",         value: selected.gender },
+                { icon: MapPin,   label: "Academic Year",         value: selected.academic_year },
+                { icon: MapPin,   label: "hostel",         value: selected.hostel },
+
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <Icon className="h-5 w-5 text-muted-foreground shrink-0" />

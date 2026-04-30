@@ -12,10 +12,10 @@ import { studentsApi, teachersApi, staffApi } from "@/lib/api"
 export function RegisterUserContent() {
   const [formData, setFormData] = useState({
     name:"", email:"", phone:"", role:"",
-    standard:"", board:"", institute:"", location:"",
+    standard:"", gender:"", institute:"", branch:"",
     father_name:"", father_phone:"", course:"", subjects:"",
     department:"", designation:"",
-    fees: "10000"   // ✅ default fees
+    fees: "10000", hostel: "", academic_year: ""  // ✅ default fees and hostel status
   })
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -44,12 +44,14 @@ export function RegisterUserContent() {
           email: formData.email,
           phone: formData.phone,
           father_name: formData.father_name,
+          academic_year: formData.academic_year,
           father_phone: formData.father_phone,
-          board: formData.board,
+          gender: formData.gender,
           standard: formData.standard,
           course: formData.course,
-          location: formData.location,
+          branch: formData.branch,
           institute: formData.institute,
+          hostel: formData.hostel,
           fees: Number(formData.fees),
           student_id: studentId // send generated ID to backend
         })
@@ -64,7 +66,7 @@ export function RegisterUserContent() {
           email: formData.email,
           phone: formData.phone,
           institute: formData.institute,
-          location: formData.location,
+          branch: formData.branch,
           subjects: formData.subjects
             ? formData.subjects.split(",").map(s => s.trim())
             : [],
@@ -76,7 +78,7 @@ export function RegisterUserContent() {
           email: formData.email,
           phone: formData.phone,
           institute: formData.institute,
-          location: formData.location,
+          branch: formData.branch,
           department: formData.department,
           designation: formData.designation,
         })
@@ -86,10 +88,10 @@ export function RegisterUserContent() {
       // Reset form
       setFormData({
         name:"", email:"", phone:"", role:"",
-        standard:"", board:"", institute:"", location:"",
+        standard:"", gender:"", institute:"", branch:"",
         father_name:"", father_phone:"", course:"", subjects:"",
         department:"", designation:"",
-        fees: "10000"
+        fees: "10000", hostel: "", academic_year: ""
       })
 
     } catch (err: any) {
@@ -137,7 +139,7 @@ export function RegisterUserContent() {
               <Select value={formData.role} onValueChange={v => set("role", v)}>
                 <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="teacher">Teacher</SelectItem>
+                  {/* <SelectItem value="teacher">Teacher</SelectItem> */}
                   <SelectItem value="student">Student</SelectItem>
                   <SelectItem value="staff">Staff</SelectItem> 
                 </SelectContent>
@@ -161,6 +163,10 @@ export function RegisterUserContent() {
             {/* Student-specific fields */}
             {formData.role === "student" && (
               <>
+              <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><User className="h-4 w-4 text-emerald-500" /> Academic Year</Label>
+                  <Input value={formData.academic_year} onChange={e => set("academic_year", e.target.value)} placeholder="E.g. 2023-2024" />
+                </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2"><User className="h-4 w-4 text-emerald-500" /> Father Name</Label>
                   <Input value={formData.father_name} onChange={e => set("father_name", e.target.value)} placeholder="Father's name" />
@@ -181,20 +187,42 @@ export function RegisterUserContent() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-emerald-500" /> Board</Label>
-                  <Select value={formData.board} onValueChange={v => set("board", v)}>
-                    <SelectTrigger><SelectValue placeholder="Select Board" /></SelectTrigger>
+                  <Label className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-emerald-500" /> Gender</Label>
+                  <Select value={formData.gender} onValueChange={v => set("gender", v)}>
+                    <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CBSE">CBSE</SelectItem>
-                      <SelectItem value="ICSE">ICSE</SelectItem>
-                      <SelectItem value="State">State Board</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-emerald-500" /> Course</Label>
-                  <Input value={formData.course} onChange={e => set("course", e.target.value)} placeholder="e.g. Science Tuition" />
+                  <Select value={formData.course} onValueChange={v => set("course", v)}>
+                    <SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="JEE">JEE</SelectItem>
+                      <SelectItem value="NEET">NEET</SelectItem>
+                      <SelectItem value="Foundation">Foundation</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                <div className="space-y-2 w-full">
+                  <Label className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-emerald-500" /> Hostel</Label>
+                  <Select value={formData.hostel} onValueChange={v => set("hostel", v)} >
+                    <SelectTrigger><SelectValue placeholder="Select" className="w-full" /></SelectTrigger>
+                    <SelectContent className="w-full">
+                      <SelectItem value="Yes">Yes</SelectItem>
+                      <SelectItem value="No">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-emerald-500" /> Course</Label>
+                  <Input value={formData.course} onChange={e => set("course", e.target.value)} placeholder="e.g. Science Tuition" />
+                </div> */}
                 {/* Hidden Fees */}
                 <Input type="hidden" value={formData.fees} />
               </>
@@ -209,18 +237,18 @@ export function RegisterUserContent() {
             )}
 
             {/* Common fields */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label className="flex items-center gap-2"><Building className="h-4 w-4 text-emerald-500" /> Institute Name</Label>
               <Input value={formData.institute} onChange={e => set("institute", e.target.value)} placeholder="Institute name" />
-            </div>
+            </div> */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-2"><MapPin className="h-4 w-4 text-emerald-500" /> Location</Label>
-              <Select value={formData.location} onValueChange={v => set("location", v)}>
-                <SelectTrigger><SelectValue placeholder="Select Location" /></SelectTrigger>
+              <Label className="flex items-center gap-2"><MapPin className="h-4 w-4 text-emerald-500" /> Branch</Label>
+              <Select value={formData.branch} onValueChange={v => set("branch", v)}>
+                <SelectTrigger><SelectValue placeholder="Select Branch" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Chinchwad">Chinchwad</SelectItem>
-                  <SelectItem value="Wakad">Wakad</SelectItem>
-                  <SelectItem value="Thergaon">Thergaon</SelectItem>
+                  <SelectItem value="branch 1">Branch 1</SelectItem>
+                  <SelectItem value="branch 2">Branch 2</SelectItem>
+           
                 </SelectContent>
               </Select>
             </div>
