@@ -60,21 +60,21 @@ function qs(params: Record<string, string | undefined>) {
 ══════════════════════════════════════════════════════════ */
 export const authApi = {
   login: (email: string, password: string) =>
-    post("/auth/login", { email, password }),
+    post(process.env.NEXT_PUBLIC_API_URL + "/auth/login", { email, password }),
 
   // signup: (name: string, email: string, password: string) =>
   //   post("/auth/signup", { name, email, password }),
   signup: (name: string, email: string, password: string, role: "admin" | "teacher" = "teacher") =>
-    post("/auth/signup", { name, email, password, role }),
+    post(process.env.NEXT_PUBLIC_API_URL + "/auth/signup", { name, email, password, role }),
 };
 
 /* ══════════════════════════════════════════════════════════
    PROFILE
 ══════════════════════════════════════════════════════════ */
 export const profileApi = {
-  get: () => get("/profile"),
+  get: () => get(process.env.NEXT_PUBLIC_API_URL + "/profile"),
   update: (data: { name: string; email: string; institute: string; address: string }) =>
-    put("/profile", data),
+    put(process.env.NEXT_PUBLIC_API_URL + "/profile", data),
 };
 
 /* ══════════════════════════════════════════════════════════
