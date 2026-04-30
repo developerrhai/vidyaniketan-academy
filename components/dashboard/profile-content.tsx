@@ -85,14 +85,14 @@ export function ProfileContent() {
                 onChange={e => setProfile({ ...profile, email: e.target.value })}
                 placeholder="Enter your email" />
             </div>
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="institute" className="flex items-center gap-2 text-gray-700">
                 <Building className="h-4 w-4 text-blue-500" /> Institute Name
               </Label>
               <Input id="institute" value={profile.institute}
                 onChange={e => setProfile({ ...profile, institute: e.target.value })}
                 placeholder="Institute name" />
-            </div>
+            </div> */}
             <div className="space-y-2">
               <Label htmlFor="address" className="flex items-center gap-2 text-gray-700">
                 <MapPin className="h-4 w-4 text-blue-500" /> Institute Address
