@@ -312,7 +312,7 @@ export function InvoicesContent() {
         <div class="header">
           <div>
             <h2> Vidyaaniketan Professional Academy</h2>
-            <p>Chapekar Chowk, Chinchwad, Pune</p>
+            <p>Arun Galaxy, Shreeram Chouk, Indapur, Maharashtra 413106</p>
             <p>GSTIN: 27AAUCM5976C1ZV</p>
           </div>
           <div class="title">INSTITUTE BILL</div>
