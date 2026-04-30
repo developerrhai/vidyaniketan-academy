@@ -79,7 +79,7 @@ export default function AdmissionFormPage() {
     setError("")
     setSubmitting(true)
     try {
-      const res = await fetch("https://institute-api.rhaitech.online/api/admissions/public", {
+      const res = await fetch(process.env.NEXT_PUBLIC_API_URL+"/admissions/public", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

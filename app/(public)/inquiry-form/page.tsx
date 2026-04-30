@@ -154,7 +154,7 @@ export default function InquiryFormPage() {
   // inquiry_date will default to current date in DB
 }
 
-    const res = await fetch("https://institute-api.rhaitech.online/api/inquiries/public", {
+    const res = await fetch(process.env.NEXT_PUBLIC_API_URL+"/inquiries/public", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
