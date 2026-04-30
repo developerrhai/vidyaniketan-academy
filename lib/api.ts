@@ -72,9 +72,9 @@ export const authApi = {
    PROFILE
 ══════════════════════════════════════════════════════════ */
 export const profileApi = {
-  get: () => get(process.env.NEXT_PUBLIC_API_URL + "/profile"),
+  get: () => get( "/profile"),
   update: (data: { name: string; email: string; institute: string; address: string }) =>
-    put(process.env.NEXT_PUBLIC_API_URL + "/profile", data),
+    put("/profile", data),
 };
 
 /* ══════════════════════════════════════════════════════════
