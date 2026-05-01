@@ -6,10 +6,10 @@ import { useState } from "react"
 const BOARDS = ["JEE", "NEET", "Foundation"]
 
 const STANDARDS = [
-  "1st", "2nd Standard", "3rd Standard",
-  "4th Science", "5th Standard", "6th Standard",
+  "1st Standard", "2nd Standard", "3rd Standard",
+  "4th Standard", "5th Standard", "6th Standard",
   "7th Standard", "8th Standard", "9th Standard",
-  "10th Standard", "11","12th Standard"
+  "10th Standard", "11th Standard", "12th Standard"
 ]
 
 const BRANCHES = ["branch 1", "branch 2"]
@@ -45,7 +45,7 @@ export default function AdmissionFormPage() {
   const [error, setError]           = useState("")
   const [touched, setTouched]       = useState<Partial<Record<keyof FormData, boolean>>>({})
 
-  const isSenior = form.standard === "11th Standard" || form.standard === "12th Standard" || form.standard === "11" || form.standard === "12th Standard"
+  const isSenior = form.standard === "11th Standard" || form.standard === "12th Standard"
 
   const set = (key: keyof FormData, val: string) => {
     setForm(prev => ({ ...prev, [key]: val }))
