@@ -34,12 +34,14 @@ export function RegisterUserContent() {
       return
     }
     setLoading(true); setMsg(null)
+      const admin_id = localStorage.getItem("userInfo") ? JSON.parse(localStorage.getItem("userInfo") as string)?.id : null
 
     try {
       if (formData.role === "student") {
         const studentId = generateStudentId(formData.standard) // generate ID
 
         await studentsApi.create({
+          admin_id: admin_id,
           name: formData.name,
           email: formData.email,
           phone: formData.phone,

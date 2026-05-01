@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Receipt, Plus, Eye, Printer, Trash2, CheckCircle, Clock, AlertCircle, Loader2, Search, X, Edit2, FileSpreadsheet, MessageCircle } from "lucide-react"
 import { invoicesApi, studentsApi } from "@/lib/api"
+import logo from "../../public/logo.jpeg";
 
 interface Invoice {
   id: number
@@ -24,6 +25,7 @@ interface Invoice {
   install_date?: string
   description?: string
   transaction_type?: string
+  student_phone?: number
 }
 
 interface Student {
@@ -288,96 +290,218 @@ export function InvoicesContent() {
     const w = window.open("", "_blank")
     if (!w) return
     const balance = Number(inv.amount) - Number(inv.paid_amount)
-    w.document.write(`
-    <html>
-    <head>
-      <title>Invoice #${inv.id}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 30px; color: #333; }
-        .container { max-width: 900px; margin: auto; border: 1px solid #ddd; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; }
-        .title { color: #ff6b00; font-weight: bold; font-size: 18px; }
-        hr { margin: 15px 0; }
-        .flex { display: flex; justify-content: space-between; margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        table th, table td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; }
-        .total { font-weight: bold; }
-        .box { width: 48%; }
-        .footer { text-align: right; margin-top: 40px; }
-        .section-title { font-weight: bold; margin-top: 10px; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <div>
-            <h2> Vidyaaniketan Professional Academy</h2>
-            <p>Arun Galaxy, Shreeram Chouk, Indapur, Maharashtra 413106</p>
-            <p>GSTIN: 27AAUCM5976C1ZV</p>
-          </div>
-          <div class="title">INSTITUTE BILL</div>
-        </div>
-        <hr/>
-        <div class="flex">
-          <div><b>Invoice No:</b> INV${String(inv.id).padStart(4, "0")}</div>
-          <div><b>Date:</b> ${new Date().toLocaleDateString()}</div>
-        </div>
-        <div class="section-title">BILL TO</div>
-        <p><b>Name:</b> ${inv.student_name}</p>
-        <p><b>Student ID:</b> ${inv.student_id || "-"}</p>
-        <p><b>Standard:</b> ${inv.standard || "-"}</p>
-        <p><b>Course:</b> ${inv.course || "-"}</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Description</th><th>Course</th><th>Transaction</th>
-              <th>Install Date</th><th>Due Date</th><th>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>${inv.description || "Course Fee"}</td>
-              <td>${inv.course || "-"}</td>
-              <td>${inv.transaction_type || "Cash"}</td>
-              <td>${fmtDate(inv.install_date)}</td>
-              <td>${fmtDate(inv.due_date)}</td>
-              <td>₹${Number(inv.amount).toLocaleString()}</td>
-            </tr>
-            <tr class="total">
-              <td colspan="5">TOTAL</td>
-              <td>₹${Number(inv.amount).toLocaleString()}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="flex">
-          <div class="box">
-            <h4>PAYMENT QR CODE</h4>
-            <p>UPI: 8261050815@ybl</p>
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=upi://pay?pa=8261050815@ybl&pn=MeritHome&am=${inv.amount}" />
-          </div>
-          <div class="box">
-            <h4>BANK DETAILS</h4>
-            <p><b>Account Name:</b> Vidyaaniketan Professional Academy</p>
-            <p><b>Bank:</b> HDFC Bank</p>
-            <p><b>Account No:</b> 123456789012</p>
-            <p><b>IFSC:</b> HDFC0001234</p>
-            <p><b>Branch:</b> Chinchwad Pune</p>
-            <p><b>UPI:</b> 8261050815@ybl</p>
-            <br/>
-            <p><b>Total Amount:</b> ₹${inv.amount}</p>
-            <p><b>Received Amount:</b> ₹${inv.paid_amount}</p>
-            <p><b>Balance:</b> ₹${balance}</p>
-            <p>${Number(inv.amount).toLocaleString()} Rupees Only</p>
-          </div>
-        </div>
-        <div class="footer">
-          <p>AUTHORISED SIGNATORY</p>
-          <p><b>Vidyaaniketan Professional Academy</b></p>
-        </div>
-      </div>
-    </body>
-    </html>
-    `)
+    w.document.write(
+      `
+      <html>
+<head>
+<title>Receipt #${inv.id}</title>
+
+<style>
+
+@page{
+  size:A4;
+  margin:25mm;
+}
+
+body{
+  font-family: Arial, Helvetica, sans-serif;
+  color:#333;
+  margin:0;
+}
+
+.container{
+  width:100%;
+}
+
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+}
+
+.institute{
+  line-height:1.4;
+}
+
+.institute h2{
+  margin:0;
+  font-size:20px;
+  letter-spacing:0.5px;
+}
+
+.institute p{
+  margin:2px 0;
+  font-size:13px;
+}
+
+.logo{
+  width:70px;
+}
+
+.title{
+  text-align:center;
+  font-size:22px;
+  color:#1f7fa6;
+  font-weight:bold;
+  margin-top:15px;
+  padding-top:10px;
+  border-top:2px solid #1f7fa6;
+}
+
+.content{
+  display:flex;
+  justify-content:space-between;
+  margin-top:25px;
+}
+
+.left{
+  width:48%;
+}
+
+.right{
+  width:48%;
+}
+
+.label{
+  font-weight:bold;
+  margin-top:10px;
+}
+
+.text{
+  margin-top:4px;
+}
+
+.receipt-details{
+  text-align:right;
+  font-size:14px;
+  margin-bottom:15px;
+}
+
+.table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+.table td{
+  padding:6px 0;
+  font-size:14px;
+}
+
+.table td:last-child{
+  text-align:right;
+  font-weight:bold;
+}
+
+.balance{
+  border-top:1px solid #999;
+  padding-top:6px;
+}
+
+.signature{
+  margin-top:70px;
+  text-align:right;
+}
+
+.signature img{
+  height:40px;
+}
+
+.auth{
+  font-weight:bold;
+  margin-top:6px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+
+<div class="institute">
+<h2>Vidyaaniketan Professional Academy</h2>
+<p>Arun Galaxy, Shreeram Chouk, Indapur, Maharashtra 413106</p>
+<p>Phone no : 8180802049</p>
+
+<p>State: Maharashtra</p>
+</div>
+
+<img class="logo" src="${window.location.origin}/logo.jpeg"/>
+
+</div>
+
+<div class="title">Payment Receipt</div>
+
+<div class="content">
+
+<div class="left">
+
+<div class="label">Received From</div>
+<div class="text">${inv.student_name}</div>
+
+<div class="text">Contact No : ${inv.student_phone || "-"}</div>
+
+<div class="label">Amount in words</div>
+<div class="text">${Number(inv.paid_amount).toLocaleString()} Rupees only</div>
+
+</div>
+
+<div class="right">
+
+<div class="receipt-details">
+<div><b>Receipt Details</b></div>
+
+<div>Receipt No : ${inv.id}</div>
+<div><b>Date :</b> ${fmtDate(inv.install_date)}</div>
+</div>
+
+<table class="table">
+
+<tr>
+<td>Received</td>
+<td>₹ ${Number(inv.paid_amount).toLocaleString()}</td>
+</tr>
+
+<tr>
+<td>Payment mode</td>
+<td>${inv.transaction_type || "Online"}</td>
+</tr>
+
+<tr>
+<td>Previous Balance</td>
+<td>₹ ${Number(inv.amount).toLocaleString()}</td>
+</tr>
+
+<tr class="balance">
+<td>Current Balance</td>
+<td>₹ ${balance}</td>
+</tr>
+
+</table>
+
+</div>
+
+</div>
+
+<div class="signature">
+
+<div>For : Vidyaaniketan Professional Academy</div>
+
+<img src="SIGNATURE_IMAGE_URL"/>
+
+<div class="auth">Authorized Signatory</div>
+
+</div>
+
+</div>
+
+</body>
+</html>
+`
+    )
     w.document.close()
     w.print()
   }
@@ -502,7 +626,7 @@ export function InvoicesContent() {
                         <TableCell className="hidden md:table-cell">₹{Number(inv.paid_amount).toLocaleString()}</TableCell>
                         {/* ── NEW cell ── */}
                         <TableCell className="hidden lg:table-cell text-muted-foreground">
-                          {fmtDate(inv.install_date)}
+                          {inv?.install_date ? fmtDate(inv.install_date) : "—"}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">{fmtDate(inv.due_date)}</TableCell>
                         <TableCell>
@@ -657,8 +781,9 @@ export function InvoicesContent() {
                 <Select value={form.transaction_type} onValueChange={v => f("transaction_type", v)}>
                   <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Cash">💵 Cash</SelectItem>
-                    <SelectItem value="Online">🌐 Online</SelectItem>
+                    <SelectItem value="Cash"> Cash</SelectItem>
+                    <SelectItem value="Online">Online</SelectItem>
+                    <SelectItem value="Cheque"> Cheque</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

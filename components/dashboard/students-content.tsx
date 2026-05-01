@@ -9,60 +9,65 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { GraduationCap, Search, Eye, Trash2, Phone, User, MapPin, BookOpen, Loader2, IndianRupee, Pencil, FileSpreadsheet, Upload } from "lucide-react"
+import { GraduationCap, Search, Eye, Trash2, Phone, User, MapPin, BookOpen, Loader2, IndianRupee, Pencil, FileSpreadsheet, Upload, School } from "lucide-react"
 import { studentsApi, studentsUniversalApi } from "@/lib/api"
 import * as XLSX from "xlsx"
 
 interface Student {
   id: number; name: string; phone: string; father_name: string; father_phone: string, gender: string; academic_year: string,
-   standard: string; course: string; branch: string; fee: number; paid_fee: number, hostel: string
+  standard: string; course: string; branch: string; fee: number; paid_fee: number, hostel: string, school_fee: number, academy_fee: number, hostel_fee: number
 }
 
 // Fee status badge helper
 const feeStatus = (s: Student) => {
-  const fee    = Number(s.fee)
-  const paid   = Number(s.paid_fee)
-  if (fee === 0)       return { label: "No Fee",  cls: "bg-gray-100 text-gray-500" }
-  if (paid >= fee)     return { label: "Paid",     cls: "bg-emerald-100 text-emerald-700" }
-  if (paid > 0)        return { label: "Partial",  cls: "bg-yellow-100 text-yellow-700" }
-  return               { label: "Pending",  cls: "bg-red-100 text-red-700" }
+  const fee = Number(s.fee)
+  const paid = Number(s.paid_fee)
+  if (fee === 0) return { label: "No Fee", cls: "bg-gray-100 text-gray-500" }
+  if (paid >= fee) return { label: "Paid", cls: "bg-emerald-100 text-emerald-700" }
+  if (paid > 0) return { label: "Partial", cls: "bg-yellow-100 text-yellow-700" }
+  return { label: "Pending", cls: "bg-red-100 text-red-700" }
 }
 
 export function StudentsContent() {
-  const [students,       setStudents]       = useState<Student[]>([])
-  const [loading,        setLoading]        = useState(true)
-  const [importing,      setImporting]      = useState(false)
-  const [searchTerm,     setSearchTerm]     = useState("")
+  const [students, setStudents] = useState<Student[]>([])
+  const [loading, setLoading] = useState(true)
+  const [importing, setImporting] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
   const [filterStandard, setFilterStandard] = useState("all")
-  const [filterCourse,   setFilterCourse]   = useState("all")
+  const [filterCourse, setFilterCourse] = useState("all")
   const [filterBranch, setFilterBranch] = useState("all")
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // View modal
-  const [selected,  setSelected]  = useState<Student | null>(null)
-  const [viewOpen,  setViewOpen]  = useState(false)
+  const [selected, setSelected] = useState<Student | null>(null)
+  const [viewOpen, setViewOpen] = useState(false)
 
   // Update Fee modal
-  const [feeStudent,    setFeeStudent]    = useState<Student | null>(null)
-  const [feeModalOpen,  setFeeModalOpen]  = useState(false)
-  const [newFee,        setNewFee]        = useState("")
-  const [feeSaving,     setFeeSaving]     = useState(false)
+  const [feeStudent, setFeeStudent] = useState<Student | null>(null)
+  const [feeModalOpen, setFeeModalOpen] = useState(false)
+  const [newFee, setNewFee] = useState({
+    academy_fee: 0,
+    hostel_fee: 0,
+    school_fee: 0,
+    total_fee: 0
+  })
+  const [feeSaving, setFeeSaving] = useState(false)
 
   // Pay Fee modal
-  const [payStudent,    setPayStudent]    = useState<Student | null>(null)
-  const [payModalOpen,  setPayModalOpen]  = useState(false)
-  const [payAmount,     setPayAmount]     = useState("")
-  const [payMode,       setPayMode]       = useState<"add" | "set">("add")
-  const [paySaving,     setPaySaving]     = useState(false)
+  const [payStudent, setPayStudent] = useState<Student | null>(null)
+  const [payModalOpen, setPayModalOpen] = useState(false)
+  const [payAmount, setPayAmount] = useState("")
+  const [payMode, setPayMode] = useState<"add" | "set">("add")
+  const [paySaving, setPaySaving] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const filters = {
         standard: filterStandard !== "all" ? filterStandard : undefined,
-        course:    filterCourse    !== "all" ? filterCourse    : undefined,
+        course: filterCourse !== "all" ? filterCourse : undefined,
         branch: filterBranch !== "all" ? filterBranch : undefined,
-        search:   searchTerm || undefined,
+        search: searchTerm || undefined,
       }
       // Prefer universal listing. Fallback keeps UI working if universal route is not available yet.
       try {
@@ -93,24 +98,33 @@ export function StudentsContent() {
   // ── Open Update Fee modal ───────────────────────────────
   const openFeeModal = (s: Student) => {
     setFeeStudent(s)
-    setNewFee(String(Number(s.fee)))
+    setNewFee({
+      academy_fee: Number(s?.academy_fee) || 0,
+      hostel_fee: Number(s?.hostel_fee) || 0,
+      school_fee: Number(s?.school_fee) || 0,
+      total_fee: Number(s?.fee) || 0,
+    })
     setFeeModalOpen(true)
   }
 
   // ── Save updated fee (changes `fee` column) ─────────────
   const handleUpdateFee = async () => {
     if (!feeStudent) return
-    const val = parseFloat(newFee)
-    if (isNaN(val) || val < 0) { alert("Enter a valid fee amount"); return }
+    // const val = parseFloat(newFee)
+    if (isNaN(newFee.total_fee) || newFee.total_fee < 0) { alert("Enter a valid fee amount"); return }
     setFeeSaving(true)
     try {
       await studentsApi.update(feeStudent.id, {
         ...feeStudent,
-        fee: val,
+        school_fee: newFee.school_fee,
+        academy_fee: newFee.academy_fee,
+        hostel_fee: newFee.hostel_fee,
+        fee:  newFee.total_fee
+        // fee: val,
       })
       // Reflect change locally without refetch
       setStudents(prev => prev.map(s =>
-        s.id === feeStudent.id ? { ...s, fee: val } : s
+        s.id === feeStudent.id ? { ...s, fee: newFee.total_fee } : s
       ))
       setFeeModalOpen(false)
     } catch (err: any) { alert(err.message) }
@@ -266,13 +280,14 @@ export function StudentsContent() {
         })
         return next
       })
-
+      const admin_id = localStorage.getItem("userInfo") ? JSON.parse(localStorage.getItem("userInfo") as string)?.id : null
       const payloads = normalizedRows
         .map((row) => {
           const name = String(pickValue(row, ["name", "student_name", "student"])).trim()
           if (!name) return null
 
           return {
+            admin_id: admin_id,
             name,
             email: String(pickValue(row, ["email"])).trim(),
             phone: String(pickValue(row, ["phone", "student_phone", "mobile", "contact"])).trim(),
@@ -338,7 +353,7 @@ export function StudentsContent() {
               <SelectContent>
                 <SelectItem value="all">All Standards</SelectItem>
                 {Array.from({ length: 12 }, (_, i) => (
-                  <SelectItem key={i+1} value={String(i+1)}>{i+1}th Standard</SelectItem>
+                  <SelectItem key={i + 1} value={String(i + 1)}>{i + 1}th Standard</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -349,7 +364,7 @@ export function StudentsContent() {
                 <SelectItem value="JEE">JEE</SelectItem>
                 <SelectItem value="NEET">NEET</SelectItem>
                 <SelectItem value="Foundation">Foundation</SelectItem>
-                
+
               </SelectContent>
             </Select>
             <Select value={filterBranch} onValueChange={setFilterBranch}>
@@ -488,15 +503,15 @@ export function StudentsContent() {
           {selected && (
             <div className="space-y-3">
               {[
-                { icon: User,     label: "Name",             value: selected.name },
-                { icon: Phone,    label: "Phone",            value: selected.phone },
-                { icon: User,     label: "Father Name",      value: selected.father_name },
-                { icon: Phone,    label: "Father Phone",     value: selected.father_phone },
+                { icon: User, label: "Name", value: selected.name },
+                { icon: Phone, label: "Phone", value: selected.phone },
+                { icon: User, label: "Father Name", value: selected.father_name },
+                { icon: Phone, label: "Father Phone", value: selected.father_phone },
                 // { icon: BookOpen, label: "Board / Standard", value: `${selected.board} – ${selected.standard}th` },
-                { icon: MapPin,   label: "branch",         value: selected.branch },
-                { icon: MapPin,   label: "Gender",         value: selected.gender },
-                { icon: MapPin,   label: "Academic Year",         value: selected.academic_year },
-                { icon: MapPin,   label: "hostel",         value: selected.hostel },
+                { icon: MapPin, label: "branch", value: selected.branch },
+                { icon: MapPin, label: "Gender", value: selected.gender },
+                { icon: MapPin, label: "Academic Year", value: selected.academic_year },
+                { icon: MapPin, label: "hostel", value: selected.hostel },
 
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
@@ -546,7 +561,7 @@ export function StudentsContent() {
 
       {/* ── Update Fee Modal ─────────────────────────────── */}
       <Dialog open={feeModalOpen} onOpenChange={setFeeModalOpen}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="md:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-5 w-5 text-blue-600" /> Update Total Fee
@@ -568,38 +583,86 @@ export function StudentsContent() {
                   </p>
                 </div>
               </div>
-
+              
               {/* Current fee */}
-              <div className="flex justify-between text-sm px-1">
+              {/* <div className="flex justify-between text-sm px-1">
                 <span className="text-muted-foreground">Current Fee</span>
                 <span className="font-semibold">₹{Number(feeStudent.fee).toLocaleString()}</span>
-              </div>
+              </div> */}
 
               {/* New fee input */}
-              <div className="space-y-2">
-                <Label htmlFor="new-fee">New Total Fee (₹) <span className="text-destructive">*</span></Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
-                  <Input
-                    id="new-fee"
-                    type="number"
-                    min="0"
-                    value={newFee}
-                    onChange={e => setNewFee(e.target.value)}
-                    placeholder="Enter new fee amount"
-                    className="pl-7"
-                    autoFocus
-                  />
+
+
+              <div className="flex flex-row gap-4">
+               
+                <div className="flex flex-col gap-4">
+
+
+                  <div className="space-y-2 flex flex-row gap-4">
+                    <Label htmlFor="new-fee">School/College fee(₹)</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
+                      <Input
+                        id="new-fee"
+                        type="number"
+                        min="0"
+                        value={newFee.school_fee}
+                        onChange={e => setNewFee({...newFee, total_fee: Number(newFee.hostel_fee) +Number(newFee.hostel_fee)  + Number(e.target.value), school_fee: Number(e.target.value)})}
+                        placeholder="Enter new fee amount"
+                        className="pl-7"
+                        autoFocus
+                      />
+                    </div>
+                   
+                  </div>
+
+
+                  <div className="space-y-2 flex flex-row gap-4 justify-between">
+                    <Label htmlFor="new-fee">Academy fee  (₹){"     "}</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
+                      <Input
+                        id="new-fee"
+                        type="number"
+                        min="0"
+                         value={newFee.academy_fee}
+                        onChange={e => setNewFee({...newFee, total_fee: Number(newFee.school_fee) +Number(newFee.hostel_fee)  + Number(e.target.value), academy_fee: Number(e.target.value)})}
+                        placeholder="Enter new fee amount"
+                        className="pl-7"
+                        autoFocus
+                      />
+                    </div>
+                 
+                  </div>
+
+                  <div className="space-y-2 flex flex-row gap-4 justify-between">
+                    <Label htmlFor="new-fee"> Hostel Fee (₹) </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
+                      <Input
+                        id="new-fee"
+                        type="number"
+                        min="0"
+                         value={newFee.hostel_fee}
+                        onChange={e => setNewFee({...newFee, total_fee: Number(newFee.school_fee) +Number(newFee.academy_fee)  +Number(e.target.value), hostel_fee: Number(e.target.value)})}
+                        placeholder="Enter new fee amount"
+                        className="pl-7"
+                        autoFocus
+                      />
+                    </div>
+                   
+                  </div>
                 </div>
-                {newFee && (
-                  <p className="text-xs text-muted-foreground px-1">
-                    Balance after update:{" "}
-                    <span className="font-medium text-foreground">
-                      ₹{Math.max(0, parseFloat(newFee) - Number(feeStudent.paid_fee)).toLocaleString()}
-                    </span>
-                  </p>
-                )}
               </div>
+               {(
+                    <p className="text-xl text-muted-foreground px-1">
+                      Total Fee:{" "}
+                      <span className="font-medium text-foreground">
+                        {/* ₹ {newFee.total_fee.toLocaleString() } */}
+                        ₹{`  `}{Math.max(0, Number(newFee.total_fee) - Number(feeStudent.paid_fee)).toLocaleString()}
+                      </span>
+                    </p>
+                  )}
             </div>
           )}
 
@@ -662,21 +725,19 @@ export function StudentsContent() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => setPayMode("add")}
-                    className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
-                      payMode === "add"
+                    className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${payMode === "add"
                         ? "bg-emerald-600 text-white border-emerald-600"
                         : "border-border text-muted-foreground hover:border-emerald-400"
-                    }`}
+                      }`}
                   >
                     + Add Payment
                   </button>
                   <button
                     onClick={() => setPayMode("set")}
-                    className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
-                      payMode === "set"
+                    className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${payMode === "set"
                         ? "bg-blue-600 text-white border-blue-600"
                         : "border-border text-muted-foreground hover:border-blue-400"
-                    }`}
+                      }`}
                   >
                     = Set Total Paid
                   </button>

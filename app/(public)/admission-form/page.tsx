@@ -3,18 +3,18 @@
 import { Header } from "@/components/ui/header"
 import { useState } from "react"
 
-const BOARDS = ["CBSE", "ICSE", "State Board", "IB", "IGCSE", "Other", "Cambridge Board"]
+const BOARDS = ["JEE", "NEET", "Foundation"]
 
 const STANDARDS = [
-  "1st Standard", "2nd Standard", "3rd Standard",
+  "1st", "2nd Standard", "3rd Standard",
   "4th Science", "5th Standard", "6th Standard",
   "7th Standard", "8th Standard", "9th Standard",
-  "10th Standard", "11th Standard","12th Standard"
+  "10th Standard", "11","12th Standard"
 ]
 
-const BRANCHES = ["Chinchwad", "Wakad", "Thergaon"]
+const BRANCHES = ["branch 1", "branch 2"]
 
-const COURSES = ["IIT-JEE", "NEET", "MHT-CET", "Graduation CET"]
+const COURSES =  ["JEE", "NEET", "Foundation"]
 
 interface FormData {
   studentName: string
@@ -22,18 +22,22 @@ interface FormData {
   fatherName: string
   fatherPhone: string
   email: string
-  board: string
+  // board: string
   standard: string
   branch: string
   course: string
+  studentDOB: Date
+  aadharNumber: string
+  address: string
 }
 
 const initial: FormData = {
   studentName: "", studentPhone: "",
   fatherName: "", fatherPhone: "",
-  email: "", board: "", standard: "", branch: "", course: "",
+  studentDOB: new Date(), aadharNumber: "", address: "",
+  email: "",  standard: "", branch: "", course: "",
 }
-
+// DOB & AADHAR NO, ADRESS
 export default function AdmissionFormPage() {
   const [form, setForm]             = useState<FormData>(initial)
   const [submitting, setSubmitting] = useState(false)
@@ -41,7 +45,7 @@ export default function AdmissionFormPage() {
   const [error, setError]           = useState("")
   const [touched, setTouched]       = useState<Partial<Record<keyof FormData, boolean>>>({})
 
-  const isSenior = form.standard === "11th Standard" || form.standard === "12th Standard"
+  const isSenior = form.standard === "11th Standard" || form.standard === "12th Standard" || form.standard === "11" || form.standard === "12th Standard"
 
   const set = (key: keyof FormData, val: string) => {
     setForm(prev => ({ ...prev, [key]: val }))
@@ -51,20 +55,21 @@ export default function AdmissionFormPage() {
 
   const fieldError = (key: keyof FormData) => {
     if (!touched[key]) return ""
-    if (!form[key].trim()) return "This field is required"
+    if (key!="studentDOB" && !form[key].trim()) return "This field is required"
     if ((key === "studentPhone" || key === "fatherPhone") && !/^\d{10}$/.test(form[key].replace(/\s/g, "")))
       return "Enter a valid 10-digit number"
     return ""
   }
 
   const validate = () => {
-    const required: (keyof FormData)[] = ["studentName","studentPhone","email","fatherName","fatherPhone","board","standard","branch"]
+    const required: (keyof FormData)[] = ["studentName","studentPhone","email","fatherName","fatherPhone","standard","branch"]
     if (isSenior) required.push("course")
     const allTouched: Partial<Record<keyof FormData, boolean>> = {}
     required.forEach(k => { allTouched[k] = true })
     setTouched(allTouched)
     for (const k of required) {
-      if (!form[k].trim()) return "Please fill all required fields"
+      console.log(k, form[k], typeof form[k])
+      if (k !== "studentDOB" && !form[k].trim()) return "Please fill all required fields"
     }
     if (!/^\d{10}$/.test(form.studentPhone.replace(/\s/g,""))) return "Enter a valid student phone number"
     if (!/^\S+@\S+\.\S+$/.test(form.email)) return "Enter a valid email"
@@ -83,14 +88,17 @@ export default function AdmissionFormPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          aadhar: form.aadharNumber,
+          address: form.address,
+          dob: form.studentDOB,
           name:         form.studentName,
           phone:        form.studentPhone,
           father_name:  form.fatherName,
           email:        form.email,
           father_phone: form.fatherPhone,
-          board:        form.board,
+          // board:        form.board,
           standard:     form.standard,
-          location:     form.branch,
+          branch:     form.branch,
           course:       isSenior ? form.course : "",
         }),
       })
@@ -187,12 +195,51 @@ export default function AdmissionFormPage() {
                   </svg>
                 }
               />
+               <InputField
+                placeholder="DOB"
+                type="date"
+                value={form.studentDOB}
+                onChange={v => set("studentDOB", v)}
+                error={fieldError("studentDOB")}
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                }
+              />
               <InputField
                 placeholder="Email Address"
                 type="email"
                 value={form.email}
                 onChange={v => set("email", v)}
                 error={fieldError("email")}
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                }
+              />
+              <InputField
+                placeholder="Aadhar Number"
+                type="text"
+                value={form.aadharNumber}
+                onChange={v => set("aadharNumber", v)}
+                error={fieldError("aadharNumber")}
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                }
+              />
+              <InputField
+                placeholder="Address"
+                type="text"
+                value={form.address}
+                onChange={v => set("address", v)}
+                error={fieldError("address")}
                 icon={
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -233,8 +280,8 @@ export default function AdmissionFormPage() {
 
             {/* Academic Details */}
             <Section label="Academic Details" color="cyan">
-              <SelectField
-                placeholder="Select Board"
+              {/* <SelectField
+                placeholder="Select course"
                 value={form.board}
                 onChange={v => set("board", v)}
                 options={BOARDS}
@@ -245,7 +292,7 @@ export default function AdmissionFormPage() {
                       d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                 }
-              />
+              /> */}
               <SelectField
                 placeholder="Select Standard"
                 value={form.standard}
