@@ -50,13 +50,39 @@ export default function AdmissionFormPage() {
     setError("")
   }
 
-  const fieldError = (key: keyof FormData) => {
-    if (!touched[key]) return ""
-    if (key !== "studentDOB" && key !== "email" && !form[key].trim()) return "This field is required"
-    if ((key === "studentPhone" || key === "fatherPhone") && !/^\d{10}$/.test(form[key].replace(/\s/g, "")))
-      return "Enter a valid 10-digit number"
-    return ""
+
+
+const fieldError = (key: keyof FormData) => {
+  if (!touched[key]) return ""
+
+  // ❌ Remove fatherPhone from required fields
+  if (
+    key !== "studentDOB" &&
+    key !== "email" &&
+    key !== "fatherPhone" &&
+    !form[key].trim()
+  ) {
+    return "This field is required"
   }
+
+  // ✅ studentPhone → required + must be valid
+  if (key === "studentPhone" && !/^\d{10}$/.test(form[key].replace(/\s/g, ""))) {
+    return "Enter a valid 10-digit number"
+  }
+
+  // ✅ fatherPhone → optional, validate only if filled
+  if (
+    key === "fatherPhone" &&
+    form[key].trim() !== "" &&
+    !/^\d{10}$/.test(form[key].replace(/\s/g, ""))
+  ) {
+    return "Enter a valid 10-digit number"
+  }
+
+  return ""
+}
+
+
 
   const validate = () => {
     const required: (keyof FormData)[] = ["studentName","studentPhone", "standard", "branch"]
