@@ -67,8 +67,8 @@ export default function AdmissionFormPage() {
     for (const k of required) {
       if (k !== "studentDOB" && !form[k].trim()) return "Please fill all required fields"
     }
-    if (!/^\d{10}$/.test(form.fatherPhone.replace(/\s/g, ""))) return "Enter a valid Contact no.2"
-    return ""
+    // if (!/^\d{10}$/.test(form.fatherPhone.replace(/\s/g, ""))) return "Enter a valid Contact no.2"
+    // return ""
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
