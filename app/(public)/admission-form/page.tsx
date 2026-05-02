@@ -52,7 +52,7 @@ export default function AdmissionFormPage() {
 
   const fieldError = (key: keyof FormData) => {
     if (!touched[key]) return ""
-    if (key !== "studentDOB" && !form[key].trim()) return "This field is required"
+    if (key !== "studentDOB" && key !== "email" && !form[key].trim()) return "This field is required"
     if ((key === "studentPhone" || key === "fatherPhone") && !/^\d{10}$/.test(form[key].replace(/\s/g, "")))
       return "Enter a valid 10-digit number"
     return ""
@@ -206,7 +206,7 @@ export default function AdmissionFormPage() {
               />
 
               <InputField
-                placeholder="Email Address"
+                placeholder="Email Address (optional)"
                 type="email"
                 value={form.email}
                 onChange={v => set("email", v)}
