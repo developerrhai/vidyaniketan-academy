@@ -63,7 +63,7 @@ export default function AdmissionFormPage() {
 
   const validate = () => {
     // ✅ Removed "studentPhone" and "fatherName" from required; kept "fatherPhone" as Contact no.2
-    const required: (keyof FormData)[] = ["studentName","email","fatherPhone","standard","branch"]
+    const required: (keyof FormData)[] = ["studentName","fatherPhone","standard","branch"]
     if (isSenior) required.push("course")
     const allTouched: Partial<Record<keyof FormData, boolean>> = {}
     required.forEach(k => { allTouched[k] = true })
@@ -72,7 +72,7 @@ export default function AdmissionFormPage() {
       console.log(k, form[k], typeof form[k])
       if (k !== "studentDOB" && !form[k].trim()) return "Please fill all required fields"
     }
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) return "Enter a valid email"
+    // if (!/^\S+@\S+\.\S+$/.test(form.email)) return "Enter a valid email"
     if (!/^\d{10}$/.test(form.fatherPhone.replace(/\s/g,"")))  return "Enter a valid Contact no.2"
     return ""
   }
