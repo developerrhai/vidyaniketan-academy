@@ -29,6 +29,17 @@ const feeStatus = (s: Student) => {
   return { label: "Pending", cls: "bg-red-100 text-red-700" }
 }
 
+const formatDob = (dob: string) => {
+  if (!dob) return ""
+  try {
+    return new Date(dob).toLocaleDateString("en-IN", {
+      day: "2-digit", month: "2-digit", year: "numeric"
+    })
+  } catch {
+    return dob
+  }
+}
+
 export function StudentsContent() {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
@@ -180,7 +191,7 @@ export function StudentsContent() {
       const balance = Math.max(totalFee - paidFee, 0)
       const status = feeStatus(s).label
       return [
-        s.id, s.name || "", s.aadhar || "", s.dob || "",
+        s.id, s.name || "", s.aadhar || "", s.dob ? formatDob(s.dob) : "",
         s.phone || "", s.father_phone || "",
         s.standard || "", s.course || "", s.branch || "", s.hostel || "",
         totalFee, paidFee, balance, status,
@@ -377,7 +388,7 @@ export function StudentsContent() {
                         <TableCell className="hidden sm:table-cell">{s.phone}</TableCell>
                         <TableCell className="hidden sm:table-cell">{s.father_phone}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.aadhar}</TableCell>
-                        <TableCell className="hidden md:table-cell">{s.dob}</TableCell>
+                        <TableCell className="hidden md:table-cell">{formatDob(s.dob)}</TableCell>
                         <TableCell>{s.standard}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.branch}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.hostel}</TableCell>
@@ -438,7 +449,7 @@ export function StudentsContent() {
                 { icon: Phone,  label: "Contact no.1", value: selected.phone },
                 { icon: Phone,  label: "Contact no.2", value: selected.father_phone },
                 { icon: MapPin, label: "Aadhar",       value: selected.aadhar },
-                { icon: MapPin, label: "DOB",          value: selected.dob },
+                { icon: MapPin, label: "DOB",          value: formatDob(selected.dob) },
                 { icon: MapPin, label: "Branch",       value: selected.branch },
                 { icon: MapPin, label: "Hostel",       value: selected.hostel },
               ].map(({ icon: Icon, label, value }) => (
