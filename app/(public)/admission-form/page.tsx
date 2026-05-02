@@ -12,7 +12,7 @@ const STANDARDS = [
   "10th Standard", "11th Standard", "12th Standard"
 ]
 
-const BRANCHES = ["branch 1", "branch 2"]
+const BRANCHES = ["Main branch", "SOF branch"]
 
 const COURSES =  ["JEE", "NEET", "Foundation"]
 
@@ -62,7 +62,8 @@ export default function AdmissionFormPage() {
   }
 
   const validate = () => {
-    const required: (keyof FormData)[] = ["studentName","studentPhone","email","fatherName","fatherPhone","standard","branch"]
+    // ✅ Removed "studentPhone" and "fatherName" from required; kept "fatherPhone" as Contact no.2
+    const required: (keyof FormData)[] = ["studentName","email","fatherPhone","standard","branch"]
     if (isSenior) required.push("course")
     const allTouched: Partial<Record<keyof FormData, boolean>> = {}
     required.forEach(k => { allTouched[k] = true })
@@ -71,9 +72,8 @@ export default function AdmissionFormPage() {
       console.log(k, form[k], typeof form[k])
       if (k !== "studentDOB" && !form[k].trim()) return "Please fill all required fields"
     }
-    if (!/^\d{10}$/.test(form.studentPhone.replace(/\s/g,""))) return "Enter a valid student phone number"
     if (!/^\S+@\S+\.\S+$/.test(form.email)) return "Enter a valid email"
-    if (!/^\d{10}$/.test(form.fatherPhone.replace(/\s/g,"")))  return "Enter a valid father phone number"
+    if (!/^\d{10}$/.test(form.fatherPhone.replace(/\s/g,"")))  return "Enter a valid Contact no.2"
     return ""
   }
 
@@ -153,9 +153,6 @@ export default function AdmissionFormPage() {
 
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
 
-     
-         
-
           <Header/>
 
           {/* Form title */}
@@ -182,8 +179,9 @@ export default function AdmissionFormPage() {
                   </svg>
                 }
               />
+              {/* ✅ Contact no.1 */}
               <InputField
-                placeholder="Student Phone"
+                placeholder="Contact no.1"
                 type="tel"
                 value={form.studentPhone}
                 onChange={v => set("studentPhone", v)}
@@ -195,8 +193,23 @@ export default function AdmissionFormPage() {
                   </svg>
                 }
               />
-               <InputField
-                placeholder="DOB"
+              {/* ✅ Contact no.2 moved here (was Father Phone in Parent Details) */}
+              <InputField
+                placeholder="Contact no.2"
+                type="tel"
+                value={form.fatherPhone}
+                onChange={v => set("fatherPhone", v)}
+                error={fieldError("fatherPhone")}
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                }
+              />
+              {/* ✅ DOB kept but not required */}
+              <InputField
+                placeholder="Date of Birth"
                 type="date"
                 value={form.studentDOB}
                 onChange={v => set("studentDOB", v)}
@@ -249,50 +262,10 @@ export default function AdmissionFormPage() {
               />
             </Section>
 
-            {/* Parent Details */}
-            <Section label="Parent Details" color="indigo">
-              <InputField
-                placeholder="Father Name"
-                value={form.fatherName}
-                onChange={v => set("fatherName", v)}
-                error={fieldError("fatherName")}
-                icon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                }
-              />
-              <InputField
-                placeholder="Father Phone"
-                type="tel"
-                value={form.fatherPhone}
-                onChange={v => set("fatherPhone", v)}
-                error={fieldError("fatherPhone")}
-                icon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                }
-              />
-            </Section>
+            {/* ✅ Parent Details section removed (Father Name removed, Father Phone moved up) */}
 
             {/* Academic Details */}
             <Section label="Academic Details" color="cyan">
-              {/* <SelectField
-                placeholder="Select course"
-                value={form.board}
-                onChange={v => set("board", v)}
-                options={BOARDS}
-                error={fieldError("board")}
-                icon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                }
-              /> */}
               <SelectField
                 placeholder="Select Standard"
                 value={form.standard}
