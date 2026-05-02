@@ -18,7 +18,6 @@ interface Student {
   standard: string; course: string; branch: string; fee: number; paid_fee: number, hostel: string, school_fee: number, academy_fee: number, hostel_fee: number
 }
 
-// Fee status badge helper
 const feeStatus = (s: Student) => {
   const fee = Number(s.fee)
   const paid = Number(s.paid_fee)
@@ -38,11 +37,9 @@ export function StudentsContent() {
   const [filterBranch, setFilterBranch] = useState("all")
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  // View modal
   const [selected, setSelected] = useState<Student | null>(null)
   const [viewOpen, setViewOpen] = useState(false)
 
-  // Update Fee modal
   const [feeStudent, setFeeStudent] = useState<Student | null>(null)
   const [feeModalOpen, setFeeModalOpen] = useState(false)
   const [newFee, setNewFee] = useState({
@@ -53,7 +50,6 @@ export function StudentsContent() {
   })
   const [feeSaving, setFeeSaving] = useState(false)
 
-  // Pay Fee modal
   const [payStudent, setPayStudent] = useState<Student | null>(null)
   const [payModalOpen, setPayModalOpen] = useState(false)
   const [payAmount, setPayAmount] = useState("")
@@ -69,7 +65,6 @@ export function StudentsContent() {
         branch: filterBranch !== "all" ? filterBranch : undefined,
         search: searchTerm || undefined,
       }
-      // Prefer universal listing. Fallback keeps UI working if universal route is not available yet.
       try {
         const universal: any = await studentsUniversalApi.getAll(filters)
         setStudents(universal?.data || [])
@@ -86,7 +81,6 @@ export function StudentsContent() {
 
   useEffect(() => { load() }, [load])
 
-  // ── Delete ──────────────────────────────────────────────
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this student?")) return
     try {
@@ -95,7 +89,6 @@ export function StudentsContent() {
     } catch (err: any) { alert(err.message) }
   }
 
-  // ── Open Update Fee modal ───────────────────────────────
   const openFeeModal = (s: Student) => {
     setFeeStudent(s)
     setNewFee({
@@ -107,10 +100,8 @@ export function StudentsContent() {
     setFeeModalOpen(true)
   }
 
-  // ── Save updated fee (changes `fee` column) ─────────────
   const handleUpdateFee = async () => {
     if (!feeStudent) return
-    // const val = parseFloat(newFee)
     if (isNaN(newFee.total_fee) || newFee.total_fee < 0) { alert("Enter a valid fee amount"); return }
     setFeeSaving(true)
     try {
@@ -119,10 +110,8 @@ export function StudentsContent() {
         school_fee: newFee.school_fee,
         academy_fee: newFee.academy_fee,
         hostel_fee: newFee.hostel_fee,
-        fee:  newFee.total_fee
-        // fee: val,
+        fee: newFee.total_fee
       })
-      // Reflect change locally without refetch
       setStudents(prev => prev.map(s =>
         s.id === feeStudent.id ? { ...s, fee: newFee.total_fee } : s
       ))
@@ -131,7 +120,6 @@ export function StudentsContent() {
     finally { setFeeSaving(false) }
   }
 
-  // ── Open Pay Fee modal ──────────────────────────────────
   const openPayModal = (s: Student) => {
     setPayStudent(s)
     setPayAmount("")
@@ -139,7 +127,6 @@ export function StudentsContent() {
     setPayModalOpen(true)
   }
 
-  // ── Save payment (changes `paid_fee` column) ────────────
   const handlePayFee = async () => {
     if (!payStudent) return
     const val = parseFloat(payAmount)
@@ -147,14 +134,11 @@ export function StudentsContent() {
 
     let newPaid: number
     if (payMode === "add") {
-      // Add payment on top of existing
       newPaid = Number(payStudent.paid_fee) + val
     } else {
-      // Set paid_fee to an exact value
       newPaid = val
     }
 
-    // Cap at total fee
     const totalFee = Number(payStudent.fee)
     if (totalFee > 0 && newPaid > totalFee) {
       alert(`Paid amount (₹${newPaid.toLocaleString()}) cannot exceed total fee (₹${totalFee.toLocaleString()})`)
@@ -182,22 +166,10 @@ export function StudentsContent() {
     }
 
     const headers = [
-      "ID",
-      "Name",
-      "Gender", //new
-      "Academic Year", //new
-      "Phone",
-      "Father Name",
-      "Father Phone",
-      // "Board",
-      "Standard",
-      "Course",
-      "Branch", // renamed from Location
-      "Hostel", //new
-      "Total Fee",
-      "Paid Fee",
-      "Balance",
-      "Fee Status",
+      "ID", "Name", "Gender", "Academic Year",
+      "Contact no.1", "Contact no.2",
+      "Standard", "Course", "Branch", "Hostel",
+      "Total Fee", "Paid Fee", "Balance", "Fee Status",
     ]
 
     const rows = students.map((s) => {
@@ -205,24 +177,11 @@ export function StudentsContent() {
       const paidFee = Number(s.paid_fee || 0)
       const balance = Math.max(totalFee - paidFee, 0)
       const status = feeStatus(s).label
-
       return [
-        s.id,
-        s.name || "",
-        s.gender || "", // new
-        s.academic_year || "", // new
-        s.phone || "",
-        s.father_name || "",
-        s.father_phone || "",
-        // s.board || "",
-        s.standard || "",
-        s.course || "",
-        s.branch || "", // renamed from Location
-        s.hostel || "", // new
-        totalFee,
-        paidFee,
-        balance,
-        status,
+        s.id, s.name || "", s.gender || "", s.academic_year || "",
+        s.phone || "", s.father_phone || "",
+        s.standard || "", s.course || "", s.branch || "", s.hostel || "",
+        totalFee, paidFee, balance, status,
       ]
     })
 
@@ -240,18 +199,12 @@ export function StudentsContent() {
   }
 
   const normalizeHeader = (value: unknown) =>
-    String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "")
+    String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
 
   const pickValue = (row: Record<string, unknown>, keys: string[]) => {
     for (const key of keys) {
       const value = row[key]
-      if (value !== undefined && value !== null && String(value).trim() !== "") {
-        return value
-      }
+      if (value !== undefined && value !== null && String(value).trim() !== "") return value
     }
     return ""
   }
@@ -268,44 +221,38 @@ export function StudentsContent() {
       const sheet = workbook.Sheets[sheetName]
       const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" })
 
-      if (!rawRows.length) {
-        alert("Excel sheet is empty")
-        return
-      }
+      if (!rawRows.length) { alert("Excel sheet is empty"); return }
 
       const normalizedRows = rawRows.map((row) => {
         const next: Record<string, unknown> = {}
-        Object.entries(row).forEach(([key, value]) => {
-          next[normalizeHeader(key)] = value
-        })
+        Object.entries(row).forEach(([key, value]) => { next[normalizeHeader(key)] = value })
         return next
       })
-      const admin_id = localStorage.getItem("userInfo") ? JSON.parse(localStorage.getItem("userInfo") as string)?.id : null
-      const payloads = normalizedRows
-        .map((row) => {
-          const name = String(pickValue(row, ["name", "student_name", "student"])).trim()
-          if (!name) return null
 
-          return {
-            admin_id: admin_id,
-            name,
-            email: String(pickValue(row, ["email"])).trim(),
-            phone: String(pickValue(row, ["phone", "student_phone", "mobile", "contact"])).trim(),
-            father_name: String(pickValue(row, ["father_name", "parent_name", "guardian_name"])).trim(),
-            father_phone: String(pickValue(row, ["father_phone", "parent_phone", "guardian_phone"])).trim(),
-            // board: String(pickValue(row, ["board"])).trim(),
-            standard: String(pickValue(row, ["standard", "std", "class"])).trim(),
-            course: String(pickValue(row, ["course", "batch"])).trim(),
-            branch: String(pickValue(row, ["branch"])).trim(),
-            institute: String(pickValue(row, ["institute", "school", "college"])).trim(),
-            fee: Number(pickValue(row, ["fee", "total_fee"])) || 0,
-            paid_fee: Number(pickValue(row, ["paid_fee", "paid", "paidamount"])) || 0,
-            gender: String(pickValue(row, ["gender"])).trim(),
-            academic_year: String(pickValue(row, ["academic_year"])).trim(),
-            hostel: String(pickValue(row, ["hostel"])).trim(),
-          }
-        })
-        .filter(Boolean) as Array<Record<string, unknown>>
+      const admin_id = localStorage.getItem("userInfo")
+        ? JSON.parse(localStorage.getItem("userInfo") as string)?.id
+        : null
+
+      const payloads = normalizedRows.map((row) => {
+        const name = String(pickValue(row, ["name", "student_name", "student"])).trim()
+        if (!name) return null
+        return {
+          admin_id,
+          name,
+          email: String(pickValue(row, ["email"])).trim(),
+          phone: String(pickValue(row, ["phone", "contact_no_1", "student_phone", "mobile", "contact"])).trim(),
+          father_phone: String(pickValue(row, ["father_phone", "contact_no_2", "parent_phone", "guardian_phone"])).trim(),
+          standard: String(pickValue(row, ["standard", "std", "class"])).trim(),
+          course: String(pickValue(row, ["course", "batch"])).trim(),
+          branch: String(pickValue(row, ["branch"])).trim(),
+          institute: String(pickValue(row, ["institute", "school", "college"])).trim(),
+          fee: Number(pickValue(row, ["fee", "total_fee"])) || 0,
+          paid_fee: Number(pickValue(row, ["paid_fee", "paid", "paidamount"])) || 0,
+          gender: String(pickValue(row, ["gender"])).trim(),
+          academic_year: String(pickValue(row, ["academic_year"])).trim(),
+          hostel: String(pickValue(row, ["hostel"])).trim(),
+        }
+      }).filter(Boolean) as Array<Record<string, unknown>>
 
       if (!payloads.length) {
         alert("No valid student rows found. Add at least a Name column in the Excel sheet.")
@@ -313,9 +260,8 @@ export function StudentsContent() {
       }
 
       const results = await Promise.allSettled(payloads.map((payload) => studentsApi.create(payload)))
-      const successCount = results.filter((result) => result.status === "fulfilled").length
+      const successCount = results.filter((r) => r.status === "fulfilled").length
       const failedCount = results.length - successCount
-
       await load()
 
       if (failedCount > 0) {
@@ -364,7 +310,6 @@ export function StudentsContent() {
                 <SelectItem value="JEE">JEE</SelectItem>
                 <SelectItem value="NEET">NEET</SelectItem>
                 <SelectItem value="Foundation">Foundation</SelectItem>
-
               </SelectContent>
             </Select>
             <Select value={filterBranch} onValueChange={setFilterBranch}>
@@ -376,15 +321,11 @@ export function StudentsContent() {
               </SelectContent>
             </Select>
           </div>
+
           <div className="flex justify-end mb-4">
             <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleImportExcel}
-                className="hidden"
-              />
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv"
+                onChange={handleImportExcel} className="hidden" />
               <Button onClick={() => fileInputRef.current?.click()} variant="outline" disabled={importing}>
                 {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                 Import Excel
@@ -406,16 +347,14 @@ export function StudentsContent() {
                 <TableHeader>
                   <TableRow className="bg-slate-900">
                     <TableHead className="text-white font-semibold">Name</TableHead>
-                    <TableHead className="text-white font-semibold hidden sm:table-cell">Phone</TableHead>
+                    <TableHead className="text-white font-semibold hidden sm:table-cell">Contact no.1</TableHead>
+                    <TableHead className="text-white font-semibold hidden sm:table-cell">Contact no.2</TableHead>
                     <TableHead className="text-white font-semibold hidden sm:table-cell">Gender</TableHead>
                     <TableHead className="text-white font-semibold hidden sm:table-cell">Academic Year</TableHead>
-
-                    <TableHead className="text-white font-semibold hidden md:table-cell">Father Name</TableHead>
-                    {/* <TableHead className="text-white font-semibold hidden lg:table-cell">Board</TableHead> */}
+                    {/* Father Name column removed */}
                     <TableHead className="text-white font-semibold">Std</TableHead>
                     <TableHead className="text-white font-semibold hidden md:table-cell">Branch</TableHead>
                     <TableHead className="text-white font-semibold hidden md:table-cell">Hostel</TableHead>
-                    {/* ── NEW columns ── */}
                     <TableHead className="text-white font-semibold hidden lg:table-cell">Total Fee</TableHead>
                     <TableHead className="text-white font-semibold hidden lg:table-cell">Paid</TableHead>
                     <TableHead className="text-white font-semibold hidden sm:table-cell">Status</TableHead>
@@ -425,7 +364,7 @@ export function StudentsContent() {
                 <TableBody>
                   {students.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                         No students found
                       </TableCell>
                     </TableRow>
@@ -435,15 +374,13 @@ export function StudentsContent() {
                       <TableRow key={s.id} className="hover:bg-muted/50">
                         <TableCell className="font-medium">{s.name}</TableCell>
                         <TableCell className="hidden sm:table-cell">{s.phone}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{s.father_phone}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.gender}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.academic_year}</TableCell>
-                        <TableCell className="hidden md:table-cell">{s.father_name}</TableCell>
-                        {/* <TableCell className="hidden lg:table-cell">{s.board}</TableCell> */}
+                        {/* father_name cell removed */}
                         <TableCell>{s.standard}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.branch}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.hostel}</TableCell>
-
-                        {/* ── Fee columns ── */}
                         <TableCell className="hidden lg:table-cell font-medium">
                           ₹{Number(s.fee).toLocaleString()}
                         </TableCell>
@@ -453,29 +390,23 @@ export function StudentsContent() {
                         <TableCell className="hidden sm:table-cell">
                           <Badge className={cls}>{label}</Badge>
                         </TableCell>
-
-                        {/* ── Actions ── */}
                         <TableCell>
                           <div className="flex items-center justify-center gap-1">
-                            {/* View */}
                             <Button size="sm" variant="outline" className="h-8 w-8 p-0"
                               title="View details"
                               onClick={() => { setSelected(s); setViewOpen(true) }}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            {/* Update Fee */}
                             <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:border-blue-300"
                               title="Update total fee"
                               onClick={() => openFeeModal(s)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            {/* Pay Fee */}
                             <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:border-emerald-300"
                               title="Record payment"
                               onClick={() => openPayModal(s)}>
                               <IndianRupee className="h-4 w-4" />
                             </Button>
-                            {/* Delete */}
                             <Button size="sm" variant="destructive" className="h-8 w-8 p-0"
                               onClick={() => handleDelete(s.id)}>
                               <Trash2 className="h-4 w-4" />
@@ -503,16 +434,14 @@ export function StudentsContent() {
           {selected && (
             <div className="space-y-3">
               {[
-                { icon: User, label: "Name", value: selected.name },
-                { icon: Phone, label: "Phone", value: selected.phone },
-                { icon: User, label: "Father Name", value: selected.father_name },
-                { icon: Phone, label: "Father Phone", value: selected.father_phone },
-                // { icon: BookOpen, label: "Board / Standard", value: `${selected.board} – ${selected.standard}th` },
-                { icon: MapPin, label: "branch", value: selected.branch },
-                { icon: MapPin, label: "Gender", value: selected.gender },
+                { icon: User,   label: "Name",          value: selected.name },
+                { icon: Phone,  label: "Contact no.1",  value: selected.phone },
+                { icon: Phone,  label: "Contact no.2",  value: selected.father_phone },
+                // Father Name removed
+                { icon: MapPin, label: "Branch",        value: selected.branch },
+                { icon: MapPin, label: "Gender",        value: selected.gender },
                 { icon: MapPin, label: "Academic Year", value: selected.academic_year },
-                { icon: MapPin, label: "hostel", value: selected.hostel },
-
+                { icon: MapPin, label: "Hostel",        value: selected.hostel },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -523,7 +452,6 @@ export function StudentsContent() {
                 </div>
               ))}
 
-              {/* Fee summary inside view modal */}
               <div className="p-3 bg-muted rounded-lg space-y-2">
                 <p className="text-sm text-muted-foreground font-medium">Fee Summary</p>
                 <div className="grid grid-cols-3 gap-2 text-center">
@@ -570,7 +498,6 @@ export function StudentsContent() {
 
           {feeStudent && (
             <div className="space-y-4 py-2">
-              {/* Student info */}
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
                   {feeStudent.name.charAt(0)}
@@ -583,86 +510,66 @@ export function StudentsContent() {
                   </p>
                 </div>
               </div>
-              
-              {/* Current fee */}
-              {/* <div className="flex justify-between text-sm px-1">
-                <span className="text-muted-foreground">Current Fee</span>
-                <span className="font-semibold">₹{Number(feeStudent.fee).toLocaleString()}</span>
-              </div> */}
-
-              {/* New fee input */}
-
 
               <div className="flex flex-row gap-4">
-               
                 <div className="flex flex-col gap-4">
-
-
                   <div className="space-y-2 flex flex-row gap-4">
-                    <Label htmlFor="new-fee">School/College fee(₹)</Label>
+                    <Label htmlFor="school-fee">School/College fee (₹)</Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
                       <Input
-                        id="new-fee"
+                        id="school-fee"
                         type="number"
                         min="0"
                         value={newFee.school_fee}
-                        onChange={e => setNewFee({...newFee, total_fee: Number(newFee.hostel_fee) +Number(newFee.hostel_fee)  + Number(e.target.value), school_fee: Number(e.target.value)})}
-                        placeholder="Enter new fee amount"
+                        onChange={e => setNewFee({ ...newFee, total_fee: Number(newFee.academy_fee) + Number(newFee.hostel_fee) + Number(e.target.value), school_fee: Number(e.target.value) })}
+                        placeholder="Enter school fee"
                         className="pl-7"
                         autoFocus
                       />
                     </div>
-                   
-                  </div>
-
-
-                  <div className="space-y-2 flex flex-row gap-4 justify-between">
-                    <Label htmlFor="new-fee">Academy fee  (₹){"     "}</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
-                      <Input
-                        id="new-fee"
-                        type="number"
-                        min="0"
-                         value={newFee.academy_fee}
-                        onChange={e => setNewFee({...newFee, total_fee: Number(newFee.school_fee) +Number(newFee.hostel_fee)  + Number(e.target.value), academy_fee: Number(e.target.value)})}
-                        placeholder="Enter new fee amount"
-                        className="pl-7"
-                        autoFocus
-                      />
-                    </div>
-                 
                   </div>
 
                   <div className="space-y-2 flex flex-row gap-4 justify-between">
-                    <Label htmlFor="new-fee"> Hostel Fee (₹) </Label>
+                    <Label htmlFor="academy-fee">Academy fee (₹)</Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
                       <Input
-                        id="new-fee"
+                        id="academy-fee"
                         type="number"
                         min="0"
-                         value={newFee.hostel_fee}
-                        onChange={e => setNewFee({...newFee, total_fee: Number(newFee.school_fee) +Number(newFee.academy_fee)  +Number(e.target.value), hostel_fee: Number(e.target.value)})}
-                        placeholder="Enter new fee amount"
+                        value={newFee.academy_fee}
+                        onChange={e => setNewFee({ ...newFee, total_fee: Number(newFee.school_fee) + Number(newFee.hostel_fee) + Number(e.target.value), academy_fee: Number(e.target.value) })}
+                        placeholder="Enter academy fee"
                         className="pl-7"
-                        autoFocus
                       />
                     </div>
-                   
+                  </div>
+
+                  <div className="space-y-2 flex flex-row gap-4 justify-between">
+                    <Label htmlFor="hostel-fee">Hostel Fee (₹)</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
+                      <Input
+                        id="hostel-fee"
+                        type="number"
+                        min="0"
+                        value={newFee.hostel_fee}
+                        onChange={e => setNewFee({ ...newFee, total_fee: Number(newFee.school_fee) + Number(newFee.academy_fee) + Number(e.target.value), hostel_fee: Number(e.target.value) })}
+                        placeholder="Enter hostel fee"
+                        className="pl-7"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-               {(
-                    <p className="text-xl text-muted-foreground px-1">
-                      Total Fee:{" "}
-                      <span className="font-medium text-foreground">
-                        {/* ₹ {newFee.total_fee.toLocaleString() } */}
-                        ₹{`  `}{Math.max(0, Number(newFee.total_fee) - Number(feeStudent.paid_fee)).toLocaleString()}
-                      </span>
-                    </p>
-                  )}
+
+              <p className="text-xl text-muted-foreground px-1">
+                Total Fee:{" "}
+                <span className="font-medium text-foreground">
+                  ₹{`  `}{Math.max(0, Number(newFee.total_fee) - Number(feeStudent.paid_fee)).toLocaleString()}
+                </span>
+              </p>
             </div>
           )}
 
@@ -687,7 +594,6 @@ export function StudentsContent() {
 
           {payStudent && (
             <div className="space-y-4 py-2">
-              {/* Student info */}
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
                 <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold shrink-0">
                   {payStudent.name.charAt(0)}
@@ -701,7 +607,6 @@ export function StudentsContent() {
                 </div>
               </div>
 
-              {/* Fee summary */}
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-lg border p-2">
                   <p className="text-xs text-muted-foreground">Total Fee</p>
@@ -719,15 +624,14 @@ export function StudentsContent() {
                 </div>
               </div>
 
-              {/* Payment mode toggle */}
               <div className="space-y-2">
                 <Label>Payment Type</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => setPayMode("add")}
                     className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${payMode === "add"
-                        ? "bg-emerald-600 text-white border-emerald-600"
-                        : "border-border text-muted-foreground hover:border-emerald-400"
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "border-border text-muted-foreground hover:border-emerald-400"
                       }`}
                   >
                     + Add Payment
@@ -735,8 +639,8 @@ export function StudentsContent() {
                   <button
                     onClick={() => setPayMode("set")}
                     className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${payMode === "set"
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "border-border text-muted-foreground hover:border-blue-400"
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "border-border text-muted-foreground hover:border-blue-400"
                       }`}
                   >
                     = Set Total Paid
@@ -749,7 +653,6 @@ export function StudentsContent() {
                 </p>
               </div>
 
-              {/* Amount input */}
               <div className="space-y-2">
                 <Label htmlFor="pay-amount">
                   {payMode === "add" ? "Payment Amount (₹)" : "Set Paid Amount (₹)"}
@@ -769,7 +672,6 @@ export function StudentsContent() {
                   />
                 </div>
 
-                {/* Live preview */}
                 {payAmount && !isNaN(parseFloat(payAmount)) && (
                   <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 space-y-1">
                     <p className="text-xs font-medium text-emerald-700">After this update:</p>
