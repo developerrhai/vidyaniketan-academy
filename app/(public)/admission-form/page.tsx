@@ -3,8 +3,6 @@
 import { Header } from "@/components/ui/header"
 import { useState } from "react"
 
-const BOARDS = ["JEE", "NEET", "Foundation"]
-
 const STANDARDS = [
   "1st Standard", "2nd Standard", "3rd Standard",
   "4th Standard", "5th Standard", "6th Standard",
@@ -14,7 +12,7 @@ const STANDARDS = [
 
 const BRANCHES = ["Main branch", "SOF branch"]
 
-const COURSES =  ["JEE", "NEET", "Foundation"]
+const COURSES = ["JEE", "NEET", "Foundation"]
 
 interface FormData {
   studentName: string
@@ -22,11 +20,10 @@ interface FormData {
   fatherName: string
   fatherPhone: string
   email: string
-  // board: string
   standard: string
   branch: string
   course: string
-  studentDOB: Date
+  studentDOB: string
   aadharNumber: string
   address: string
 }
@@ -34,10 +31,10 @@ interface FormData {
 const initial: FormData = {
   studentName: "", studentPhone: "",
   fatherName: "", fatherPhone: "",
-  studentDOB: new Date(), aadharNumber: "", address: "",
-  email: "",  standard: "", branch: "", course: "",
+  studentDOB: "", aadharNumber: "", address: "",
+  email: "", standard: "", branch: "", course: "",
 }
-// DOB & AADHAR NO, ADRESS
+
 export default function AdmissionFormPage() {
   const [form, setForm]             = useState<FormData>(initial)
   const [submitting, setSubmitting] = useState(false)
@@ -55,25 +52,22 @@ export default function AdmissionFormPage() {
 
   const fieldError = (key: keyof FormData) => {
     if (!touched[key]) return ""
-    if (key!="studentDOB" && !form[key].trim()) return "This field is required"
+    if (key !== "studentDOB" && !form[key].trim()) return "This field is required"
     if ((key === "studentPhone" || key === "fatherPhone") && !/^\d{10}$/.test(form[key].replace(/\s/g, "")))
       return "Enter a valid 10-digit number"
     return ""
   }
 
   const validate = () => {
-    // ✅ Removed "studentPhone" and "fatherName" from required; kept "fatherPhone" as Contact no.2
-    const required: (keyof FormData)[] = ["studentName","fatherPhone","standard","branch"]
+    const required: (keyof FormData)[] = ["studentName", "fatherPhone", "standard", "branch"]
     if (isSenior) required.push("course")
     const allTouched: Partial<Record<keyof FormData, boolean>> = {}
     required.forEach(k => { allTouched[k] = true })
     setTouched(allTouched)
     for (const k of required) {
-      console.log(k, form[k], typeof form[k])
       if (k !== "studentDOB" && !form[k].trim()) return "Please fill all required fields"
     }
-    // if (!/^\S+@\S+\.\S+$/.test(form.email)) return "Enter a valid email"
-    if (!/^\d{10}$/.test(form.fatherPhone.replace(/\s/g,"")))  return "Enter a valid Contact no.2"
+    if (!/^\d{10}$/.test(form.fatherPhone.replace(/\s/g, ""))) return "Enter a valid Contact no.2"
     return ""
   }
 
@@ -84,21 +78,20 @@ export default function AdmissionFormPage() {
     setError("")
     setSubmitting(true)
     try {
-      const res = await fetch(process.env.NEXT_PUBLIC_API_URL+"/admissions/public", {
+      const res = await fetch(process.env.NEXT_PUBLIC_API_URL + "/admissions/public", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          aadhar: form.aadharNumber,
-          address: form.address,
-          dob: form.studentDOB,
+          aadhar:       form.aadharNumber,
+          address:      form.address,
+          dob:          form.studentDOB,
           name:         form.studentName,
           phone:        form.studentPhone,
           father_name:  form.fatherName,
           email:        form.email,
           father_phone: form.fatherPhone,
-          // board:        form.board,
           standard:     form.standard,
-          branch:     form.branch,
+          branch:       form.branch,
           course:       isSenior ? form.course : "",
         }),
       })
@@ -150,10 +143,9 @@ export default function AdmissionFormPage() {
   return (
     <div className="min-h-screen bg-[#e8f4f8] flex items-center justify-center p-4 py-10">
       <div className="w-full max-w-[42rem]">
-
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
 
-          <Header/>
+          <Header />
 
           {/* Form title */}
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
@@ -179,7 +171,6 @@ export default function AdmissionFormPage() {
                   </svg>
                 }
               />
-              {/* ✅ Contact no.1 */}
               <InputField
                 placeholder="Contact no.1"
                 type="tel"
@@ -193,9 +184,8 @@ export default function AdmissionFormPage() {
                   </svg>
                 }
               />
-              {/* ✅ Contact no.2 moved here (was Father Phone in Parent Details) */}
               <InputField
-                placeholder="Contact no.2(Whatsapp)"
+                placeholder="Contact no.2 (Whatsapp)"
                 type="tel"
                 value={form.fatherPhone}
                 onChange={v => set("fatherPhone", v)}
@@ -207,20 +197,14 @@ export default function AdmissionFormPage() {
                   </svg>
                 }
               />
-              {/* ✅ DOB kept but not required */}
-              <InputField
-                placeholder="Date of Birth"
-                type="date"
+
+              {/* DOB — custom 3-part input */}
+              <DOBField
                 value={form.studentDOB}
                 onChange={v => set("studentDOB", v)}
                 error={fieldError("studentDOB")}
-                icon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                }
               />
+
               <InputField
                 placeholder="Email Address"
                 type="email"
@@ -236,33 +220,31 @@ export default function AdmissionFormPage() {
               />
               <InputField
                 placeholder="Aadhar Number"
-                type="text"
                 value={form.aadharNumber}
                 onChange={v => set("aadharNumber", v)}
                 error={fieldError("aadharNumber")}
                 icon={
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0" />
                   </svg>
                 }
               />
               <InputField
                 placeholder="Address"
-                type="text"
                 value={form.address}
                 onChange={v => set("address", v)}
                 error={fieldError("address")}
                 icon={
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 }
               />
             </Section>
-
-            {/* ✅ Parent Details section removed (Father Name removed, Father Phone moved up) */}
 
             {/* Academic Details */}
             <Section label="Academic Details" color="cyan">
@@ -279,8 +261,6 @@ export default function AdmissionFormPage() {
                   </svg>
                 }
               />
-
-              {/* Course — only visible for 11th & 12th */}
               {isSenior && (
                 <SelectField
                   placeholder="Select Course"
@@ -362,6 +342,67 @@ export default function AdmissionFormPage() {
           © Vidyaaniketan Professional Academy · All rights reserved
         </p>
       </div>
+    </div>
+  )
+}
+
+/* ── DOB Field ──────────────────────────────────────── */
+function DOBField({
+  value, onChange, error
+}: {
+  value: string; onChange: (v: string) => void; error?: string
+}) {
+  const parts = value ? value.split("-") : ["", "", ""]
+  const dd   = parts[0] ?? ""
+  const mm   = parts[1] ?? ""
+  const yyyy = parts[2] ?? ""
+
+  const update = (newDd: string, newMm: string, newYyyy: string) => {
+    onChange(`${newDd}-${newMm}-${newYyyy}`)
+  }
+
+  return (
+    <div>
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border bg-white transition-all duration-200 ${
+        error ? "border-red-300 bg-red-50/30" : "border-gray-200 hover:border-blue-300 focus-within:border-[#0d6efd] focus-within:ring-3 focus-within:ring-[#0d6efd]/10"
+      }`}>
+        <span className="text-gray-400 shrink-0">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </span>
+        <span className="text-gray-400 text-sm shrink-0">Date of Birth</span>
+        <div className="flex items-center gap-1 ml-auto">
+          <input
+            type="number"
+            placeholder="DD"
+            min={1} max={31}
+            value={dd}
+            onChange={e => update(e.target.value, mm, yyyy)}
+            className="w-10 bg-transparent text-gray-700 text-sm text-center outline-none placeholder-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <span className="text-gray-300 select-none">/</span>
+          <input
+            type="number"
+            placeholder="MM"
+            min={1} max={12}
+            value={mm}
+            onChange={e => update(dd, e.target.value, yyyy)}
+            className="w-10 bg-transparent text-gray-700 text-sm text-center outline-none placeholder-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <span className="text-gray-300 select-none">/</span>
+          <input
+            type="number"
+            placeholder="YYYY"
+            min={1900} max={2099}
+            value={yyyy}
+            onChange={e => update(dd, mm, e.target.value)}
+            className="w-16 bg-transparent text-gray-700 text-sm text-center outline-none placeholder-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+        </div>
+      </div>
+      {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
     </div>
   )
 }
