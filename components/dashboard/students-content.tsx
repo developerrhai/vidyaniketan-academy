@@ -14,8 +14,10 @@ import { studentsApi, studentsUniversalApi } from "@/lib/api"
 import * as XLSX from "xlsx"
 
 interface Student {
-  id: number; name: string; phone: string; father_name: string; father_phone: string, gender: string; academic_year: string,
-  standard: string; course: string; branch: string; fee: number; paid_fee: number, hostel: string, school_fee: number, academy_fee: number, hostel_fee: number
+  id: number; name: string; phone: string; father_name: string; father_phone: string;
+  aadhar: string; dob: string;
+  standard: string; course: string; branch: string; fee: number; paid_fee: number;
+  hostel: string; school_fee: number; academy_fee: number; hostel_fee: number
 }
 
 const feeStatus = (s: Student) => {
@@ -166,7 +168,7 @@ export function StudentsContent() {
     }
 
     const headers = [
-      "ID", "Name", "Gender", "Academic Year",
+      "ID", "Name", "Aadhar", "DOB",
       "Contact no.1", "Contact no.2",
       "Standard", "Course", "Branch", "Hostel",
       "Total Fee", "Paid Fee", "Balance", "Fee Status",
@@ -178,7 +180,7 @@ export function StudentsContent() {
       const balance = Math.max(totalFee - paidFee, 0)
       const status = feeStatus(s).label
       return [
-        s.id, s.name || "", s.gender || "", s.academic_year || "",
+        s.id, s.name || "", s.aadhar || "", s.dob || "",
         s.phone || "", s.father_phone || "",
         s.standard || "", s.course || "", s.branch || "", s.hostel || "",
         totalFee, paidFee, balance, status,
@@ -248,8 +250,8 @@ export function StudentsContent() {
           institute: String(pickValue(row, ["institute", "school", "college"])).trim(),
           fee: Number(pickValue(row, ["fee", "total_fee"])) || 0,
           paid_fee: Number(pickValue(row, ["paid_fee", "paid", "paidamount"])) || 0,
-          gender: String(pickValue(row, ["gender"])).trim(),
-          academic_year: String(pickValue(row, ["academic_year"])).trim(),
+          aadhar: String(pickValue(row, ["aadhar", "aadhar_number", "aadhaar"])).trim(),
+          dob: String(pickValue(row, ["dob", "date_of_birth", "birth_date"])).trim(),
           hostel: String(pickValue(row, ["hostel"])).trim(),
         }
       }).filter(Boolean) as Array<Record<string, unknown>>
@@ -349,9 +351,8 @@ export function StudentsContent() {
                     <TableHead className="text-white font-semibold">Name</TableHead>
                     <TableHead className="text-white font-semibold hidden sm:table-cell">Contact no.1</TableHead>
                     <TableHead className="text-white font-semibold hidden sm:table-cell">Contact no.2</TableHead>
-                    <TableHead className="text-white font-semibold hidden sm:table-cell">Gender</TableHead>
-                    <TableHead className="text-white font-semibold hidden sm:table-cell">Academic Year</TableHead>
-                    {/* Father Name column removed */}
+                    <TableHead className="text-white font-semibold hidden sm:table-cell">Aadhar</TableHead>
+                    <TableHead className="text-white font-semibold hidden sm:table-cell">DOB</TableHead>
                     <TableHead className="text-white font-semibold">Std</TableHead>
                     <TableHead className="text-white font-semibold hidden md:table-cell">Branch</TableHead>
                     <TableHead className="text-white font-semibold hidden md:table-cell">Hostel</TableHead>
@@ -375,9 +376,8 @@ export function StudentsContent() {
                         <TableCell className="font-medium">{s.name}</TableCell>
                         <TableCell className="hidden sm:table-cell">{s.phone}</TableCell>
                         <TableCell className="hidden sm:table-cell">{s.father_phone}</TableCell>
-                        <TableCell className="hidden md:table-cell">{s.gender}</TableCell>
-                        <TableCell className="hidden md:table-cell">{s.academic_year}</TableCell>
-                        {/* father_name cell removed */}
+                        <TableCell className="hidden md:table-cell">{s.aadhar}</TableCell>
+                        <TableCell className="hidden md:table-cell">{s.dob}</TableCell>
                         <TableCell>{s.standard}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.branch}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.hostel}</TableCell>
@@ -434,14 +434,13 @@ export function StudentsContent() {
           {selected && (
             <div className="space-y-3">
               {[
-                { icon: User,   label: "Name",          value: selected.name },
-                { icon: Phone,  label: "Contact no.1",  value: selected.phone },
-                { icon: Phone,  label: "Contact no.2",  value: selected.father_phone },
-                // Father Name removed
-                { icon: MapPin, label: "Branch",        value: selected.branch },
-                { icon: MapPin, label: "Gender",        value: selected.gender },
-                { icon: MapPin, label: "Academic Year", value: selected.academic_year },
-                { icon: MapPin, label: "Hostel",        value: selected.hostel },
+                { icon: User,   label: "Name",         value: selected.name },
+                { icon: Phone,  label: "Contact no.1", value: selected.phone },
+                { icon: Phone,  label: "Contact no.2", value: selected.father_phone },
+                { icon: MapPin, label: "Aadhar",       value: selected.aadhar },
+                { icon: MapPin, label: "DOB",          value: selected.dob },
+                { icon: MapPin, label: "Branch",       value: selected.branch },
+                { icon: MapPin, label: "Hostel",       value: selected.hostel },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
