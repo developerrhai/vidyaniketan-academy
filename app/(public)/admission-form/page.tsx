@@ -195,7 +195,7 @@ export default function AdmissionFormPage() {
               />
               {/* ✅ Contact no.2 moved here (was Father Phone in Parent Details) */}
               <InputField
-                placeholder="Contact no.2"
+                placeholder="Contact no.2(Whatsapp)"
                 type="tel"
                 value={form.fatherPhone}
                 onChange={v => set("fatherPhone", v)}
