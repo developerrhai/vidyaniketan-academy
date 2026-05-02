@@ -59,7 +59,7 @@ export default function AdmissionFormPage() {
   }
 
   const validate = () => {
-    const required: (keyof FormData)[] = ["studentName", "fatherPhone", "standard", "branch"]
+    const required: (keyof FormData)[] = ["studentName","studentPhone", "standard", "branch"]
     if (isSenior) required.push("course")
     const allTouched: Partial<Record<keyof FormData, boolean>> = {}
     required.forEach(k => { allTouched[k] = true })
@@ -172,7 +172,7 @@ export default function AdmissionFormPage() {
                 }
               />
               <InputField
-                placeholder="Contact no.1"
+                placeholder="Contact no.1 (Whatsapp)"
                 type="tel"
                 value={form.studentPhone}
                 onChange={v => set("studentPhone", v)}
@@ -185,7 +185,7 @@ export default function AdmissionFormPage() {
                 }
               />
               <InputField
-                placeholder="Contact no.2 (Whatsapp)"
+                placeholder="Contact no.2"
                 type="tel"
                 value={form.fatherPhone}
                 onChange={v => set("fatherPhone", v)}
