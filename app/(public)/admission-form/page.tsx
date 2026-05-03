@@ -12,7 +12,7 @@ const STANDARDS = [
 
 const BRANCHES = ["Main branch", "SOF branch"]
 
-const COURSES = ["JEE", "NEET", "Foundation"]
+const COURSES = ["IIT-JEE", "MHT-CET", "NEET"]
 
 interface FormData {
   studentName: string
