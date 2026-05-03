@@ -26,6 +26,8 @@ interface FormData {
   studentDOB: string
   aadharNumber: string
   address: string
+  casteReligion: string
+  photo: string
 }
 
 const initial: FormData = {
@@ -33,6 +35,7 @@ const initial: FormData = {
   fatherName: "", fatherPhone: "",
   studentDOB: "", aadharNumber: "", address: "",
   email: "", standard: "", branch: "", course: "",
+  casteReligion: "", photo: "",
 }
 
 export default function AdmissionFormPage() {
@@ -50,42 +53,40 @@ export default function AdmissionFormPage() {
     setError("")
   }
 
+  const fieldError = (key: keyof FormData) => {
+    if (!touched[key]) return ""
 
+    if (
+      key !== "studentDOB" &&
+      key !== "email" &&
+      key !== "fatherPhone" &&
+      key !== "casteReligion" &&
+      key !== "photo" &&
+      key !== "aadharNumber" &&
+      key !== "address" &&
+      key !== "fatherName" &&
+      !form[key].trim()
+    ) {
+      return "This field is required"
+    }
 
-const fieldError = (key: keyof FormData) => {
-  if (!touched[key]) return ""
+    if (key === "studentPhone" && !/^\d{10}$/.test(form[key].replace(/\s/g, ""))) {
+      return "Enter a valid 10-digit number"
+    }
 
-  // ❌ Remove fatherPhone from required fields
-  if (
-    key !== "studentDOB" &&
-    key !== "email" &&
-    key !== "fatherPhone" &&
-    !form[key].trim()
-  ) {
-    return "This field is required"
+    if (
+      key === "fatherPhone" &&
+      form[key].trim() !== "" &&
+      !/^\d{10}$/.test(form[key].replace(/\s/g, ""))
+    ) {
+      return "Enter a valid 10-digit number"
+    }
+
+    return ""
   }
-
-  // ✅ studentPhone → required + must be valid
-  if (key === "studentPhone" && !/^\d{10}$/.test(form[key].replace(/\s/g, ""))) {
-    return "Enter a valid 10-digit number"
-  }
-
-  // ✅ fatherPhone → optional, validate only if filled
-  if (
-    key === "fatherPhone" &&
-    form[key].trim() !== "" &&
-    !/^\d{10}$/.test(form[key].replace(/\s/g, ""))
-  ) {
-    return "Enter a valid 10-digit number"
-  }
-
-  return ""
-}
-
-
 
   const validate = () => {
-    const required: (keyof FormData)[] = ["studentName","studentPhone", "standard", "branch"]
+    const required: (keyof FormData)[] = ["studentName", "studentPhone", "standard", "branch"]
     if (isSenior) required.push("course")
     const allTouched: Partial<Record<keyof FormData, boolean>> = {}
     required.forEach(k => { allTouched[k] = true })
@@ -93,8 +94,6 @@ const fieldError = (key: keyof FormData) => {
     for (const k of required) {
       if (k !== "studentDOB" && !form[k].trim()) return "Please fill all required fields"
     }
-    // if (!/^\d{10}$/.test(form.fatherPhone.replace(/\s/g, ""))) return "Enter a valid Contact no.2"
-    // return ""
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,17 +107,19 @@ const fieldError = (key: keyof FormData) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          aadhar:       form.aadharNumber,
-          address:      form.address,
-          dob:          form.studentDOB,
-          name:         form.studentName,
-          phone:        form.studentPhone,
-          father_name:  form.fatherName,
-          email:        form.email,
-          father_phone: form.fatherPhone,
-          standard:     form.standard,
-          branch:       form.branch,
-          course:       isSenior ? form.course : "",
+          aadhar:         form.aadharNumber,
+          address:        form.address,
+          dob:            form.studentDOB,
+          name:           form.studentName,
+          phone:          form.studentPhone,
+          father_name:    form.fatherName,
+          email:          form.email,
+          father_phone:   form.fatherPhone,
+          standard:       form.standard,
+          branch:         form.branch,
+          course:         isSenior ? form.course : "",
+          caste_religion: form.casteReligion,
+          photo:          form.photo,
         }),
       })
       const data = await res.json()
@@ -211,7 +212,7 @@ const fieldError = (key: keyof FormData) => {
                 }
               />
               <InputField
-                placeholder="Contact no.2"
+                placeholder="Contact no.2 (optional)"
                 type="tel"
                 value={form.fatherPhone}
                 onChange={v => set("fatherPhone", v)}
@@ -224,7 +225,6 @@ const fieldError = (key: keyof FormData) => {
                 }
               />
 
-              {/* DOB — custom 3-part input */}
               <DOBField
                 value={form.studentDOB}
                 onChange={v => set("studentDOB", v)}
@@ -245,7 +245,7 @@ const fieldError = (key: keyof FormData) => {
                 }
               />
               <InputField
-                placeholder="Aadhar Number"
+                placeholder="Aadhar Number (optional)"
                 value={form.aadharNumber}
                 onChange={v => set("aadharNumber", v)}
                 error={fieldError("aadharNumber")}
@@ -257,7 +257,7 @@ const fieldError = (key: keyof FormData) => {
                 }
               />
               <InputField
-                placeholder="Address"
+                placeholder="Address (optional)"
                 value={form.address}
                 onChange={v => set("address", v)}
                 error={fieldError("address")}
@@ -269,6 +269,27 @@ const fieldError = (key: keyof FormData) => {
                       d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 }
+              />
+            </Section>
+
+            {/* Personal Details */}
+            <Section label="Personal Details" color="indigo">
+              <InputField
+                placeholder="Caste / Religion (optional)"
+                value={form.casteReligion}
+                onChange={v => set("casteReligion", v)}
+                error={fieldError("casteReligion")}
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                }
+              />
+              <PhotoUploadField
+                value={form.photo}
+                onChange={v => set("photo", v)}
+                error={fieldError("photo")}
               />
             </Section>
 
@@ -372,6 +393,67 @@ const fieldError = (key: keyof FormData) => {
   )
 }
 
+/* ── Photo Upload Field ─────────────────────────────── */
+function PhotoUploadField({
+  value, onChange, error
+}: {
+  value: string; onChange: (v: string) => void; error?: string
+}) {
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith("image/")) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      onChange(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <div>
+      <label className={`flex items-center gap-3 px-4 py-3 rounded-xl border bg-white cursor-pointer transition-all duration-200 ${
+        error ? "border-red-300 bg-red-50/30" : "border-gray-200 hover:border-blue-300"
+      }`}>
+        <span className="text-gray-400 shrink-0">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </span>
+
+        {value ? (
+          <div className="flex items-center gap-3 flex-1">
+            <img
+              src={value}
+              alt="Passport photo preview"
+              className="w-12 h-14 object-cover rounded-lg border border-gray-200"
+            />
+            <div>
+              <p className="text-sm text-gray-700 font-medium">Photo uploaded</p>
+              <p className="text-xs text-gray-400">Tap to change</p>
+            </div>
+          </div>
+        ) : (
+          <span className="text-gray-400 text-sm flex-1">
+            Upload Passport size photo (optional)
+          </span>
+        )}
+
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFile}
+          className="hidden"
+        />
+      </label>
+      {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
+    </div>
+  )
+}
+
 /* ── DOB Field ──────────────────────────────────────── */
 function DOBField({
   value, onChange, error
@@ -401,28 +483,19 @@ function DOBField({
         <span className="text-gray-400 text-sm shrink-0">Date of Birth</span>
         <div className="flex items-center gap-1 ml-auto">
           <input
-            type="number"
-            placeholder="DD"
-            min={1} max={31}
-            value={dd}
+            type="number" placeholder="DD" min={1} max={31} value={dd}
             onChange={e => update(e.target.value, mm, yyyy)}
             className="w-10 bg-transparent text-gray-700 text-sm text-center outline-none placeholder-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <span className="text-gray-300 select-none">/</span>
           <input
-            type="number"
-            placeholder="MM"
-            min={1} max={12}
-            value={mm}
+            type="number" placeholder="MM" min={1} max={12} value={mm}
             onChange={e => update(dd, e.target.value, yyyy)}
             className="w-10 bg-transparent text-gray-700 text-sm text-center outline-none placeholder-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <span className="text-gray-300 select-none">/</span>
           <input
-            type="number"
-            placeholder="YYYY"
-            min={1900} max={2099}
-            value={yyyy}
+            type="number" placeholder="YYYY" min={1900} max={2099} value={yyyy}
             onChange={e => update(dd, mm, e.target.value)}
             className="w-16 bg-transparent text-gray-700 text-sm text-center outline-none placeholder-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
