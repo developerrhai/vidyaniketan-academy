@@ -212,7 +212,7 @@ export default function AdmissionFormPage() {
                 }
               />
               <InputField
-                placeholder="Contact no.2 (optional)"
+                placeholder="Contact no.2"
                 type="tel"
                 value={form.fatherPhone}
                 onChange={v => set("fatherPhone", v)}
@@ -232,7 +232,7 @@ export default function AdmissionFormPage() {
               />
 
               <InputField
-                placeholder="Email Address (optional)"
+                placeholder="Email Address"
                 type="email"
                 value={form.email}
                 onChange={v => set("email", v)}
@@ -245,7 +245,7 @@ export default function AdmissionFormPage() {
                 }
               />
               <InputField
-                placeholder="Aadhar Number (optional)"
+                placeholder="Aadhar Number "
                 value={form.aadharNumber}
                 onChange={v => set("aadharNumber", v)}
                 error={fieldError("aadharNumber")}
@@ -257,7 +257,7 @@ export default function AdmissionFormPage() {
                 }
               />
               <InputField
-                placeholder="Address (optional)"
+                placeholder="Address"
                 value={form.address}
                 onChange={v => set("address", v)}
                 error={fieldError("address")}
@@ -275,7 +275,7 @@ export default function AdmissionFormPage() {
             {/* Personal Details */}
             <Section label="Personal Details" color="indigo">
               <InputField
-                placeholder="Caste / Religion (optional)"
+                placeholder="Caste / Religion "
                 value={form.casteReligion}
                 onChange={v => set("casteReligion", v)}
                 error={fieldError("casteReligion")}
@@ -438,7 +438,7 @@ function PhotoUploadField({
           </div>
         ) : (
           <span className="text-gray-400 text-sm flex-1">
-            Upload Passport size photo (optional)
+            Upload Passport size photo
           </span>
         )}
 
