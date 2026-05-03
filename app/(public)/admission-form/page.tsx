@@ -28,6 +28,7 @@ interface FormData {
   address: string
   casteReligion: string
   photo: string
+  admissionType: string[]
 }
 
 const initial: FormData = {
@@ -36,6 +37,7 @@ const initial: FormData = {
   studentDOB: "", aadharNumber: "", address: "",
   email: "", standard: "", branch: "", course: "",
   casteReligion: "", photo: "",
+  admissionType: [],
 }
 
 export default function AdmissionFormPage() {
@@ -55,7 +57,6 @@ export default function AdmissionFormPage() {
 
   const fieldError = (key: keyof FormData) => {
     if (!touched[key]) return ""
-
     if (
       key !== "studentDOB" &&
       key !== "email" &&
@@ -65,15 +66,14 @@ export default function AdmissionFormPage() {
       key !== "aadharNumber" &&
       key !== "address" &&
       key !== "fatherName" &&
+      key !== "admissionType" &&
       !form[key].trim()
     ) {
       return "This field is required"
     }
-
     if (key === "studentPhone" && !/^\d{10}$/.test(form[key].replace(/\s/g, ""))) {
       return "Enter a valid 10-digit number"
     }
-
     if (
       key === "fatherPhone" &&
       form[key].trim() !== "" &&
@@ -81,7 +81,6 @@ export default function AdmissionFormPage() {
     ) {
       return "Enter a valid 10-digit number"
     }
-
     return ""
   }
 
@@ -92,7 +91,7 @@ export default function AdmissionFormPage() {
     required.forEach(k => { allTouched[k] = true })
     setTouched(allTouched)
     for (const k of required) {
-      if (k !== "studentDOB" && !form[k].trim()) return "Please fill all required fields"
+      if (k !== "studentDOB" && k !== "admissionType" && !form[k].trim()) return "Please fill all required fields"
     }
   }
 
@@ -120,6 +119,7 @@ export default function AdmissionFormPage() {
           course:         isSenior ? form.course : "",
           caste_religion: form.casteReligion,
           photo:          form.photo,
+          admission_type: form.admissionType.join(","),
         }),
       })
       const data = await res.json()
@@ -174,14 +174,12 @@ export default function AdmissionFormPage() {
 
           <Header />
 
-          {/* Form title */}
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
             <h2 className="text-center text-[#0d6efd] font-bold text-lg tracking-wide">
               Student Admission Form
             </h2>
           </div>
 
-          {/* Form body */}
           <form onSubmit={handleSubmit} className="px-6 py-6 space-y-5" noValidate>
 
             {/* Student Details */}
@@ -245,7 +243,7 @@ export default function AdmissionFormPage() {
                 }
               />
               <InputField
-                placeholder="Aadhar Number "
+                placeholder="Aadhar Number"
                 value={form.aadharNumber}
                 onChange={v => set("aadharNumber", v)}
                 error={fieldError("aadharNumber")}
@@ -275,7 +273,7 @@ export default function AdmissionFormPage() {
             {/* Personal Details */}
             <Section label="Personal Details" color="indigo">
               <InputField
-                placeholder="Caste / Religion "
+                placeholder="Caste / Religion"
                 value={form.casteReligion}
                 onChange={v => set("casteReligion", v)}
                 error={fieldError("casteReligion")}
@@ -344,6 +342,18 @@ export default function AdmissionFormPage() {
               />
             </Section>
 
+            {/* Admission Type */}
+            <Section label="I Confirm My Admission In" color="indigo">
+              <CheckboxGroupField
+                options={["School/College", "Academy", "Hostel"]}
+                value={form.admissionType}
+                onChange={v => {
+                  setForm(prev => ({ ...prev, admissionType: v }))
+                  setError("")
+                }}
+              />
+            </Section>
+
             {/* Error */}
             {error && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
@@ -393,6 +403,48 @@ export default function AdmissionFormPage() {
   )
 }
 
+/* ── Checkbox Group Field ───────────────────────────── */
+function CheckboxGroupField({
+  options, value, onChange
+}: {
+  options: string[]
+  value: string[]
+  onChange: (v: string[]) => void
+}) {
+  const toggle = (opt: string) => {
+    onChange(
+      value.includes(opt)
+        ? value.filter(v => v !== opt)
+        : [...value, opt]
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {options.map(opt => (
+        <label
+          key={opt}
+          onClick={() => toggle(opt)}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:border-blue-300 select-none"
+        >
+          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
+            value.includes(opt)
+              ? "bg-[#0d6efd] border-[#0d6efd]"
+              : "border-gray-300 bg-white"
+          }`}>
+            {value.includes(opt) && (
+              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+          <span className="text-sm text-gray-700 font-medium">{opt}</span>
+        </label>
+      ))}
+    </div>
+  )
+}
+
 /* ── Photo Upload Field ─────────────────────────────── */
 function PhotoUploadField({
   value, onChange, error
@@ -404,9 +456,7 @@ function PhotoUploadField({
     if (!file) return
     if (!file.type.startsWith("image/")) return
     const reader = new FileReader()
-    reader.onload = () => {
-      onChange(reader.result as string)
-    }
+    reader.onload = () => { onChange(reader.result as string) }
     reader.readAsDataURL(file)
   }
 
@@ -423,31 +473,19 @@ function PhotoUploadField({
               d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         </span>
-
         {value ? (
           <div className="flex items-center gap-3 flex-1">
-            <img
-              src={value}
-              alt="Passport photo preview"
-              className="w-12 h-14 object-cover rounded-lg border border-gray-200"
-            />
+            <img src={value} alt="Passport photo preview"
+              className="w-12 h-14 object-cover rounded-lg border border-gray-200" />
             <div>
               <p className="text-sm text-gray-700 font-medium">Photo uploaded</p>
               <p className="text-xs text-gray-400">Tap to change</p>
             </div>
           </div>
         ) : (
-          <span className="text-gray-400 text-sm flex-1">
-            Upload Passport size photo
-          </span>
+          <span className="text-gray-400 text-sm flex-1">Upload Passport size photo</span>
         )}
-
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFile}
-          className="hidden"
-        />
+        <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
       </label>
       {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
     </div>
@@ -461,14 +499,12 @@ function DOBField({
   value: string; onChange: (v: string) => void; error?: string
 }) {
   const parts = value ? value.split("-") : ["", "", ""]
-  const dd   = parts[0] ?? ""
-  const mm   = parts[1] ?? ""
+  const dd = parts[0] ?? ""
+  const mm = parts[1] ?? ""
   const yyyy = parts[2] ?? ""
-
   const update = (newDd: string, newMm: string, newYyyy: string) => {
     onChange(`${newDd}-${newMm}-${newYyyy}`)
   }
-
   return (
     <div>
       <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border bg-white transition-all duration-200 ${
@@ -482,23 +518,17 @@ function DOBField({
         </span>
         <span className="text-gray-400 text-sm shrink-0">Date of Birth</span>
         <div className="flex items-center gap-1 ml-auto">
-          <input
-            type="number" placeholder="DD" min={1} max={31} value={dd}
+          <input type="number" placeholder="DD" min={1} max={31} value={dd}
             onChange={e => update(e.target.value, mm, yyyy)}
-            className="w-10 bg-transparent text-gray-700 text-sm text-center outline-none placeholder-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
+            className="w-10 bg-transparent text-gray-700 text-sm text-center outline-none placeholder-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
           <span className="text-gray-300 select-none">/</span>
-          <input
-            type="number" placeholder="MM" min={1} max={12} value={mm}
+          <input type="number" placeholder="MM" min={1} max={12} value={mm}
             onChange={e => update(dd, e.target.value, yyyy)}
-            className="w-10 bg-transparent text-gray-700 text-sm text-center outline-none placeholder-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
+            className="w-10 bg-transparent text-gray-700 text-sm text-center outline-none placeholder-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
           <span className="text-gray-300 select-none">/</span>
-          <input
-            type="number" placeholder="YYYY" min={1900} max={2099} value={yyyy}
+          <input type="number" placeholder="YYYY" min={1900} max={2099} value={yyyy}
             onChange={e => update(dd, mm, e.target.value)}
-            className="w-16 bg-transparent text-gray-700 text-sm text-center outline-none placeholder-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
+            className="w-16 bg-transparent text-gray-700 text-sm text-center outline-none placeholder-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
         </div>
       </div>
       {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
