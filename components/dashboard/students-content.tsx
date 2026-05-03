@@ -9,15 +9,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { GraduationCap, Search, Eye, Trash2, Phone, User, MapPin, BookOpen, Loader2, IndianRupee, Pencil, FileSpreadsheet, Upload, School } from "lucide-react"
+import { GraduationCap, Search, Eye, Trash2, Phone, User, MapPin, BookOpen, Loader2, IndianRupee, Pencil, FileSpreadsheet, Upload, Mail } from "lucide-react"
 import { studentsApi, studentsUniversalApi } from "@/lib/api"
 import * as XLSX from "xlsx"
 
 interface Student {
   id: number; name: string; phone: string; father_name: string; father_phone: string;
-  aadhar: string; dob: string;
+  aadhar: string; dob: string; address: string; email: string;
   standard: string; course: string; branch: string; fee: number; paid_fee: number;
-  hostel: string; school_fee: number; academy_fee: number; hostel_fee: number
+  hostel: string; school_fee: number; academy_fee: number; hostel_fee: number;
+  caste_religion: string; photo: string;
 }
 
 const feeStatus = (s: Student) => {
@@ -173,26 +174,25 @@ export function StudentsContent() {
   }
 
   const handleExportExcel = () => {
-    if (!students.length) {
-      alert("No students to export")
-      return
-    }
+    if (!students.length) { alert("No students to export"); return }
 
     const headers = [
       "ID", "Name", "Aadhar", "DOB",
       "Contact no.1", "Contact no.2",
+      "Email", "Address", "Caste / Religion",
       "Standard", "Course", "Branch", "Hostel",
       "Total Fee", "Paid Fee", "Balance", "Fee Status",
     ]
 
     const rows = students.map((s) => {
       const totalFee = Number(s.fee || 0)
-      const paidFee = Number(s.paid_fee || 0)
-      const balance = Math.max(totalFee - paidFee, 0)
-      const status = feeStatus(s).label
+      const paidFee  = Number(s.paid_fee || 0)
+      const balance  = Math.max(totalFee - paidFee, 0)
+      const status   = feeStatus(s).label
       return [
         s.id, s.name || "", s.aadhar || "", s.dob ? formatDob(s.dob) : "",
         s.phone || "", s.father_phone || "",
+        s.email || "", s.address || "", s.caste_religion || "",
         s.standard || "", s.course || "", s.branch || "", s.hostel || "",
         totalFee, paidFee, balance, status,
       ]
@@ -225,7 +225,6 @@ export function StudentsContent() {
   const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-
     setImporting(true)
     try {
       const buffer = await file.arrayBuffer()
@@ -252,18 +251,20 @@ export function StudentsContent() {
         return {
           admin_id,
           name,
-          email: String(pickValue(row, ["email"])).trim(),
-          phone: String(pickValue(row, ["phone", "contact_no_1", "student_phone", "mobile", "contact"])).trim(),
-          father_phone: String(pickValue(row, ["father_phone", "contact_no_2", "parent_phone", "guardian_phone"])).trim(),
-          standard: String(pickValue(row, ["standard", "std", "class"])).trim(),
-          course: String(pickValue(row, ["course", "batch"])).trim(),
-          branch: String(pickValue(row, ["branch"])).trim(),
-          institute: String(pickValue(row, ["institute", "school", "college"])).trim(),
-          fee: Number(pickValue(row, ["fee", "total_fee"])) || 0,
-          paid_fee: Number(pickValue(row, ["paid_fee", "paid", "paidamount"])) || 0,
-          aadhar: String(pickValue(row, ["aadhar", "aadhar_number", "aadhaar"])).trim(),
-          dob: String(pickValue(row, ["dob", "date_of_birth", "birth_date"])).trim(),
-          hostel: String(pickValue(row, ["hostel"])).trim(),
+          email:          String(pickValue(row, ["email"])).trim(),
+          phone:          String(pickValue(row, ["phone", "contact_no_1", "student_phone", "mobile", "contact"])).trim(),
+          father_phone:   String(pickValue(row, ["father_phone", "contact_no_2", "parent_phone", "guardian_phone"])).trim(),
+          standard:       String(pickValue(row, ["standard", "std", "class"])).trim(),
+          course:         String(pickValue(row, ["course", "batch"])).trim(),
+          branch:         String(pickValue(row, ["branch"])).trim(),
+          institute:      String(pickValue(row, ["institute", "school", "college"])).trim(),
+          fee:            Number(pickValue(row, ["fee", "total_fee"])) || 0,
+          paid_fee:       Number(pickValue(row, ["paid_fee", "paid", "paidamount"])) || 0,
+          aadhar:         String(pickValue(row, ["aadhar", "aadhar_number", "aadhaar"])).trim(),
+          dob:            String(pickValue(row, ["dob", "date_of_birth", "birth_date"])).trim(),
+          hostel:         String(pickValue(row, ["hostel"])).trim(),
+          address:        String(pickValue(row, ["address"])).trim(),
+          caste_religion: String(pickValue(row, ["caste_religion", "caste", "religion"])).trim(),
         }
       }).filter(Boolean) as Array<Record<string, unknown>>
 
@@ -274,7 +275,7 @@ export function StudentsContent() {
 
       const results = await Promise.allSettled(payloads.map((payload) => studentsApi.create(payload)))
       const successCount = results.filter((r) => r.status === "fulfilled").length
-      const failedCount = results.length - successCount
+      const failedCount  = results.length - successCount
       await load()
 
       if (failedCount > 0) {
@@ -443,25 +444,51 @@ export function StudentsContent() {
             </DialogTitle>
           </DialogHeader>
           {selected && (
-            <div className="space-y-3">
-              {[
-                { icon: User,   label: "Name",         value: selected.name },
-                { icon: Phone,  label: "Contact no.1", value: selected.phone },
-                { icon: Phone,  label: "Contact no.2", value: selected.father_phone },
-                { icon: MapPin, label: "Aadhar",       value: selected.aadhar },
-                { icon: MapPin, label: "DOB",          value: formatDob(selected.dob) },
-                { icon: MapPin, label: "Branch",       value: selected.branch },
-                { icon: MapPin, label: "Hostel",       value: selected.hostel },
-              ].map(({ icon: Icon, label, value }) => (
-                <div key={label} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                  <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
+            <div className="max-h-[70vh] overflow-y-auto overflow-x-hidden pr-1 space-y-3">
+
+              {/* Passport Photo */}
+              {selected.photo && (
+                <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                  <User className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
                   <div>
-                    <p className="text-sm text-muted-foreground">{label}</p>
-                    <p className="font-medium">{value}</p>
+                    <p className="text-sm text-muted-foreground mb-2">Passport Photo</p>
+                    <img
+                      src={selected.photo}
+                      alt="Passport photo"
+                      className="w-20 h-24 object-cover rounded-lg border border-border"
+                    />
                   </div>
                 </div>
-              ))}
+              )}
 
+              {/* Info rows — only render if value exists */}
+              {[
+                { icon: User,     label: "Name",             value: selected.name },
+                { icon: Phone,    label: "Contact no.1",     value: selected.phone },
+                { icon: Phone,    label: "Contact no.2",     value: selected.father_phone },
+                { icon: User,     label: "Father Name",      value: selected.father_name },
+                { icon: Mail,     label: "Email",            value: selected.email },
+                { icon: MapPin,   label: "Aadhar",           value: selected.aadhar },
+                { icon: MapPin,   label: "DOB",              value: formatDob(selected.dob) },
+                { icon: MapPin,   label: "Address",          value: selected.address },
+                { icon: MapPin,   label: "Branch",           value: selected.branch },
+                { icon: MapPin,   label: "Hostel",           value: selected.hostel },
+                { icon: BookOpen, label: "Standard",         value: selected.standard },
+                { icon: BookOpen, label: "Course",           value: selected.course },
+                { icon: BookOpen, label: "Caste / Religion", value: selected.caste_religion },
+              ].map(({ icon: Icon, label, value }) =>
+                value ? (
+                  <div key={label} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                    <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">{label}</p>
+                      <p className="font-medium">{value}</p>
+                    </div>
+                  </div>
+                ) : null
+              )}
+
+              {/* Fee Summary */}
               <div className="p-3 bg-muted rounded-lg space-y-2">
                 <p className="text-sm text-muted-foreground font-medium">Fee Summary</p>
                 <div className="grid grid-cols-3 gap-2 text-center">
@@ -492,6 +519,7 @@ export function StudentsContent() {
                     : "No fee set"}
                 </p>
               </div>
+
             </div>
           )}
         </DialogContent>
