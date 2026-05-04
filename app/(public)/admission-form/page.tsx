@@ -46,6 +46,7 @@ export default function AdmissionFormPage() {
   const [submitted, setSubmitted]   = useState(false)
   const [error, setError]           = useState("")
   const [touched, setTouched]       = useState<Partial<Record<keyof FormData, boolean>>>({})
+  const [showRefreshConfirm, setShowRefreshConfirm] = useState(false)
 
   const isSenior = form.standard === "11th Standard" || form.standard === "12th Standard"
 
@@ -53,6 +54,21 @@ export default function AdmissionFormPage() {
     setForm(prev => ({ ...prev, [key]: val }))
     setTouched(prev => ({ ...prev, [key]: true }))
     setError("")
+  }
+
+  const handleRefresh = () => {
+    setShowRefreshConfirm(true)
+  }
+
+  const confirmRefresh = () => {
+    setForm(initial)
+    setTouched({})
+    setError("")
+    setShowRefreshConfirm(false)
+  }
+
+  const cancelRefresh = () => {
+    setShowRefreshConfirm(false)
   }
 
   const fieldError = (key: keyof FormData) => {
@@ -174,11 +190,47 @@ export default function AdmissionFormPage() {
 
           <Header />
 
-          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-            <h2 className="text-center text-[#0d6efd] font-bold text-lg tracking-wide">
+          {/* ── Title bar with Refresh button ── */}
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+            <h2 className="text-[#0d6efd] font-bold text-lg tracking-wide flex-1 text-center">
               Student Admission Form
             </h2>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              title="Clear all fields"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 border border-gray-200 bg-white hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all duration-200 shrink-0"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Reset
+            </button>
           </div>
+
+          {/* ── Refresh Confirmation Banner ── */}
+          {showRefreshConfirm && (
+            <div className="mx-6 mt-4 flex items-center gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm">
+              <svg className="w-4 h-4 shrink-0 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <span className="flex-1 font-medium">Clear all fields?</span>
+              <button
+                onClick={confirmRefresh}
+                className="px-3 py-1 rounded-lg bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors"
+              >
+                Yes, Clear
+              </button>
+              <button
+                onClick={cancelRefresh}
+                className="px-3 py-1 rounded-lg bg-white border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="px-6 py-6 space-y-5" noValidate>
 
@@ -460,6 +512,11 @@ function PhotoUploadField({
     reader.readAsDataURL(file)
   }
 
+  const handleRemove = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onChange("")
+  }
+
   return (
     <div>
       <label className={`flex items-center gap-3 px-4 py-3 rounded-xl border bg-white cursor-pointer transition-all duration-200 ${
@@ -477,10 +534,23 @@ function PhotoUploadField({
           <div className="flex items-center gap-3 flex-1">
             <img src={value} alt="Passport photo preview"
               className="w-12 h-14 object-cover rounded-lg border border-gray-200" />
-            <div>
+            <div className="flex-1">
               <p className="text-sm text-gray-700 font-medium">Photo uploaded</p>
               <p className="text-xs text-gray-400">Tap to change</p>
             </div>
+            {/* ── Remove image button ── */}
+            <button
+              type="button"
+              onClick={handleRemove}
+              title="Remove photo"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-500 hover:bg-red-100 hover:border-red-300 transition-all duration-200 shrink-0"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span className="text-xs font-semibold">Remove</span>
+            </button>
           </div>
         ) : (
           <span className="text-gray-400 text-sm flex-1">Upload Passport size photo</span>
