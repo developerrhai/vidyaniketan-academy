@@ -29,6 +29,7 @@ interface FormData {
   casteReligion: string
   photo: string
   admissionType: string[]
+  admissionDate: string
 }
 
 const initial: FormData = {
@@ -38,6 +39,7 @@ const initial: FormData = {
   email: "", standard: "", branch: "", course: "",
   casteReligion: "", photo: "",
   admissionType: [],
+  admissionDate: "",
 }
 
 export default function AdmissionFormPage() {
@@ -83,6 +85,7 @@ export default function AdmissionFormPage() {
       key !== "address" &&
       key !== "fatherName" &&
       key !== "admissionType" &&
+      key !== "admissionDate" &&
       !form[key].trim()
     ) {
       return "This field is required"
@@ -107,7 +110,7 @@ export default function AdmissionFormPage() {
     required.forEach(k => { allTouched[k] = true })
     setTouched(allTouched)
     for (const k of required) {
-      if (k !== "studentDOB" && k !== "admissionType" && !form[k].trim()) return "Please fill all required fields"
+      if (k !== "studentDOB" && k !== "admissionType" && k !== "admissionDate" && !form[k].trim()) return "Please fill all required fields"
     }
   }
 
@@ -136,6 +139,7 @@ export default function AdmissionFormPage() {
           caste_religion: form.casteReligion,
           photo:          form.photo,
           admission_type: form.admissionType.join(","),
+          admission_date: form.admissionDate,
         }),
       })
       const data = await res.json()
@@ -276,6 +280,7 @@ export default function AdmissionFormPage() {
               />
 
               <DOBField
+                label="Date of Birth"
                 value={form.studentDOB}
                 onChange={v => set("studentDOB", v)}
                 error={fieldError("studentDOB")}
@@ -373,6 +378,12 @@ export default function AdmissionFormPage() {
                   }
                 />
               )}
+              <DOBField
+                label="Date of Admission"
+                value={form.admissionDate}
+                onChange={v => set("admissionDate", v)}
+                error={fieldError("admissionDate")}
+              />
             </Section>
 
             {/* Branch */}
@@ -538,7 +549,6 @@ function PhotoUploadField({
               <p className="text-sm text-gray-700 font-medium">Photo uploaded</p>
               <p className="text-xs text-gray-400">Tap to change</p>
             </div>
-            {/* ── Remove image button ── */}
             <button
               type="button"
               onClick={handleRemove}
@@ -564,9 +574,9 @@ function PhotoUploadField({
 
 /* ── DOB Field ──────────────────────────────────────── */
 function DOBField({
-  value, onChange, error
+  value, onChange, error, label = "Date of Birth"
 }: {
-  value: string; onChange: (v: string) => void; error?: string
+  value: string; onChange: (v: string) => void; error?: string; label?: string
 }) {
   const parts = value ? value.split("-") : ["", "", ""]
   const dd = parts[0] ?? ""
@@ -586,7 +596,7 @@ function DOBField({
               d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
         </span>
-        <span className="text-gray-400 text-sm shrink-0">Date of Birth</span>
+        <span className="text-gray-400 text-sm shrink-0">{label}</span>
         <div className="flex items-center gap-1 ml-auto">
           <input type="number" placeholder="DD" min={1} max={31} value={dd}
             onChange={e => update(e.target.value, mm, yyyy)}
