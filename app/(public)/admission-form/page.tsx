@@ -30,6 +30,9 @@ interface FormData {
   photo: string
   admissionType: string[]
   admissionDate: string
+  schoolFees: string
+  academyFees: string
+  hostelFees: string
 }
 
 const initial: FormData = {
@@ -40,6 +43,9 @@ const initial: FormData = {
   casteReligion: "", photo: "",
   admissionType: [],
   admissionDate: "",
+  schoolFees: "",
+  academyFees: "",
+  hostelFees: "",
 }
 
 export default function AdmissionFormPage() {
@@ -86,6 +92,9 @@ export default function AdmissionFormPage() {
       key !== "fatherName" &&
       key !== "admissionType" &&
       key !== "admissionDate" &&
+      key !== "schoolFees" &&
+      key !== "academyFees" &&
+      key !== "hostelFees" &&
       !form[key].trim()
     ) {
       return "This field is required"
@@ -140,6 +149,9 @@ export default function AdmissionFormPage() {
           photo:          form.photo,
           admission_type: form.admissionType.join(","),
           admission_date: form.admissionDate,
+          school_fees:    form.schoolFees,
+          academy_fees:   form.academyFees,
+          hostel_fees:    form.hostelFees,
         }),
       })
       const data = await res.json()
@@ -417,6 +429,49 @@ export default function AdmissionFormPage() {
               />
             </Section>
 
+            {/* Fees Details */}
+            <Section label="Fees Details" color="sky">
+              <InputField
+                placeholder="School/College Fees (₹)"
+                type="number"
+                value={form.schoolFees}
+                onChange={v => set("schoolFees", v)}
+                error={fieldError("schoolFees")}
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                }
+              />
+              <InputField
+                placeholder="Academy Fee (₹)"
+                type="number"
+                value={form.academyFees}
+                onChange={v => set("academyFees", v)}
+                error={fieldError("academyFees")}
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                }
+              />
+              <InputField
+                placeholder="Hostel Fee (₹)"
+                type="number"
+                value={form.hostelFees}
+                onChange={v => set("hostelFees", v)}
+                error={fieldError("hostelFees")}
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                }
+              />
+            </Section>
+
             {/* Error */}
             {error && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
@@ -652,7 +707,7 @@ function InputField({
           placeholder={placeholder}
           value={value}
           onChange={e => onChange(e.target.value)}
-          className="flex-1 bg-transparent text-gray-700 text-sm placeholder-gray-400 outline-none"
+          className="flex-1 bg-transparent text-gray-700 text-sm placeholder-gray-400 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
       </div>
       {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
