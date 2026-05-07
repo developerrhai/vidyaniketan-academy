@@ -26,6 +26,7 @@ interface FormData {
   studentDOB: string
   aadharNumber: string
   address: string
+  gender: string
   casteReligion: string
   photo: string
   admissionType: string[]
@@ -42,7 +43,7 @@ const initial: FormData = {
   email: "", standard: "", branch: "", course: "",
   casteReligion: "", photo: "",
   admissionType: [],
-  admissionDate: "",
+  admissionDate: "", gender: "",
   schoolFees: "",
   academyFees: "",
   hostelFees: "",
@@ -142,6 +143,7 @@ export default function AdmissionFormPage() {
           father_name:    form.fatherName,
           email:          form.email,
           father_phone:   form.fatherPhone,
+          gender:         form.gender,
           standard:       form.standard,
           branch:         form.branch,
           course:         isSenior ? form.course : "",
@@ -353,6 +355,10 @@ export default function AdmissionFormPage() {
                   </svg>
                 }
               />
+              <GenderField
+                value={form.gender}
+                onChange={v => set("gender", v)}
+              />
               <PhotoUploadField
                 value={form.photo}
                 onChange={v => set("photo", v)}
@@ -520,6 +526,40 @@ export default function AdmissionFormPage() {
     </div>
   )
 }
+
+/* ── Gender Field ───────────────────────────────────── */
+function GenderField({
+  value, onChange
+}: {
+  value: string; onChange: (v: string) => void
+}) {
+  const options = [
+    { label: "Male", icon: "♂" },
+    { label: "Female", icon: "♀" },
+    { label: "Other", icon: "⚧" },
+  ]
+  return (
+    <div className="flex gap-2">
+      {options.map(opt => (
+        <button
+          key={opt.label}
+          type="button"
+          onClick={() => onChange(opt.label)}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl border text-sm font-semibold transition-all duration-200 ${
+            value === opt.label
+              ? "bg-[#0d6efd] border-[#0d6efd] text-white shadow-md shadow-blue-200"
+              : "bg-white border-gray-200 text-gray-500 hover:border-blue-300 hover:text-[#0d6efd]"
+          }`}
+        >
+          <span className="text-base leading-none">{opt.icon}</span>
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+
 
 /* ── Checkbox Group Field ───────────────────────────── */
 function CheckboxGroupField({
