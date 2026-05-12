@@ -70,28 +70,58 @@ export function StudentsContent() {
   const [payMode, setPayMode] = useState<"add" | "set">("add")
   const [paySaving, setPaySaving] = useState(false)
 
+  // ── FIXED load function ───────────────────────────────────────────────────
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const filters = {
         standard: filterStandard !== "all" ? filterStandard : undefined,
-        course: filterCourse !== "all" ? filterCourse : undefined,
-        branch: filterBranch !== "all" ? filterBranch : undefined,
-        search: searchTerm || undefined,
+        course:   filterCourse   !== "all" ? filterCourse   : undefined,
+        branch:   filterBranch   !== "all" ? filterBranch   : undefined,
+        search:   searchTerm     || undefined,
       }
+
+      let result: Student[] = []
+
       try {
         const universal: any = await studentsUniversalApi.getAll(filters)
-        setStudents(universal?.data || [])
+        result = universal?.data || []
       } catch {
         const primary: any = await studentsApi.getAll(filters)
-        setStudents(primary?.data || [])
+        result = primary?.data || []
       }
+
+      // Client-side fallback filtering — handles type mismatches (e.g. DB returns
+      // standard as number 1 but we compare against string "1") and ensures
+      // "All Standards / Courses / Branches" always shows everything correctly.
+      if (filterStandard !== "all") {
+        result = result.filter(s => String(s.standard).trim() === String(filterStandard).trim())
+      }
+      if (filterCourse !== "all") {
+        result = result.filter(s => s.course === filterCourse)
+      }
+      if (filterBranch !== "all") {
+        result = result.filter(s =>
+          s.branch?.toLowerCase().trim() === filterBranch.toLowerCase().trim()
+        )
+      }
+      if (searchTerm) {
+        const q = searchTerm.toLowerCase()
+        result = result.filter(s =>
+          s.name?.toLowerCase().includes(q) ||
+          s.phone?.includes(searchTerm) ||
+          s.father_phone?.includes(searchTerm)
+        )
+      }
+
+      setStudents(result)
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
     }
   }, [filterStandard, filterCourse, filterBranch, searchTerm])
+  // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => { load() }, [load])
 
@@ -308,7 +338,14 @@ export function StudentsContent() {
               <Input placeholder="Search by name or phone…" value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
-            <Select value={filterStandard} onValueChange={setFilterStandard}>
+
+            {/* key prop forces Select to re-mount when value resets to "all",
+                preventing the stale-value bug where onValueChange doesn't fire */}
+            <Select
+              key={`standard-${filterStandard}`}
+              value={filterStandard}
+              onValueChange={setFilterStandard}
+            >
               <SelectTrigger><SelectValue placeholder="All Standards" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Standards</SelectItem>
@@ -317,7 +354,12 @@ export function StudentsContent() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={filterCourse} onValueChange={setFilterCourse}>
+
+            <Select
+              key={`course-${filterCourse}`}
+              value={filterCourse}
+              onValueChange={setFilterCourse}
+            >
               <SelectTrigger><SelectValue placeholder="All Courses" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Courses</SelectItem>
@@ -326,7 +368,12 @@ export function StudentsContent() {
                 <SelectItem value="Foundation">Foundation</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterBranch} onValueChange={setFilterBranch}>
+
+            <Select
+              key={`branch-${filterBranch}`}
+              value={filterBranch}
+              onValueChange={setFilterBranch}
+            >
               <SelectTrigger><SelectValue placeholder="All Branches" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Branches</SelectItem>
@@ -461,7 +508,6 @@ export function StudentsContent() {
                 </div>
               )}
 
-              {/* Info rows — only render if value exists */}
               {[
                 { icon: User,     label: "Name",             value: selected.name },
                 { icon: Phone,    label: "Contact no.1",     value: selected.phone },
