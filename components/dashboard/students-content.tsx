@@ -49,6 +49,8 @@ export function StudentsContent() {
   const [filterStandard, setFilterStandard] = useState("all")
   const [filterCourse, setFilterCourse] = useState("all")
   const [filterBranch, setFilterBranch] = useState("all")
+  // Dynamic branch list built from actual DB data
+  const [branches, setBranches] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [selected, setSelected] = useState<Student | null>(null)
@@ -70,7 +72,6 @@ export function StudentsContent() {
   const [payMode, setPayMode] = useState<"add" | "set">("add")
   const [paySaving, setPaySaving] = useState(false)
 
-  // ── FIXED load function ───────────────────────────────────────────────────
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -91,23 +92,42 @@ export function StudentsContent() {
         result = primary?.data || []
       }
 
-      // Client-side fallback filtering — handles type mismatches (e.g. DB returns
-      // standard as number 1 but we compare against string "1") and ensures
-      // "All Standards / Courses / Branches" always shows everything correctly.
+      // Build dynamic branch list from all returned students (before client filtering)
+      const uniqueBranches = Array.from(
+        new Set(result.map((s) => s.branch?.trim()).filter(Boolean))
+      ) as string[]
+      setBranches(uniqueBranches)
+
+      // ── Standard filter ──────────────────────────────────────────────────
+      // DB stores "5th Standard", "9th Standard" etc. — extract just the
+      // number before comparing against the select value ("5", "9" …)
       if (filterStandard !== "all") {
-        result = result.filter(s => String(s.standard).trim() === String(filterStandard).trim())
+        result = result.filter((s) => {
+          const stored = String(s.standard ?? "").trim().replace(/[^0-9]/g, "")
+          return stored === String(filterStandard).trim()
+        })
       }
+
+      // ── Course filter (case-insensitive) ────────────────────────────────
       if (filterCourse !== "all") {
-        result = result.filter(s => s.course === filterCourse)
+        result = result.filter((s) =>
+          s.course?.toLowerCase().trim() === filterCourse.toLowerCase().trim()
+        )
       }
+
+      // ── Branch filter (case-insensitive) ────────────────────────────────
+      // Handles "SOF branch", "Branch 1", etc. — stored value is lowercased
+      // as the SelectItem value so both sides are already lowercase.
       if (filterBranch !== "all") {
-        result = result.filter(s =>
+        result = result.filter((s) =>
           s.branch?.toLowerCase().trim() === filterBranch.toLowerCase().trim()
         )
       }
+
+      // ── Search (name + phone + father phone) ────────────────────────────
       if (searchTerm) {
         const q = searchTerm.toLowerCase()
-        result = result.filter(s =>
+        result = result.filter((s) =>
           s.name?.toLowerCase().includes(q) ||
           s.phone?.includes(searchTerm) ||
           s.father_phone?.includes(searchTerm)
@@ -121,7 +141,6 @@ export function StudentsContent() {
       setLoading(false)
     }
   }, [filterStandard, filterCourse, filterBranch, searchTerm])
-  // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => { load() }, [load])
 
@@ -137,9 +156,9 @@ export function StudentsContent() {
     setFeeStudent(s)
     setNewFee({
       academy_fee: Number(s?.academy_fee) || 0,
-      hostel_fee: Number(s?.hostel_fee) || 0,
-      school_fee: Number(s?.school_fee) || 0,
-      total_fee: Number(s?.fee) || 0,
+      hostel_fee:  Number(s?.hostel_fee)  || 0,
+      school_fee:  Number(s?.school_fee)  || 0,
+      total_fee:   Number(s?.fee)         || 0,
     })
     setFeeModalOpen(true)
   }
@@ -151,10 +170,10 @@ export function StudentsContent() {
     try {
       await studentsApi.update(feeStudent.id, {
         ...feeStudent,
-        school_fee: newFee.school_fee,
+        school_fee:  newFee.school_fee,
         academy_fee: newFee.academy_fee,
-        hostel_fee: newFee.hostel_fee,
-        fee: newFee.total_fee
+        hostel_fee:  newFee.hostel_fee,
+        fee:         newFee.total_fee,
       })
       setStudents(prev => prev.map(s =>
         s.id === feeStudent.id ? { ...s, fee: newFee.total_fee } : s
@@ -176,14 +195,9 @@ export function StudentsContent() {
     const val = parseFloat(payAmount)
     if (isNaN(val) || val < 0) { alert("Enter a valid amount"); return }
 
-    let newPaid: number
-    if (payMode === "add") {
-      newPaid = Number(payStudent.paid_fee) + val
-    } else {
-      newPaid = val
-    }
-
+    const newPaid = payMode === "add" ? Number(payStudent.paid_fee) + val : val
     const totalFee = Number(payStudent.fee)
+
     if (totalFee > 0 && newPaid > totalFee) {
       alert(`Paid amount (₹${newPaid.toLocaleString()}) cannot exceed total fee (₹${totalFee.toLocaleString()})`)
       return
@@ -191,10 +205,7 @@ export function StudentsContent() {
 
     setPaySaving(true)
     try {
-      await studentsApi.update(payStudent.id, {
-        ...payStudent,
-        paid_fee: newPaid,
-      })
+      await studentsApi.update(payStudent.id, { ...payStudent, paid_fee: newPaid })
       setStudents(prev => prev.map(s =>
         s.id === payStudent.id ? { ...s, paid_fee: newPaid } : s
       ))
@@ -339,8 +350,8 @@ export function StudentsContent() {
                 onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
 
-            {/* key prop forces Select to re-mount when value resets to "all",
-                preventing the stale-value bug where onValueChange doesn't fire */}
+            {/* key prop forces re-mount on value change — prevents shadcn/ui
+                Select bug where onValueChange doesn't fire on repeat selection */}
             <Select
               key={`standard-${filterStandard}`}
               value={filterStandard}
@@ -369,6 +380,8 @@ export function StudentsContent() {
               </SelectContent>
             </Select>
 
+            {/* Dynamic branch dropdown — auto-populated from actual DB branch values
+                so it always matches whatever is stored (e.g. "SOF branch") */}
             <Select
               key={`branch-${filterBranch}`}
               value={filterBranch}
@@ -377,8 +390,11 @@ export function StudentsContent() {
               <SelectTrigger><SelectValue placeholder="All Branches" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Branches</SelectItem>
-                <SelectItem value="branch 1">Branch 1</SelectItem>
-                <SelectItem value="branch 2">Branch 2</SelectItem>
+                {branches.map((branch) => (
+                  <SelectItem key={branch} value={branch.toLowerCase()}>
+                    {branch}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -493,7 +509,6 @@ export function StudentsContent() {
           {selected && (
             <div className="max-h-[70vh] overflow-y-auto overflow-x-hidden pr-1 space-y-3">
 
-              {/* Passport Photo */}
               {selected.photo && (
                 <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
                   <User className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
@@ -534,7 +549,6 @@ export function StudentsContent() {
                 ) : null
               )}
 
-              {/* Fee Summary */}
               <div className="p-3 bg-muted rounded-lg space-y-2">
                 <p className="text-sm text-muted-foreground font-medium">Fee Summary</p>
                 <div className="grid grid-cols-3 gap-2 text-center">
@@ -589,7 +603,7 @@ export function StudentsContent() {
                 <div>
                   <p className="font-semibold text-sm">{feeStudent.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {feeStudent.standard && `Std ${feeStudent.standard}`}
+                    {feeStudent.standard && `${feeStudent.standard}`}
                     {feeStudent.course && ` · ${feeStudent.course}`}
                   </p>
                 </div>
@@ -685,7 +699,7 @@ export function StudentsContent() {
                 <div>
                   <p className="font-semibold text-sm">{payStudent.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {payStudent.standard && `Std ${payStudent.standard}`}
+                    {payStudent.standard && `${payStudent.standard}`}
                     {payStudent.course && ` · ${payStudent.course}`}
                   </p>
                 </div>
