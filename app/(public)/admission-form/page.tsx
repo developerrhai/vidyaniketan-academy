@@ -660,7 +660,7 @@ function PhotoUploadField({
         ) : (
           <span className="text-gray-400 text-sm flex-1">Upload Passport size photo</span>
         )}
-        <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
+        <input type="file" accept="image/*" capture="user" onChange={handleFile} className="hidden" />
       </label>
       {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
     </div>
