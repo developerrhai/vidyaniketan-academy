@@ -133,7 +133,7 @@ export function Sidebar({
                         activeSection === "studentManagementContent" ? "text-amber-400" : "text-slate-300"
                       )}
                     >
-                      Student Management
+                      Student Analysis
                     </button>
                   </div>
                 )}
