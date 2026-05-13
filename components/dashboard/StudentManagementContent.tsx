@@ -820,7 +820,7 @@ export function StudentManagementContent() {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xl font-semibold">
           <GraduationCap className="h-5 w-5 text-primary" />
-          <h2>Students Management</h2>
+          <h2>Students Analysis</h2>
         </div>
 
         <div className="flex items-center gap-2">
