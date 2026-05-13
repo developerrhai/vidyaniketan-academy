@@ -16,6 +16,7 @@ export type SectionType =
   | "students"
   | "studentManagement"
   | "inquiryStudents"
+  | "studentManagementContent"
   | "teachers"
   | "teacherManagement"
   | "teacherUpdates"
@@ -36,9 +37,7 @@ const menuItems: { id: SectionType; label: string; icon: React.ReactNode }[] = [
   { id: "profile",      label: "Admin Profile", icon: <User className="h-5 w-5" /> },
   { id: "registerUser", label: "Register User", icon: <UserPlus className="h-5 w-5" /> },
   { id: "students",     label: "Students",      icon: <GraduationCap className="h-5 w-5" /> },
-  // { id: "teachers",     label: "Teachers",      icon: <Users className="h-5 w-5" /> },
   { id: "invoices",     label: "Invoices",      icon: <Receipt className="h-5 w-5" /> },
-  // { id: "inquiry",      label: "New Inquiry",   icon: <ClipboardList className="h-5 w-5" /> },
   { id: "appointments", label: "Appointments",  icon: <Calendar className="h-5 w-5" /> },
   { id: "finance",      label: "Finance",       icon: <Wallet className="h-5 w-5" /> },
 ]
@@ -56,7 +55,6 @@ export function Sidebar({
 
   const handleLogout = () => {
     clearToken()
-    // localStorage.removeItem("adminInfo")
     localStorage.removeItem("userInfo")
     window.location.href = "/"
   }
@@ -66,13 +64,13 @@ export function Sidebar({
       {/* Logo */}
       <div className="flex flex-col items-center p-4 border-b border-slate-700">
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-900 font-bold text-lg shrink-0">
-          M
+          V
         </div>
         <span className={cn(
           "mt-2 text-amber-400 font-semibold text-sm text-center transition-all duration-300 overflow-hidden whitespace-nowrap",
           expanded || mobile ? "max-w-[140px] opacity-100" : "max-w-0 opacity-0"
         )}>
-         Vidyaaniketan Professional Academy
+          Vidyaaniketan Professional Academy
         </span>
       </div>
 
@@ -80,56 +78,13 @@ export function Sidebar({
       <nav className="flex-1 py-4 space-y-1 overflow-y-auto">
         {menuItems.map(item => {
 
-          // 👉 Teachers Dropdown
-          // if (item.id === "teachers") {
-          //   return (
-          //     <div key={item.id}>
-          //       <button
-          //         onClick={() => setTeacherOpen(prev => !prev)}
-          //         className="w-full flex items-center gap-3 px-4 py-3 text-left text-slate-300 hover:bg-slate-700 transition-all duration-200"
-          //       >
-          //         <span className="shrink-0">{item.icon}</span>
-          //         <span className={cn(
-          //           "whitespace-nowrap transition-all duration-300 overflow-hidden flex-1",
-          //           expanded || mobile ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0"
-          //         )}>
-          //           {item.label}
-          //         </span>
-          //         {(expanded || mobile) && (
-          //           <span className="text-xs">{teacherOpen ? "▲" : "▼"}</span>
-          //         )}
-          //       </button>
-
-          //       {teacherOpen && (expanded || mobile) && (
-          //         <div className="ml-10 space-y-1">
-          //           <button
-          //             onClick={() => { onSectionChange("teacherManagement"); setMobileOpen(false) }}
-          //             className={cn(
-          //               "block w-full text-left px-3 py-2 text-sm hover:text-amber-400",
-          //               activeSection === "teacherManagement" ? "text-amber-400" : "text-slate-300"
-          //             )}
-          //           >
-          //             Teacher Management
-          //           </button>
-          //           <button
-          //             onClick={() => { onSectionChange("teacherUpdates"); setMobileOpen(false) }}
-          //             className={cn(
-          //               "block w-full text-left px-3 py-2 text-sm hover:text-amber-400",
-          //               activeSection === "teacherUpdates" ? "text-amber-400" : "text-slate-300"
-          //             )}
-          //           >
-          //             Teacher Updates
-          //           </button>
-          //         </div>
-          //       )}
-          //     </div>
-          //   )
-          // }
-
-          // 👉 Students Dropdown — Student Management + Inquiry Students
+          // 👉 Students Dropdown
           if (item.id === "students") {
             const isStudentActive =
-              activeSection === "studentManagement" || activeSection === "inquiryStudents"
+              activeSection === "studentManagement" ||
+              activeSection === "inquiryStudents"    ||
+              activeSection === "studentManagementContent"
+
             return (
               <div key={item.id}>
                 <button
@@ -171,13 +126,22 @@ export function Sidebar({
                     >
                       Inquiry Students
                     </button>
+                    <button
+                      onClick={() => { onSectionChange("studentManagementContent"); setMobileOpen(false) }}
+                      className={cn(
+                        "block w-full text-left px-3 py-2 text-sm hover:text-amber-400",
+                        activeSection === "studentManagementContent" ? "text-amber-400" : "text-slate-300"
+                      )}
+                    >
+                      Student Management Content
+                    </button>
                   </div>
                 )}
               </div>
             )
           }
 
-          // 👉 Normal Items (inquiry is now just a plain button — no dropdown)
+          // 👉 Normal Items
           return (
             <button
               key={item.id}
