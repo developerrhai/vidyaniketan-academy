@@ -84,7 +84,7 @@ export default function TeacherUpdatePage() {
     setError("")
     setSubmitting(true)
     try {
-      const res  = await fetch(process.env.NEXT_PUBLIC_API_URL+"/teacher-updates/public", {
+      const res  = await fetch(process.env.NEXT_PUBLIC_API_URL + "/teacher-updates/public", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(form),
@@ -330,7 +330,7 @@ export default function TeacherUpdatePage() {
         </div>
 
         <p className="mt-6 text-slate-600 text-xs text-center">
-          © Vidyaaniketan Professional Academy· All rights reserved
+          © DNYANSAGAR CLASSESS · All rights reserved
         </p>
       </div>
     </div>

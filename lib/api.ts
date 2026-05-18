@@ -9,7 +9,8 @@
  *   const students = await studentsApi.getAll({ standard: "10" })
  */
 
-const BASE = process.env.NEXT_PUBLIC_API_URL;
+const RAW_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const BASE = RAW_BASE.replace(/\/+$/, "");
 
 /* ── token helpers ──────────────────────────────────────── */
 export const getToken = () =>
@@ -60,19 +61,19 @@ function qs(params: Record<string, string | undefined>) {
 ══════════════════════════════════════════════════════════ */
 export const authApi = {
   login: (email: string, password: string) =>
-    post(process.env.NEXT_PUBLIC_API_URL + "/auth/login", { email, password }),
+    post("/auth/login", { email, password }),
 
   // signup: (name: string, email: string, password: string) =>
   //   post("/auth/signup", { name, email, password }),
   signup: (name: string, email: string, password: string, role: "admin" | "teacher" = "teacher") =>
-    post(process.env.NEXT_PUBLIC_API_URL + "/auth/signup", { name, email, password, role }),
+    post("/auth/signup", { name, email, password, role }),
 };
 
 /* ══════════════════════════════════════════════════════════
    PROFILE
 ══════════════════════════════════════════════════════════ */
 export const profileApi = {
-  get: () => get( "/profile"),
+  get: () => get("/profile"),
   update: (data: { name: string; email: string; institute: string; address: string }) =>
     put("/profile", data),
 };
@@ -85,6 +86,8 @@ export const studentsApi = {
     get(`/students${qs(filters)}`),
 
   getOne: (id: string | number) => get(`/students/${id}`),
+
+  getById: (id: string | number) => get(`/students/${id}`),
 
   create: (data: Record<string, unknown>) => post("/students", data),
 
@@ -245,8 +248,19 @@ export const dashboardApi = {
 export const teacherStudentAssessmentsApi = {
   getLatestAll: () => get("/teacher-student-assessments"),
   getByStudent: (studentId: string | number) => get(`/teacher-student-assessments/${studentId}`),
-   createByStudent: (studentId: string | number, data: Record<string, unknown>) =>
+  createByStudent: (studentId: string | number, data: Record<string, unknown>) =>
     post(`/teacher-student-assessments/${studentId}`, data),
+};
+
+export const studentAttendanceApi = {
+  getByStudent: (studentId: string | number) => get(`/student-attendance/${studentId}`),
+  createByStudent: (studentId: string | number, data: Record<string, unknown>) =>
+    post(`/student-attendance/${studentId}`, data),
+};
+
+export const studentRankHistoryApi = {
+  getByStudent: (studentId: string | number) => get(`/student-rank-history/${studentId}`),
+  snapshotAll: () => post("/student-rank-history/snapshot", {}),
 };
 
 
