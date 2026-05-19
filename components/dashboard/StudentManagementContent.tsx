@@ -69,23 +69,28 @@ type AssessmentRow = {
   student_id: number;
   subject: string;
   marks: number;
-  total_marks?: number;
   examination: string;
   exam_date: string;
 };
 
-// ─── Subject column type for bulk marks ──────────────────────────────────────
-type SubjectCol = {
-  id: string; // unique col id, e.g. "col-0", "col-1"
-  subject: string;
-};
+// ── Subject column type ───────────────────────────────────────────────────────
+type SubjectCol = { id: string; subject: string };
 
 // ─── CSV helpers ─────────────────────────────────────────────────────────────
 
 function studentsToCSV(students: Student[]): string {
   const headers = [
-    "id", "name", "phone", "father_phone", "subject", "marks",
-    "examination", "exam_date", "standard", "board", "location",
+    "id",
+    "name",
+    "phone",
+    "father_phone",
+    "subject",
+    "marks",
+    "examination",
+    "exam_date",
+    "standard",
+    "board",
+    "location",
   ];
   const escape = (v: unknown) => {
     const s = v === undefined || v === null ? "" : String(v);
@@ -181,9 +186,15 @@ function DropdownMenu({
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 function Pagination({
-  total, page, pageSize, onPageChange, onPageSizeChange,
+  total,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
 }: {
-  total: number; page: number; pageSize: number;
+  total: number;
+  page: number;
+  pageSize: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
 }) {
@@ -195,7 +206,9 @@ function Pagination({
     const pages = new Set<number>();
     pages.add(1);
     pages.add(totalPages);
-    for (let p = Math.max(1, page - 1); p <= Math.min(totalPages, page + 1); p++) pages.add(p);
+    for (let p = Math.max(1, page - 1); p <= Math.min(totalPages, page + 1); p++) {
+      pages.add(p);
+    }
     const sorted = Array.from(pages).sort((a, b) => a - b);
     const result: number[] = [];
     for (let i = 0; i < sorted.length; i++) {
@@ -208,27 +221,49 @@ function Pagination({
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-1 pt-4 pb-1">
       <div className="flex items-center gap-3 text-sm text-muted-foreground">
-        <span>{total === 0 ? "No results" : `${from}–${to} of ${total}`}</span>
+        <span>
+          {total === 0 ? "No results" : `${from}–${to} of ${total}`}
+        </span>
         <div className="flex items-center gap-1.5">
           <span className="hidden sm:inline">Rows per page</span>
-          <Select value={String(pageSize)} onValueChange={(v) => { onPageSizeChange(Number(v)); onPageChange(1); }}>
-            <SelectTrigger className="h-8 w-[70px] rounded-full text-xs"><SelectValue /></SelectTrigger>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(v) => { onPageSizeChange(Number(v)); onPageChange(1); }}
+          >
+            <SelectTrigger className="h-8 w-[70px] rounded-full text-xs">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {PAGE_SIZE_OPTIONS.map((s) => <SelectItem key={s} value={String(s)}>{s}</SelectItem>)}
+              {PAGE_SIZE_OPTIONS.map((s) => (
+                <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
       </div>
+
       <div className="flex items-center gap-1">
-        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" disabled={page === 1} onClick={() => onPageChange(1)}><ChevronsLeft className="h-3.5 w-3.5" /></Button>
-        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" disabled={page === 1} onClick={() => onPageChange(page - 1)}><ChevronLeft className="h-3.5 w-3.5" /></Button>
+        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" disabled={page === 1} onClick={() => onPageChange(1)} title="First page">
+          <ChevronsLeft className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" disabled={page === 1} onClick={() => onPageChange(page - 1)} title="Previous page">
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </Button>
         {pageNumbers.map((p, i) =>
-          p === -1
-            ? <span key={`e-${i}`} className="px-1 text-sm text-muted-foreground select-none">…</span>
-            : <Button key={p} variant={p === page ? "default" : "outline"} size="icon" className="h-8 w-8 rounded-full text-xs" onClick={() => onPageChange(p)}>{p}</Button>
+          p === -1 ? (
+            <span key={`ellipsis-${i}`} className="px-1 text-sm text-muted-foreground select-none">…</span>
+          ) : (
+            <Button key={p} variant={p === page ? "default" : "outline"} size="icon" className="h-8 w-8 rounded-full text-xs" onClick={() => onPageChange(p)}>
+              {p}
+            </Button>
+          )
         )}
-        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" disabled={page === totalPages} onClick={() => onPageChange(page + 1)}><ChevronRight className="h-3.5 w-3.5" /></Button>
-        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" disabled={page === totalPages} onClick={() => onPageChange(totalPages)}><ChevronsRight className="h-3.5 w-3.5" /></Button>
+        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" disabled={page === totalPages} onClick={() => onPageChange(page + 1)} title="Next page">
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" disabled={page === totalPages} onClick={() => onPageChange(totalPages)} title="Last page">
+          <ChevronsRight className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </div>
   );
@@ -236,7 +271,7 @@ function Pagination({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function StudentManagementContent() {
+export function StudentManagementContent() {
   const router = useRouter();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -252,26 +287,29 @@ export default function StudentManagementContent() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editForm, setEditForm] = useState({
-    subject: "", marks: "", total_marks: "", examination: "", exam_date: "",
+    subject: "",
+    marks: "",
+    total_marks: "",
+    examination: "",
+    exam_date: "",
   });
 
+  // ── Pagination state ────────────────────────────────────────────────────────
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // ── Bulk marks state ──────────────────────────────────────────────────────
+  // ── Bulk marks state ──────────────────────────────────────────────────────────
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkCommon, setBulkCommon] = useState({
     examination: "",
     exam_date: new Date().toISOString().split("T")[0],
-    total_marks: "",
   });
-
-  // Multi-subject columns — each col has its own subject label
-  // bulkMarks key: `${studentId}-${colId}`
-  const [bulkSubjectCols, setBulkSubjectCols] = useState<SubjectCol[]>([
+  // Dynamic subject columns — start with one empty column
+  const [bulkSubjects, setBulkSubjects] = useState<SubjectCol[]>([
     { id: "col-0", subject: "" },
   ]);
-  const [bulkMarks, setBulkMarks] = useState<Record<string, string>>({});
+  // marks keyed by studentId → colId → value string
+  const [bulkMarks, setBulkMarks] = useState<Record<number, Record<string, string>>>({});
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
@@ -290,9 +328,6 @@ export default function StudentManagementContent() {
   }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Bulk import ref ───────────────────────────────────────────────────────
-  const bulkImportRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -301,10 +336,12 @@ export default function StudentManagementContent() {
           studentsUniversalApi.getAll(),
           teacherStudentAssessmentsApi.getLatestAll(),
         ]);
+
         const latestMap = new Map<number, AssessmentRow>();
         for (const row of assessmentsRes?.data || []) {
           latestMap.set(Number(row.student_id), row);
         }
+
         const merged: Student[] = (studentsRes?.data || []).map((s: any) => {
           const latest = latestMap.get(Number(s.id));
           return {
@@ -321,6 +358,7 @@ export default function StudentManagementContent() {
             location: s.location || "",
           };
         });
+
         setStudents(merged);
       } catch (err) {
         console.error(err);
@@ -331,9 +369,18 @@ export default function StudentManagementContent() {
     load();
   }, []);
 
-  const standards = useMemo(() => Array.from(new Set(students.map((s) => s.standard))).filter(Boolean), [students]);
-  const boards = useMemo(() => Array.from(new Set(students.map((s) => s.board))).filter(Boolean), [students]);
-  const locations = useMemo(() => Array.from(new Set(students.map((s) => s.location))).filter(Boolean), [students]);
+  const standards = useMemo(
+    () => Array.from(new Set(students.map((s) => s.standard))).filter(Boolean),
+    [students]
+  );
+  const boards = useMemo(
+    () => Array.from(new Set(students.map((s) => s.board))).filter(Boolean),
+    [students]
+  );
+  const locations = useMemo(
+    () => Array.from(new Set(students.map((s) => s.location))).filter(Boolean),
+    [students]
+  );
 
   const filteredStudents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -350,7 +397,9 @@ export default function StudentManagementContent() {
     });
   }, [students, searchTerm, standardFilter, boardFilter, locationFilter]);
 
-  useEffect(() => { setPage(1); }, [searchTerm, standardFilter, boardFilter, locationFilter]);
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, standardFilter, boardFilter, locationFilter]);
 
   const paginatedStudents = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -358,111 +407,19 @@ export default function StudentManagementContent() {
   }, [filteredStudents, page, pageSize]);
 
   // ── Export ────────────────────────────────────────────────────────────────
-  const exportCSV = () => downloadBlob(studentsToCSV(filteredStudents), "students.csv", "text/csv;charset=utf-8;");
-  const exportJSON = () => downloadBlob(JSON.stringify(filteredStudents, null, 2), "students.json", "application/json");
 
-  // ── Bulk Export (Excel template) ──────────────────────────────────────────
-  const exportBulkTemplate = async () => {
-    const XLSX = await import("xlsx");
-    const rows = filteredStudents.map((s) => {
-      const base: Record<string, unknown> = {
-        student_id: s.id,
-        name: s.name,
-        standard: s.standard,
-        board: s.board,
-        examination: bulkCommon.examination || "",
-        exam_date: bulkCommon.exam_date || new Date().toISOString().split("T")[0],
-        total_marks: bulkCommon.total_marks || "",
-      };
-      // Add a column per subject col
-      for (const col of bulkSubjectCols) {
-        base[`marks_${col.subject || col.id}`] = bulkMarks[`${s.id}-${col.id}`] ?? "";
-      }
-      return base;
-    });
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "BulkMarks");
-    XLSX.writeFile(wb, "bulk_marks_template.xlsx");
+  const exportCSV = () => {
+    const csv = studentsToCSV(filteredStudents);
+    downloadBlob(csv, "students.csv", "text/csv;charset=utf-8;");
   };
 
-  // ── Bulk Import (Excel) ───────────────────────────────────────────────────
-  const handleBulkImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const XLSX = await import("xlsx");
-      const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
-      const newMarks: Record<string, string> = { ...bulkMarks };
-      for (const row of rows) {
-        const id = Number(row.student_id);
-        if (!Number.isNaN(id) && row.marks !== "") {
-          newMarks[`${id}-col-0`] = String(row.marks);
-        }
-      }
-      setBulkMarks(newMarks);
-      const first = rows[0];
-      if (first) {
-        setBulkCommon((p) => ({
-          examination: first.examination || p.examination,
-          exam_date: first.exam_date
-            ? String(first.exam_date).split("T")[0]
-            : p.exam_date,
-          total_marks:
-            first.total_marks !== undefined && first.total_marks !== ""
-              ? String(first.total_marks)
-              : p.total_marks,
-        }));
-        if (first.subject) {
-          setBulkSubjectCols((prev) => {
-            const updated = [...prev];
-            updated[0] = { ...updated[0], subject: first.subject };
-            return updated;
-          });
-        }
-      }
-    } catch (err: any) {
-      alert("Failed to read file: " + (err.message || "unknown error"));
-    }
-    if (bulkImportRef.current) bulkImportRef.current.value = "";
-  };
-
-  // ── Add / Remove subject column ───────────────────────────────────────────
-  const addSubjectCol = () => {
-    const newId = `col-${Date.now()}`;
-    setBulkSubjectCols((prev) => [...prev, { id: newId, subject: "" }]);
-  };
-
-  const removeSubjectCol = (colId: string) => {
-    if (bulkSubjectCols.length === 1) return; // keep at least one
-    setBulkSubjectCols((prev) => prev.filter((c) => c.id !== colId));
-    // Clean up marks for this col
-    setBulkMarks((prev) => {
-      const next = { ...prev };
-      for (const key of Object.keys(next)) {
-        if (key.endsWith(`-${colId}`)) delete next[key];
-      }
-      return next;
-    });
-  };
-
-  const updateSubjectColName = (colId: string, subject: string) => {
-    setBulkSubjectCols((prev) =>
-      prev.map((c) => (c.id === colId ? { ...c, subject } : c))
-    );
-  };
-
-  const getBulkMark = (studentId: number, colId: string) =>
-    bulkMarks[`${studentId}-${colId}`] ?? "";
-
-  const setBulkMark = (studentId: number, colId: string, value: string) => {
-    setBulkMarks((prev) => ({ ...prev, [`${studentId}-${colId}`]: value }));
+  const exportJSON = () => {
+    const json = JSON.stringify(filteredStudents, null, 2);
+    downloadBlob(json, "students.json", "application/json");
   };
 
   // ── Import ────────────────────────────────────────────────────────────────
+
   const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -482,11 +439,14 @@ export default function StudentManagementContent() {
         const wb = XLSX.read(buffer, { type: "array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
         if (rows.length === 0) throw new Error("No data rows found in Excel file.");
+
         const firstRow = rows[0];
         if (!("student_id" in firstRow) || !("marks" in firstRow)) {
           throw new Error("Excel must have at least 'student_id' and 'marks' columns.");
         }
+
         const studentMap = new Map(students.map((s) => [s.id, s.name]));
         const today = new Date().toISOString().split("T")[0];
         const parsed = rows
@@ -500,6 +460,7 @@ export default function StudentManagementContent() {
             exam_date: r.exam_date ? String(r.exam_date).split("T")[0] : today,
           }))
           .filter((r) => !Number.isNaN(r.student_id) && !Number.isNaN(r.marks));
+
         if (parsed.length === 0) throw new Error("No valid rows found. Check student_id and marks columns.");
         setXlsxMarksRows(parsed);
       } catch (err: any) {
@@ -512,30 +473,45 @@ export default function StudentManagementContent() {
     setImportMode("students");
     const fmt: "csv" | "json" = ext === "json" ? "json" : "csv";
     setImportFormat(fmt);
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
         const text = ev.target?.result as string;
         let parsed: Student[] = [];
+
         if (fmt === "json") {
           const raw = JSON.parse(text);
           parsed = (Array.isArray(raw) ? raw : [raw]).map((r: any, idx) => ({
-            id: Number(r.id) || idx + 1, name: r.name || "", phone: r.phone || "",
-            father_phone: r.father_phone || "", subject: r.subject || "",
+            id: Number(r.id) || idx + 1,
+            name: r.name || "",
+            phone: r.phone || "",
+            father_phone: r.father_phone || "",
+            subject: r.subject || "",
             marks: r.marks !== undefined ? Number(r.marks) : undefined,
-            examination: r.examination || "", exam_date: r.exam_date || "",
-            standard: r.standard || "", board: r.board || "", location: r.location || "",
+            examination: r.examination || "",
+            exam_date: r.exam_date || "",
+            standard: r.standard || "",
+            board: r.board || "",
+            location: r.location || "",
           }));
         } else {
           const rows = parseCSV(text);
           parsed = rows.map((r, idx) => ({
-            id: Number(r.id) || idx + 1, name: r.name || "", phone: r.phone || "",
-            father_phone: r.father_phone || "", subject: r.subject || "",
+            id: Number(r.id) || idx + 1,
+            name: r.name || "",
+            phone: r.phone || "",
+            father_phone: r.father_phone || "",
+            subject: r.subject || "",
             marks: r.marks !== "" && r.marks !== undefined ? Number(r.marks) : undefined,
-            examination: r.examination || "", exam_date: r.exam_date || "",
-            standard: r.standard || "", board: r.board || "", location: r.location || "",
+            examination: r.examination || "",
+            exam_date: r.exam_date || "",
+            standard: r.standard || "",
+            board: r.board || "",
+            location: r.location || "",
           }));
         }
+
         if (parsed.length === 0) throw new Error("No valid rows found in file.");
         setImportPreview(parsed);
       } catch (err: any) {
@@ -553,23 +529,29 @@ export default function StudentManagementContent() {
       setImportProgress({ done: 0, total: xlsxMarksRows.length });
       let done = 0;
       const errors: string[] = [];
+
       for (const row of xlsxMarksRows) {
         try {
           await teacherStudentAssessmentsApi.createByStudent(row.student_id, {
-            subject: row.subject, marks: row.marks,
-            examination: row.examination, exam_date: row.exam_date,
+            subject: row.subject,
+            marks: row.marks,
+            examination: row.examination,
+            exam_date: row.exam_date,
           });
-          setStudents((prev) => prev.map((s) =>
-            s.id === row.student_id
-              ? { ...s, subject: row.subject, marks: row.marks, examination: row.examination, exam_date: row.exam_date }
-              : s
-          ));
+          setStudents((prev) =>
+            prev.map((s) =>
+              s.id === row.student_id
+                ? { ...s, subject: row.subject, marks: row.marks, examination: row.examination, exam_date: row.exam_date }
+                : s
+            )
+          );
         } catch (err: any) {
           errors.push(`Student ${row.student_id}: ${err.message || "failed"}`);
         }
         done++;
         setImportProgress({ done, total: xlsxMarksRows.length });
       }
+
       setImporting(false);
       setImportProgress(null);
       if (errors.length > 0) {
@@ -582,12 +564,15 @@ export default function StudentManagementContent() {
       }
       return;
     }
+
     if (importPreview.length === 0) return;
     setImporting(true);
     try {
       setStudents((prev) => {
         const map = new Map(prev.map((s) => [s.id, s]));
-        for (const s of importPreview) map.set(s.id, s);
+        for (const s of importPreview) {
+          map.set(s.id, s);
+        }
         return Array.from(map.values());
       });
       setImportOpen(false);
@@ -602,6 +587,7 @@ export default function StudentManagementContent() {
   };
 
   // ── View / Edit / Delete ─────────────────────────────────────────────────
+
   const openView = async (student: Student) => {
     setSelectedStudent(student);
     setViewOpen(true);
@@ -619,7 +605,12 @@ export default function StudentManagementContent() {
 
   const openEdit = async (student: Student) => {
     setSelectedStudent(student);
-    setEditForm({ subject: "", marks: "", total_marks: "", examination: "", exam_date: new Date().toISOString().split("T")[0] });
+    setEditForm({
+      subject: "",
+      marks: "",
+      examination: "",
+      exam_date: new Date().toISOString().split("T")[0],
+    });
     setHistoryLoading(true);
     try {
       const res: any = await teacherStudentAssessmentsApi.getByStudent(student.id);
@@ -636,33 +627,52 @@ export default function StudentManagementContent() {
   const saveEdit = async () => {
     if (!selectedStudent) return;
     if (!editForm.subject || !editForm.examination || !editForm.exam_date || !editForm.marks) {
-      alert("Please fill subject, marks, examination and date"); return;
+      alert("Please fill subject, marks, examination and date");
+      return;
     }
     const marksNum = Number(editForm.marks);
-    if (Number.isNaN(marksNum) || marksNum < 0) { alert("Marks must be a valid non-negative number"); return; }
+    if (Number.isNaN(marksNum) || marksNum < 0) {
+      alert("Marks must be a valid non-negative number");
+      return;
+    }
     const totalMarksNum = editForm.total_marks !== "" ? Number(editForm.total_marks) : undefined;
     if (totalMarksNum !== undefined && (Number.isNaN(totalMarksNum) || totalMarksNum < 0)) {
-      alert("Total Marks must be a valid non-negative number"); return;
+      alert("Total Marks must be a valid non-negative number");
+      return;
     }
     if (totalMarksNum !== undefined && marksNum > totalMarksNum) {
-      alert("Marks obtained cannot be greater than Total Marks"); return;
+      alert("Marks obtained cannot be greater than Total Marks");
+      return;
     }
+
     setSavingEdit(true);
     try {
       await teacherStudentAssessmentsApi.createByStudent(selectedStudent.id, {
-        subject: editForm.subject, marks: marksNum,
+        subject: editForm.subject,
+        marks: marksNum,
         ...(totalMarksNum !== undefined && { total_marks: totalMarksNum }),
-        examination: editForm.examination, exam_date: editForm.exam_date,
+        examination: editForm.examination,
+        exam_date: editForm.exam_date,
       });
+
       const refreshed: any = await teacherStudentAssessmentsApi.getByStudent(selectedStudent.id);
       const nextHistory = refreshed?.data || [];
       setHistoryRows(nextHistory);
+
       const latest = nextHistory[0];
-      setStudents((prev) => prev.map((s) =>
-        s.id === selectedStudent.id
-          ? { ...s, subject: latest?.subject || "", marks: latest?.marks !== undefined ? Number(latest.marks) : undefined, examination: latest?.examination || "", exam_date: latest?.exam_date || "" }
-          : s
-      ));
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.id === selectedStudent.id
+            ? {
+                ...s,
+                subject: latest?.subject || "",
+                marks: latest?.marks !== undefined ? Number(latest.marks) : undefined,
+                examination: latest?.examination || "",
+                exam_date: latest?.exam_date || "",
+              }
+            : s
+        )
+      );
       setEditForm({ subject: "", marks: "", total_marks: "", examination: "", exam_date: new Date().toISOString().split("T")[0] });
       setEditOpen(false);
     } catch (err: any) {
@@ -672,88 +682,133 @@ export default function StudentManagementContent() {
     }
   };
 
-  // ── Bulk marks save — saves each subject col as a separate assessment ─────
+  // ── Bulk marks helpers ────────────────────────────────────────────────────────
+
+  const addBulkSubjectCol = () => {
+    const newId = `col-${Date.now()}`;
+    setBulkSubjects((prev) => [...prev, { id: newId, subject: "" }]);
+  };
+
+  const removeBulkSubjectCol = (colId: string) => {
+    setBulkSubjects((prev) => prev.filter((c) => c.id !== colId));
+    // Clean up marks for removed column
+    setBulkMarks((prev) => {
+      const next = { ...prev };
+      for (const sid of Object.keys(next)) {
+        const copy = { ...next[Number(sid)] };
+        delete copy[colId];
+        next[Number(sid)] = copy;
+      }
+      return next;
+    });
+  };
+
+  const updateBulkSubjectName = (colId: string, value: string) => {
+    setBulkSubjects((prev) =>
+      prev.map((c) => (c.id === colId ? { ...c, subject: value } : c))
+    );
+  };
+
+  const updateBulkMark = (studentId: number, colId: string, value: string) => {
+    setBulkMarks((prev) => ({
+      ...prev,
+      [studentId]: { ...(prev[studentId] || {}), [colId]: value },
+    }));
+  };
+
+  // Count total filled entries across all subject columns
+  const bulkFilledCount = useMemo(() => {
+    let count = 0;
+    for (const colMap of Object.values(bulkMarks)) {
+      for (const v of Object.values(colMap)) {
+        if (v.trim() !== "") count++;
+      }
+    }
+    return count;
+  }, [bulkMarks]);
+
+  // ── Bulk marks save ───────────────────────────────────────────────────────────
+
   const saveBulkMarks = async () => {
     if (!bulkCommon.examination || !bulkCommon.exam_date) {
-      alert("Please fill Examination and Date first."); return;
+      alert("Please fill Examination and Date first.");
+      return;
+    }
+    // Validate all subject columns have a name
+    const unnamedCol = bulkSubjects.find((c) => c.subject.trim() === "");
+    if (unnamedCol) {
+      alert("Please enter a subject name for every subject column, or remove empty ones.");
+      return;
     }
 
-    // Validate all cols have a subject name
-    const colsWithoutSubject = bulkSubjectCols.filter((c) => !c.subject.trim());
-    if (colsWithoutSubject.length > 0) {
-      alert(`Please enter a subject name for all ${colsWithoutSubject.length > 1 ? "columns" : "column"}.`); return;
-    }
+    // Build flat list of (studentId, colId, marks) to save
+    type Entry = { studentId: number; colId: string; subject: string; marks: number };
+    const entries: Entry[] = [];
 
-    // Collect all entries across cols
-    const allEntries: { studentId: number; colId: string; subject: string; marks: number }[] = [];
-    for (const col of bulkSubjectCols) {
-      for (const student of filteredStudents) {
-        const val = getBulkMark(student.id, col.id);
-        if (val.trim() === "") continue;
-        const m = Number(val);
-        if (Number.isNaN(m) || m < 0) { alert(`Invalid marks for "${student.name}" in subject "${col.subject}".`); return; }
-        allEntries.push({ studentId: student.id, colId: col.id, subject: col.subject, marks: m });
+    for (const [sidStr, colMap] of Object.entries(bulkMarks)) {
+      const studentId = Number(sidStr);
+      for (const [colId, marksStr] of Object.entries(colMap)) {
+        if (marksStr.trim() === "") continue;
+        const marksNum = Number(marksStr);
+        if (Number.isNaN(marksNum) || marksNum < 0) {
+          alert("All marks must be valid non-negative numbers.");
+          return;
+        }
+        const col = bulkSubjects.find((c) => c.id === colId);
+        if (!col) continue;
+        entries.push({ studentId, colId, subject: col.subject, marks: marksNum });
       }
     }
 
-    if (allEntries.length === 0) { alert("Enter marks for at least one student."); return; }
-
-    const sharedTotal = bulkCommon.total_marks.trim() !== "" ? Number(bulkCommon.total_marks) : undefined;
-    if (sharedTotal !== undefined && (Number.isNaN(sharedTotal) || sharedTotal < 0)) {
-      alert("Total Marks must be a valid non-negative number."); return;
-    }
-    if (sharedTotal !== undefined) {
-      const over = allEntries.find((e) => e.marks > sharedTotal);
-      if (over) { alert("Some marks exceed the Total Marks. Please fix before saving."); return; }
+    if (entries.length === 0) {
+      alert("Enter marks for at least one student.");
+      return;
     }
 
     setBulkSaving(true);
-    setBulkProgress({ done: 0, total: allEntries.length });
+    setBulkProgress({ done: 0, total: entries.length });
     let done = 0;
-    const updatedIds = new Set<number>();
+    const updatedStudentIds = new Set<number>();
 
-    for (const entry of allEntries) {
+    for (const entry of entries) {
       try {
         await teacherStudentAssessmentsApi.createByStudent(entry.studentId, {
           subject: entry.subject,
           marks: entry.marks,
-          ...(sharedTotal !== undefined && { total_marks: sharedTotal }),
           examination: bulkCommon.examination,
           exam_date: bulkCommon.exam_date,
         });
-        updatedIds.add(entry.studentId);
+        updatedStudentIds.add(entry.studentId);
       } catch (err) {
-        console.error(`Failed for student ${entry.studentId}:`, err);
+        console.error(`Failed for student ${entry.studentId} / ${entry.subject}:`, err);
       }
       done++;
-      setBulkProgress({ done, total: allEntries.length });
+      setBulkProgress({ done, total: entries.length });
     }
 
-    // Update local state — use last saved col's marks as displayed mark
-    setStudents((prev) => prev.map((s) => {
-      if (!updatedIds.has(s.id)) return s;
-      // Find last col with a mark for this student
-      let lastMarks: number | undefined;
-      let lastSubject = s.subject;
-      for (const col of [...bulkSubjectCols].reverse()) {
-        const v = getBulkMark(s.id, col.id);
-        if (v.trim() !== "") { lastMarks = Number(v); lastSubject = col.subject; break; }
-      }
-      return {
-        ...s,
-        subject: lastSubject,
-        marks: lastMarks ?? s.marks,
-        examination: bulkCommon.examination,
-        exam_date: bulkCommon.exam_date,
-      };
-    }));
+    // Update latest marks in the table (last subject col written wins per student)
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (!updatedStudentIds.has(s.id)) return s;
+        // Find the last entry for this student to show as "latest"
+        const studentEntries = entries.filter((e) => e.studentId === s.id);
+        const last = studentEntries[studentEntries.length - 1];
+        return {
+          ...s,
+          subject: last.subject,
+          marks: last.marks,
+          examination: bulkCommon.examination,
+          exam_date: bulkCommon.exam_date,
+        };
+      })
+    );
 
     setBulkSaving(false);
     setBulkProgress(null);
     setBulkOpen(false);
     setBulkMarks({});
-    setBulkSubjectCols([{ id: "col-0", subject: "" }]);
-    setBulkCommon({ examination: "", exam_date: new Date().toISOString().split("T")[0], total_marks: "" });
+    setBulkSubjects([{ id: "col-0", subject: "" }]);
+    setBulkCommon({ examination: "", exam_date: new Date().toISOString().split("T")[0] });
   };
 
   const deleteStudent = async (student: Student) => {
@@ -770,23 +825,11 @@ export default function StudentManagementContent() {
   };
 
   const openPerformanceAnalysis = (student: Student) => {
-    router.push(
-      `/teacherdashboard/performanceanalysis?studentId=${encodeURIComponent(String(student.id))}`
-    );
+    router.push(`/teacherdashboard/performanceanalysis?studentId=${student.id}`);
   };
 
-  // Derived: parsed shared total for live % in the bulk table
-  const sharedTotalNum =
-    bulkCommon.total_marks.trim() !== "" && !Number.isNaN(Number(bulkCommon.total_marks)) && Number(bulkCommon.total_marks) > 0
-      ? Number(bulkCommon.total_marks)
-      : null;
-
-  // Total count of filled marks across all cols
-  const totalFilledMarks = useMemo(() => {
-    return Object.values(bulkMarks).filter((v) => v.trim() !== "").length;
-  }, [bulkMarks]);
-
   // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <section className="rounded-3xl border border-border bg-card p-4 md:p-6 shadow-[var(--shadow-soft)]">
       {/* Header */}
@@ -795,33 +838,57 @@ export default function StudentManagementContent() {
           <GraduationCap className="h-5 w-5 text-primary" />
           <h2>Students Analysis</h2>
         </div>
+
         <div className="flex items-center gap-2">
           <DropdownMenu
             trigger={
               <Button variant="outline" className="h-9 rounded-full gap-1.5 text-sm">
-                <Download className="h-4 w-4" />Export<ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                <Download className="h-4 w-4" />
+                Export
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
               </Button>
             }
             items={[
-              { icon: <FileText className="h-4 w-4 text-emerald-600" />, label: "Export as CSV", onClick: exportCSV },
-              { icon: <FileJson className="h-4 w-4 text-blue-600" />, label: "Export as JSON", onClick: exportJSON },
+              {
+                icon: <FileText className="h-4 w-4 text-emerald-600" />,
+                label: "Export as CSV",
+                onClick: exportCSV,
+              },
+              {
+                icon: <FileJson className="h-4 w-4 text-blue-600" />,
+                label: "Export as JSON",
+                onClick: exportJSON,
+              },
             ]}
           />
-          <Button className="h-9 rounded-full gap-1.5 text-sm" onClick={() => { setImportOpen(true); setImportFile(null); setImportPreview([]); setImportError(""); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
-            <Upload className="h-4 w-4" />Import
+
+          <Button
+            className="h-9 rounded-full gap-1.5 text-sm"
+            onClick={() => {
+              setImportOpen(true);
+              setImportFile(null);
+              setImportPreview([]);
+              setImportError("");
+              if (fileInputRef.current) fileInputRef.current.value = "";
+            }}
+          >
+            <Upload className="h-4 w-4" />
+            Import
           </Button>
+
           <Button
             variant="outline"
             className="h-9 rounded-full gap-1.5 text-sm border-amber-400 text-amber-600 hover:bg-amber-50"
             onClick={() => {
               setBulkMarks({});
-              setBulkSubjectCols([{ id: "col-0", subject: "" }]);
-              setBulkCommon({ examination: "", exam_date: new Date().toISOString().split("T")[0], total_marks: "" });
+              setBulkSubjects([{ id: "col-0", subject: "" }]);
+              setBulkCommon({ examination: "", exam_date: new Date().toISOString().split("T")[0] });
               setBulkProgress(null);
               setBulkOpen(true);
             }}
           >
-            <ClipboardList className="h-4 w-4" />Bulk Marks
+            <ClipboardList className="h-4 w-4" />
+            Bulk Marks
           </Button>
         </div>
       </div>
@@ -830,27 +897,47 @@ export default function StudentManagementContent() {
       <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-4">
         <div className="relative md:col-span-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by name or phone..." className="h-10 rounded-full pl-10" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by name or phone..."
+            className="h-10 rounded-full pl-10"
+          />
         </div>
+
         <Select value={standardFilter} onValueChange={setStandardFilter}>
-          <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Standards" /></SelectTrigger>
+          <SelectTrigger className="h-10 rounded-full">
+            <SelectValue placeholder="All Standards" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Standards</SelectItem>
-            {standards.map((s) => <SelectItem key={s} value={s}>Std {s}</SelectItem>)}
+            {standards.map((s) => (
+              <SelectItem key={s} value={s}>Std {s}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
+
         <Select value={boardFilter} onValueChange={setBoardFilter}>
-          <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Boards" /></SelectTrigger>
+          <SelectTrigger className="h-10 rounded-full">
+            <SelectValue placeholder="All Boards" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Boards</SelectItem>
-            {boards.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+            {boards.map((b) => (
+              <SelectItem key={b} value={b}>{b}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
+
         <Select value={locationFilter} onValueChange={setLocationFilter}>
-          <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Locations" /></SelectTrigger>
+          <SelectTrigger className="h-10 rounded-full">
+            <SelectValue placeholder="All Locations" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Locations</SelectItem>
-            {locations.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+            {locations.map((l) => (
+              <SelectItem key={l} value={l}>{l}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -858,7 +945,9 @@ export default function StudentManagementContent() {
       {/* Table */}
       <div className="mt-5 overflow-hidden rounded-2xl border border-border">
         {loading ? (
-          <div className="py-10 flex justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+          <div className="py-10 flex justify-center">
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          </div>
         ) : (
           <Table>
             <TableHeader>
@@ -874,25 +963,37 @@ export default function StudentManagementContent() {
             </TableHeader>
             <TableBody>
               {paginatedStudents.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">No students found for selected filters.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                    No students found for selected filters.
+                  </TableCell>
+                </TableRow>
               ) : (
                 paginatedStudents.map((student) => (
                   <TableRow key={student.id}>
                     <TableCell className="font-medium">{student.name}</TableCell>
                     <TableCell>{student.phone}</TableCell>
                     <TableCell>
-                      {student.marks !== undefined
-                        ? <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">{student.marks}</span>
-                        : "—"}
+                      {student.marks !== undefined ? (
+                        <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
+                          {student.marks}
+                        </span>
+                      ) : "—"}
                     </TableCell>
                     <TableCell>{student.standard}</TableCell>
                     <TableCell>{student.board}</TableCell>
                     <TableCell>{student.location}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        <Button type="button" size="icon" className="h-9 w-9 rounded-full bg-cyan-500 text-white hover:bg-cyan-600" title="View" onClick={() => openView(student)}><Eye className="h-4 w-4" /></Button>
-                        <Button type="button" size="icon" className="h-9 w-9 rounded-full bg-teal-500 text-white hover:bg-teal-600" title="Edit" onClick={() => openEdit(student)}><Pencil className="h-4 w-4" /></Button>
-                        <Button type="button" size="icon" className="h-9 w-9 rounded-full bg-violet-500 text-white hover:bg-violet-600" title="Analyze" onClick={() => openPerformanceAnalysis(student)}><BarChart3 className="h-4 w-4" /></Button>
+                        <Button type="button" size="icon" className="h-9 w-9 rounded-full bg-cyan-500 text-white hover:bg-cyan-600" title="View" onClick={() => openView(student)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" size="icon" className="h-9 w-9 rounded-full bg-teal-500 text-white hover:bg-teal-600" title="Edit" onClick={() => openEdit(student)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" size="icon" className="h-9 w-9 rounded-full bg-violet-500 text-white hover:bg-violet-600" title="Analyze" onClick={() => openPerformanceAnalysis(student)}>
+                          <BarChart3 className="h-4 w-4" />
+                        </Button>
                         <Button type="button" size="icon" className="h-9 w-9 rounded-full bg-red-500 text-white hover:bg-red-600" title="Delete" onClick={() => deleteStudent(student)} disabled={actionLoadingId === student.id}>
                           {actionLoadingId === student.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                         </Button>
@@ -906,14 +1007,23 @@ export default function StudentManagementContent() {
         )}
       </div>
 
+      {/* Pagination */}
       {!loading && filteredStudents.length > 0 && (
-        <Pagination total={filteredStudents.length} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
+        <Pagination
+          total={filteredStudents.length}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       )}
 
       {/* ── View Dialog ─────────────────────────────────────────────────── */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Student Details</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Student Details</DialogTitle>
+          </DialogHeader>
           {selectedStudent && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
@@ -927,22 +1037,23 @@ export default function StudentManagementContent() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Subject</TableHead><TableHead>Examination</TableHead>
-                      <TableHead>Marks</TableHead><TableHead>Total</TableHead><TableHead>Date</TableHead>
+                      <TableHead>Subject</TableHead>
+                      <TableHead>Examination</TableHead>
+                      <TableHead>Marks</TableHead>
+                      <TableHead>Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {historyLoading ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-6"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></TableCell></TableRow>
+                      <TableRow><TableCell colSpan={4} className="text-center py-6"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></TableCell></TableRow>
                     ) : historyRows.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No assessment entries yet.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">No assessment entries yet.</TableCell></TableRow>
                     ) : (
                       historyRows.map((row) => (
                         <TableRow key={`${row.id || 0}-${row.exam_date}-${row.subject}`}>
                           <TableCell>{row.subject}</TableCell>
                           <TableCell>{row.examination}</TableCell>
                           <TableCell>{row.marks}</TableCell>
-                          <TableCell>{row.total_marks ?? "—"}</TableCell>
                           <TableCell>{row.exam_date ? String(row.exam_date).split("T")[0] : "—"}</TableCell>
                         </TableRow>
                       ))
@@ -958,32 +1069,22 @@ export default function StudentManagementContent() {
       {/* ── Edit Dialog ─────────────────────────────────────────────────── */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Add Student Test</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Add Student Test</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
               <Label>Subject</Label>
               <Input value={editForm.subject} onChange={(e) => setEditForm((p) => ({ ...p, subject: e.target.value }))} placeholder="e.g. Mathematics" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Marks Obtained</Label>
-                <Input type="number" min={0} value={editForm.marks} onChange={(e) => setEditForm((p) => ({ ...p, marks: e.target.value }))} placeholder="e.g. 87" />
-              </div>
-              <div className="space-y-1">
-                <Label>Total Marks <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
-                <Input type="number" min={0} value={editForm.total_marks} onChange={(e) => setEditForm((p) => ({ ...p, total_marks: e.target.value }))} placeholder="e.g. 100" />
-              </div>
+            <div className="space-y-1">
+              <Label>Marks Obtained</Label>
+              <Input type="number" value={editForm.marks} onChange={(e) => setEditForm((p) => ({ ...p, marks: e.target.value }))} placeholder="e.g. 87" />
             </div>
-            {editForm.marks !== "" && editForm.total_marks !== "" &&
-              !Number.isNaN(Number(editForm.marks)) && !Number.isNaN(Number(editForm.total_marks)) &&
-              Number(editForm.total_marks) > 0 && (
-              <p className="text-xs text-muted-foreground -mt-2 px-1">
-                {((Number(editForm.marks) / Number(editForm.total_marks)) * 100).toFixed(1)}% scored
-                {Number(editForm.marks) > Number(editForm.total_marks) && (
-                  <span className="ml-2 text-red-500 font-medium">⚠ Marks exceed total</span>
-                )}
-              </p>
-            )}
+            <div className="space-y-1">
+              <Label>Total Marks</Label>
+              <Input type="number" value={editForm.total_marks} onChange={(e) => setEditForm((p) => ({ ...p, total_marks: e.target.value }))} placeholder="e.g. 100" />
+            </div>
             <div className="space-y-1">
               <Label>Examination</Label>
               <Input value={editForm.examination} onChange={(e) => setEditForm((p) => ({ ...p, examination: e.target.value }))} placeholder="e.g. Unit Test 1" />
@@ -996,22 +1097,23 @@ export default function StudentManagementContent() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Subject</TableHead><TableHead>Exam</TableHead>
-                    <TableHead>Marks</TableHead><TableHead>Total</TableHead><TableHead>Date</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Exam</TableHead>
+                    <TableHead>Marks</TableHead>
+                    <TableHead>Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {historyLoading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-4"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center py-4"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></TableCell></TableRow>
                   ) : historyRows.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-4">No tests added yet.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-4">No tests added yet.</TableCell></TableRow>
                   ) : (
                     historyRows.map((row) => (
                       <TableRow key={`edit-${row.id || 0}-${row.exam_date}-${row.subject}`}>
                         <TableCell>{row.subject}</TableCell>
                         <TableCell>{row.examination}</TableCell>
                         <TableCell>{row.marks}</TableCell>
-                        <TableCell>{row.total_marks ?? "—"}</TableCell>
                         <TableCell>{row.exam_date ? String(row.exam_date).split("T")[0] : "—"}</TableCell>
                       </TableRow>
                     ))
@@ -1023,7 +1125,8 @@ export default function StudentManagementContent() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
             <Button onClick={saveEdit} disabled={savingEdit}>
-              {savingEdit && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Add Test
+              {savingEdit && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Add Test
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1033,15 +1136,29 @@ export default function StudentManagementContent() {
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Upload className="h-5 w-5" />Import</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Import
+            </DialogTitle>
           </DialogHeader>
+
           <div className="space-y-4 flex-1 overflow-y-auto pr-1">
             <div className="rounded-lg bg-muted/60 p-3 text-sm text-muted-foreground space-y-1">
               <p className="font-medium text-foreground">Supported formats: CSV, JSON &amp; Excel (.xlsx)</p>
-              <p><span className="font-medium text-foreground">Excel (bulk marks):</span> columns <code className="text-xs bg-background rounded px-1">student_id, marks, subject, examination, exam_date</code></p>
-              <p><span className="font-medium text-foreground">CSV / JSON (students):</span> columns <code className="text-xs bg-background rounded px-1">id, name, phone, standard, board, location …</code></p>
+              <p>
+                <span className="font-medium text-foreground">Excel (bulk marks):</span>{" "}
+                columns <code className="text-xs bg-background rounded px-1">student_id, marks, subject, examination, exam_date</code> — saves marks to backend via API.
+              </p>
+              <p>
+                <span className="font-medium text-foreground">CSV / JSON (students):</span>{" "}
+                columns <code className="text-xs bg-background rounded px-1">id, name, phone, standard, board, location …</code>
+              </p>
             </div>
-            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-8 cursor-pointer hover:bg-muted/40 transition-colors" onClick={() => fileInputRef.current?.click()}>
+
+            <div
+              className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-8 cursor-pointer hover:bg-muted/40 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
               <div className="flex gap-3">
                 <FileText className="h-8 w-8 text-emerald-500" />
                 <FileJson className="h-8 w-8 text-blue-500" />
@@ -1050,84 +1167,135 @@ export default function StudentManagementContent() {
                 </svg>
               </div>
               <p className="text-sm font-medium">Click to choose CSV, JSON or Excel file</p>
-              {importFile && <p className="text-xs text-muted-foreground font-medium">{importFile.name}</p>}
-              <input ref={fileInputRef} type="file" accept=".csv,.json,.xlsx,.xls" className="hidden" onChange={handleImportFileChange} />
+              {importFile && (
+                <p className="text-xs text-muted-foreground font-medium">{importFile.name}</p>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.json,.xlsx,.xls"
+                className="hidden"
+                onChange={handleImportFileChange}
+              />
             </div>
-            {importError && <p className="text-sm text-red-500 rounded-lg bg-red-50 px-3 py-2 whitespace-pre-line">{importError}</p>}
+
+            {importError && (
+              <p className="text-sm text-red-500 rounded-lg bg-red-50 px-3 py-2 whitespace-pre-line">{importError}</p>
+            )}
+
             {importMode === "marks" && xlsxMarksRows.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">Excel — Bulk Marks</span>
+                  <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                    Excel — Bulk Marks
+                  </span>
                   <p className="text-sm font-medium">{xlsxMarksRows.length} row{xlsxMarksRows.length !== 1 ? "s" : ""} found</p>
                 </div>
                 <div className="rounded-xl border border-border overflow-auto max-h-56">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Student ID</TableHead><TableHead>Name</TableHead><TableHead>Subject</TableHead>
-                        <TableHead>Examination</TableHead><TableHead>Marks</TableHead><TableHead>Date</TableHead>
+                        <TableHead>Student ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Subject</TableHead>
+                        <TableHead>Examination</TableHead>
+                        <TableHead>Marks</TableHead>
+                        <TableHead>Date</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {xlsxMarksRows.slice(0, 10).map((r, i) => (
                         <TableRow key={i}>
-                          <TableCell>{r.student_id}</TableCell><TableCell>{r.studentName}</TableCell>
-                          <TableCell>{r.subject || "—"}</TableCell><TableCell>{r.examination || "—"}</TableCell>
-                          <TableCell><span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700">{r.marks}</span></TableCell>
+                          <TableCell>{r.student_id}</TableCell>
+                          <TableCell>{r.studentName}</TableCell>
+                          <TableCell>{r.subject || "—"}</TableCell>
+                          <TableCell>{r.examination || "—"}</TableCell>
+                          <TableCell>
+                            <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700">{r.marks}</span>
+                          </TableCell>
                           <TableCell>{r.exam_date || "—"}</TableCell>
                         </TableRow>
                       ))}
                       {xlsxMarksRows.length > 10 && (
-                        <TableRow><TableCell colSpan={6} className="text-center text-xs text-muted-foreground py-2">…and {xlsxMarksRows.length - 10} more</TableCell></TableRow>
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-xs text-muted-foreground py-2">
+                            …and {xlsxMarksRows.length - 10} more
+                          </TableCell>
+                        </TableRow>
                       )}
                     </TableBody>
                   </Table>
                 </div>
               </div>
             )}
+
             {importMode === "students" && importPreview.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Preview — {importPreview.length} student{importPreview.length !== 1 ? "s" : ""} found</p>
+                <p className="text-sm font-medium">
+                  Preview — {importPreview.length} student{importPreview.length !== 1 ? "s" : ""} found
+                </p>
                 <div className="rounded-xl border border-border overflow-auto max-h-52">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead><TableHead>Phone</TableHead><TableHead>Std</TableHead>
-                        <TableHead>Board</TableHead><TableHead>Location</TableHead><TableHead>Marks</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Std</TableHead>
+                        <TableHead>Board</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Marks</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {importPreview.slice(0, 10).map((s, i) => (
                         <TableRow key={i}>
-                          <TableCell>{s.name || "—"}</TableCell><TableCell>{s.phone || "—"}</TableCell>
-                          <TableCell>{s.standard || "—"}</TableCell><TableCell>{s.board || "—"}</TableCell>
-                          <TableCell>{s.location || "—"}</TableCell><TableCell>{s.marks !== undefined ? s.marks : "—"}</TableCell>
+                          <TableCell>{s.name || "—"}</TableCell>
+                          <TableCell>{s.phone || "—"}</TableCell>
+                          <TableCell>{s.standard || "—"}</TableCell>
+                          <TableCell>{s.board || "—"}</TableCell>
+                          <TableCell>{s.location || "—"}</TableCell>
+                          <TableCell>{s.marks !== undefined ? s.marks : "—"}</TableCell>
                         </TableRow>
                       ))}
                       {importPreview.length > 10 && (
-                        <TableRow><TableCell colSpan={6} className="text-center text-xs text-muted-foreground py-2">…and {importPreview.length - 10} more</TableCell></TableRow>
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-xs text-muted-foreground py-2">
+                            …and {importPreview.length - 10} more
+                          </TableCell>
+                        </TableRow>
                       )}
                     </TableBody>
                   </Table>
                 </div>
               </div>
             )}
+
             {importProgress && (
               <div className="space-y-1">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Saving marks…</span><span>{importProgress.done} / {importProgress.total}</span>
+                  <span>Saving marks…</span>
+                  <span>{importProgress.done} / {importProgress.total}</span>
                 </div>
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-green-500 transition-all duration-300" style={{ width: `${(importProgress.done / importProgress.total) * 100}%` }} />
+                  <div
+                    className="h-full bg-green-500 transition-all duration-300"
+                    style={{ width: `${(importProgress.done / importProgress.total) * 100}%` }}
+                  />
                 </div>
               </div>
             )}
           </div>
+
           <DialogFooter className="pt-2">
             <Button variant="outline" onClick={() => setImportOpen(false)} disabled={importing}>Cancel</Button>
-            <Button onClick={confirmImport} disabled={(importMode === "marks" ? xlsxMarksRows.length === 0 : importPreview.length === 0) || importing}>
+            <Button
+              onClick={confirmImport}
+              disabled={(importMode === "marks" ? xlsxMarksRows.length === 0 : importPreview.length === 0) || importing}
+            >
               {importing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {importMode === "marks" ? `Save ${xlsxMarksRows.length} Mark${xlsxMarksRows.length !== 1 ? "s" : ""} to DB` : `Import ${importPreview.length > 0 ? `${importPreview.length} Students` : ""}`}
+              {importMode === "marks"
+                ? `Save ${xlsxMarksRows.length} Mark${xlsxMarksRows.length !== 1 ? "s" : ""} to DB`
+                : `Import ${importPreview.length > 0 ? `${importPreview.length} Students` : ""}`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1137,132 +1305,83 @@ export default function StudentManagementContent() {
       <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            {/* Title row with Import / Export buttons */}
-            <div className="flex items-center justify-between gap-2">
-              <DialogTitle className="flex items-center gap-2">
-                <ClipboardList className="h-5 w-5 text-amber-500" />Bulk Add Marks
-              </DialogTitle>
-              <div className="flex items-center gap-2 pr-6">
-                {/* Hidden file input for bulk import */}
-                <input
-                  ref={bulkImportRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  className="hidden"
-                  onChange={handleBulkImportFile}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-8 rounded-full gap-1.5 text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
-                  onClick={() => bulkImportRef.current?.click()}
-                  title="Import marks from Excel (.xlsx)"
-                >
-                  <Upload className="h-3.5 w-3.5" />Import
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-8 rounded-full gap-1.5 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                  onClick={exportBulkTemplate}
-                  title="Export student list as Excel template"
-                >
-                  <Download className="h-3.5 w-3.5" />Export
-                </Button>
-              </div>
-            </div>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-amber-500" />
+              Bulk Add Marks
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 flex-1 overflow-y-auto pr-1">
-
-            {/* ── Common fields ─────────────────────────────────────────── */}
-            <div className="rounded-xl bg-muted/50 p-4 space-y-3">
-              {/* Examination / Date / Total Marks */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="space-y-1">
-                  <Label>Examination <span className="text-red-500">*</span></Label>
-                  <Input
-                    value={bulkCommon.examination}
-                    onChange={(e) => setBulkCommon((p) => ({ ...p, examination: e.target.value }))}
-                    placeholder="e.g. Unit Test 1"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Date <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="date"
-                    value={bulkCommon.exam_date}
-                    onChange={(e) => setBulkCommon((p) => ({ ...p, exam_date: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>
-                    Total Marks{" "}
-                    <span className="text-xs text-muted-foreground font-normal">(optional — all subjects)</span>
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={bulkCommon.total_marks}
-                    onChange={(e) => setBulkCommon((p) => ({ ...p, total_marks: e.target.value }))}
-                    placeholder="e.g. 100"
-                  />
-                </div>
+            {/* Common fields: Examination + Date (no subject here anymore) */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-xl bg-muted/50 p-4">
+              <div className="space-y-1">
+                <Label>Examination <span className="text-red-500">*</span></Label>
+                <Input
+                  value={bulkCommon.examination}
+                  onChange={(e) => setBulkCommon((p) => ({ ...p, examination: e.target.value }))}
+                  placeholder="e.g. Unit Test 1"
+                />
               </div>
-
-              {/* ── Subject columns strip ──────────────────────────────── */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-                    Subject Columns
-                  </Label>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-7 rounded-full gap-1 text-xs bg-amber-500 hover:bg-amber-600 text-white"
-                    onClick={addSubjectCol}
-                  >
-                    <Plus className="h-3.5 w-3.5" />Add Subject
-                  </Button>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {bulkSubjectCols.map((col, idx) => (
-                    <div
-                      key={col.id}
-                      className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 pl-3 pr-1.5 py-1"
-                    >
-                      <span className="text-xs text-amber-600 font-medium shrink-0">
-                        #{idx + 1}
-                      </span>
-                      <Input
-                        value={col.subject}
-                        onChange={(e) => updateSubjectColName(col.id, e.target.value)}
-                        placeholder="Subject name"
-                        className="h-6 w-36 rounded-full border-amber-300 bg-white text-xs px-2 focus-visible:ring-amber-400"
-                      />
-                      {bulkSubjectCols.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeSubjectCol(col.id)}
-                          className="flex items-center justify-center h-5 w-5 rounded-full text-amber-400 hover:bg-amber-200 hover:text-amber-700 transition-colors"
-                          title="Remove this subject column"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              <div className="space-y-1">
+                <Label>Date <span className="text-red-500">*</span></Label>
+                <Input
+                  type="date"
+                  value={bulkCommon.exam_date}
+                  onChange={(e) => setBulkCommon((p) => ({ ...p, exam_date: e.target.value }))}
+                />
               </div>
             </div>
 
+            {/* Subject columns management */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Subject Columns ({bulkSubjects.length})
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 rounded-full gap-1.5 text-xs border-amber-400 text-amber-600 hover:bg-amber-50"
+                  onClick={addBulkSubjectCol}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Subject
+                </Button>
+              </div>
+
+              {/* Subject name inputs row */}
+              <div className="flex flex-wrap gap-2">
+                {bulkSubjects.map((col, idx) => (
+                  <div key={col.id} className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1">
+                    <span className="text-xs text-amber-500 font-semibold min-w-[1.2rem]">#{idx + 1}</span>
+                    <Input
+                      value={col.subject}
+                      onChange={(e) => updateBulkSubjectName(col.id, e.target.value)}
+                      placeholder="Subject name"
+                      className="h-7 w-36 rounded-full border-amber-200 text-xs px-2 bg-white focus-visible:ring-amber-300"
+                    />
+                    {bulkSubjects.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeBulkSubjectCol(col.id)}
+                        className="flex h-5 w-5 items-center justify-center rounded-full text-amber-400 hover:bg-amber-200 hover:text-amber-700 transition-colors"
+                        title="Remove subject"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Info */}
             <p className="text-xs text-muted-foreground px-1">
-              Showing {filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""} matching current filters.
-              Leave marks blank to skip a student.
+              Showing {filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""} matching current filters. Leave marks blank to skip a student.
             </p>
 
-            {/* ── Per-student marks table ───────────────────────────────── */}
+            {/* Student marks table — dynamic columns */}
             <div className="rounded-xl border border-border overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -1270,91 +1389,45 @@ export default function StudentManagementContent() {
                     <TableHead className="text-white sticky left-0 bg-slate-900 z-10">Name</TableHead>
                     <TableHead className="text-white">Std</TableHead>
                     <TableHead className="text-white">Board</TableHead>
-                    {bulkSubjectCols.map((col, idx) => (
-                      <TableHead key={col.id} className="text-white min-w-[9rem]">
+                    {bulkSubjects.map((col, idx) => (
+                      <TableHead key={col.id} className="text-white min-w-[130px]">
                         <div className="flex flex-col gap-0.5">
-                          <span className="text-amber-300 text-xs font-normal">#{idx + 1}</span>
-                          <span className="truncate max-w-[8rem]" title={col.subject || `Subject ${idx + 1}`}>
-                            {col.subject || <span className="opacity-50 italic">Subject {idx + 1}</span>}
+                          <span className="text-amber-300 text-[10px] font-normal">Subject #{idx + 1}</span>
+                          <span className="truncate max-w-[120px]">
+                            {col.subject.trim() || <span className="opacity-50 italic text-xs">Unnamed</span>}
                           </span>
                         </div>
                       </TableHead>
                     ))}
-                    {sharedTotalNum !== null && (
-                      <TableHead className="text-white text-xs">Avg %</TableHead>
-                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredStudents.length === 0 ? (
                     <TableRow>
-                      <TableCell
-                        colSpan={3 + bulkSubjectCols.length + (sharedTotalNum !== null ? 1 : 0)}
-                        className="text-center py-8 text-muted-foreground text-sm"
-                      >
+                      <TableCell colSpan={3 + bulkSubjects.length} className="text-center py-8 text-muted-foreground text-sm">
                         No students match current filters.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredStudents.map((student) => {
-                      // Compute average % across filled cols (if sharedTotal set)
-                      let avgPct: number | null = null;
-                      if (sharedTotalNum !== null) {
-                        const filledVals = bulkSubjectCols
-                          .map((c) => getBulkMark(student.id, c.id))
-                          .filter((v) => v.trim() !== "" && !Number.isNaN(Number(v)))
-                          .map(Number);
-                        if (filledVals.length > 0) {
-                          avgPct = (filledVals.reduce((a, b) => a + b, 0) / filledVals.length / sharedTotalNum) * 100;
-                        }
-                      }
-
-                      return (
-                        <TableRow key={student.id}>
-                          <TableCell className="font-medium sticky left-0 bg-background z-10">
-                            {student.name}
+                    filteredStudents.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell className="font-medium sticky left-0 bg-card z-10">{student.name}</TableCell>
+                        <TableCell>{student.standard}</TableCell>
+                        <TableCell>{student.board}</TableCell>
+                        {bulkSubjects.map((col) => (
+                          <TableCell key={col.id}>
+                            <Input
+                              type="number"
+                              min={0}
+                              placeholder="—"
+                              value={bulkMarks[student.id]?.[col.id] ?? ""}
+                              onChange={(e) => updateBulkMark(student.id, col.id, e.target.value)}
+                              className="h-8 w-28 rounded-full text-sm"
+                            />
                           </TableCell>
-                          <TableCell>{student.standard}</TableCell>
-                          <TableCell>{student.board}</TableCell>
-
-                          {bulkSubjectCols.map((col) => {
-                            const marksVal = getBulkMark(student.id, col.id);
-                            const marksNum = Number(marksVal);
-                            const exceedsTotal = sharedTotalNum !== null && marksVal !== "" && !Number.isNaN(marksNum) && marksNum > sharedTotalNum;
-
-                            return (
-                              <TableCell key={col.id}>
-                                <div className="flex flex-col gap-0.5">
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    placeholder="—"
-                                    value={marksVal}
-                                    onChange={(e) => setBulkMark(student.id, col.id, e.target.value)}
-                                    className={`h-8 w-28 rounded-full text-sm ${exceedsTotal ? "border-red-400 focus-visible:ring-red-400" : ""}`}
-                                  />
-                                  {exceedsTotal && (
-                                    <span className="text-[10px] text-red-500 font-medium pl-2">⚠ over {sharedTotalNum}</span>
-                                  )}
-                                </div>
-                              </TableCell>
-                            );
-                          })}
-
-                          {sharedTotalNum !== null && (
-                            <TableCell>
-                              {avgPct === null ? (
-                                <span className="text-xs text-muted-foreground">—</span>
-                              ) : (
-                                <span className={`text-xs font-semibold ${avgPct >= 75 ? "text-emerald-600" : avgPct >= 50 ? "text-amber-600" : "text-red-500"}`}>
-                                  {avgPct.toFixed(0)}%
-                                </span>
-                              )}
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      );
-                    })
+                        ))}
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
               </Table>
@@ -1364,23 +1437,34 @@ export default function StudentManagementContent() {
             {bulkProgress && (
               <div className="space-y-1">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Saving…</span><span>{bulkProgress.done} / {bulkProgress.total}</span>
+                  <span>Saving…</span>
+                  <span>{bulkProgress.done} / {bulkProgress.total}</span>
                 </div>
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-amber-400 transition-all duration-300" style={{ width: `${(bulkProgress.done / bulkProgress.total) * 100}%` }} />
+                  <div
+                    className="h-full bg-amber-400 transition-all duration-300"
+                    style={{ width: `${(bulkProgress.done / bulkProgress.total) * 100}%` }}
+                  />
                 </div>
               </div>
             )}
           </div>
 
           <DialogFooter className="pt-2">
-            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkSaving}>Cancel</Button>
-            <Button className="bg-amber-500 hover:bg-amber-600 text-white" onClick={saveBulkMarks} disabled={bulkSaving}>
+            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkSaving}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+              onClick={saveBulkMarks}
+              disabled={bulkSaving}
+            >
               {bulkSaving ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</>
               ) : (
-                <><ClipboardList className="h-4 w-4 mr-2" />
-                  Save {totalFilledMarks > 0 ? `${totalFilledMarks} Mark${totalFilledMarks !== 1 ? "s" : ""}` : "Marks"}
+                <>
+                  <ClipboardList className="h-4 w-4 mr-2" />
+                  Save {bulkFilledCount > 0 ? `${bulkFilledCount} Mark${bulkFilledCount !== 1 ? "s" : ""}` : "Marks"}
                 </>
               )}
             </Button>
