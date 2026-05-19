@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { GraduationCap, Search, Eye, Trash2, Phone, User, MapPin, BookOpen, Loader2, IndianRupee, Pencil, FileSpreadsheet, Upload, Mail } from "lucide-react"
+import { GraduationCap, Search, Eye, Trash2, Phone, User, MapPin, BookOpen, Loader2, IndianRupee, Pencil, FileSpreadsheet, Upload, Mail, SquarePen } from "lucide-react"
 import { studentsApi, studentsUniversalApi } from "@/lib/api"
 import * as XLSX from "xlsx"
 
@@ -49,12 +49,17 @@ export function StudentsContent() {
   const [filterStandard, setFilterStandard] = useState("all")
   const [filterCourse, setFilterCourse] = useState("all")
   const [filterBranch, setFilterBranch] = useState("all")
-  // Dynamic branch list built from actual DB data
   const [branches, setBranches] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [selected, setSelected] = useState<Student | null>(null)
   const [viewOpen, setViewOpen] = useState(false)
+
+  // ── Edit Modal State ──────────────────────────────────────────────────────
+  const [editStudent, setEditStudent] = useState<Student | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState<Partial<Student>>({})
+  const [editSaving, setEditSaving] = useState(false)
 
   const [feeStudent, setFeeStudent] = useState<Student | null>(null)
   const [feeModalOpen, setFeeModalOpen] = useState(false)
@@ -92,15 +97,11 @@ export function StudentsContent() {
         result = primary?.data || []
       }
 
-      // Build dynamic branch list from all returned students (before client filtering)
       const uniqueBranches = Array.from(
         new Set(result.map((s) => s.branch?.trim()).filter(Boolean))
       ) as string[]
       setBranches(uniqueBranches)
 
-      // ── Standard filter ──────────────────────────────────────────────────
-      // DB stores "5th Standard", "9th Standard" etc. — extract just the
-      // number before comparing against the select value ("5", "9" …)
       if (filterStandard !== "all") {
         result = result.filter((s) => {
           const stored = String(s.standard ?? "").trim().replace(/[^0-9]/g, "")
@@ -108,23 +109,18 @@ export function StudentsContent() {
         })
       }
 
-      // ── Course filter (case-insensitive) ────────────────────────────────
       if (filterCourse !== "all") {
         result = result.filter((s) =>
           s.course?.toLowerCase().trim() === filterCourse.toLowerCase().trim()
         )
       }
 
-      // ── Branch filter (case-insensitive) ────────────────────────────────
-      // Handles "SOF branch", "Branch 1", etc. — stored value is lowercased
-      // as the SelectItem value so both sides are already lowercase.
       if (filterBranch !== "all") {
         result = result.filter((s) =>
           s.branch?.toLowerCase().trim() === filterBranch.toLowerCase().trim()
         )
       }
 
-      // ── Search (name + phone + father phone) ────────────────────────────
       if (searchTerm) {
         const q = searchTerm.toLowerCase()
         result = result.filter((s) =>
@@ -150,6 +146,31 @@ export function StudentsContent() {
       await studentsApi.remove(id)
       setStudents(prev => prev.filter(s => s.id !== id))
     } catch (err: any) { alert(err.message) }
+  }
+
+  // ── Edit Handlers ─────────────────────────────────────────────────────────
+  const openEditModal = (s: Student) => {
+    setEditStudent(s)
+    setEditForm({ ...s })
+    setEditOpen(true)
+  }
+
+  const handleEditChange = (field: keyof Student, value: string) => {
+    setEditForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editStudent) return
+    if (!editForm.name?.trim()) { alert("Name is required"); return }
+    setEditSaving(true)
+    try {
+      await studentsApi.update(editStudent.id, { ...editStudent, ...editForm })
+      setStudents(prev =>
+        prev.map(s => s.id === editStudent.id ? { ...s, ...editForm } as Student : s)
+      )
+      setEditOpen(false)
+    } catch (err: any) { alert(err.message) }
+    finally { setEditSaving(false) }
   }
 
   const openFeeModal = (s: Student) => {
@@ -350,8 +371,6 @@ export function StudentsContent() {
                 onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
 
-            {/* key prop forces re-mount on value change — prevents shadcn/ui
-                Select bug where onValueChange doesn't fire on repeat selection */}
             <Select
               key={`standard-${filterStandard}`}
               value={filterStandard}
@@ -380,8 +399,6 @@ export function StudentsContent() {
               </SelectContent>
             </Select>
 
-            {/* Dynamic branch dropdown — auto-populated from actual DB branch values
-                so it always matches whatever is stored (e.g. "SOF branch") */}
             <Select
               key={`branch-${filterBranch}`}
               value={filterBranch}
@@ -471,6 +488,12 @@ export function StudentsContent() {
                               title="View details"
                               onClick={() => { setSelected(s); setViewOpen(true) }}>
                               <Eye className="h-4 w-4" />
+                            </Button>
+                            {/* ── Edit Button ── */}
+                            <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-violet-600 hover:text-violet-700 hover:border-violet-300"
+                              title="Edit student"
+                              onClick={() => openEditModal(s)}>
+                              <SquarePen className="h-4 w-4" />
                             </Button>
                             <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:border-blue-300"
                               title="Update total fee"
@@ -582,6 +605,93 @@ export function StudentsContent() {
 
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Student Modal ───────────────────────────── */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SquarePen className="h-5 w-5 text-violet-600" /> Edit Student
+            </DialogTitle>
+          </DialogHeader>
+
+          {editStudent && (
+            <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-4 py-2">
+
+              {/* Personal Info */}
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Personal Information</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="edit-name">Name <span className="text-destructive">*</span></Label>
+                  <Input id="edit-name" value={editForm.name ?? ""} onChange={e => handleEditChange("name", e.target.value)} placeholder="Full name" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-email">Email</Label>
+                  <Input id="edit-email" type="email" value={editForm.email ?? ""} onChange={e => handleEditChange("email", e.target.value)} placeholder="Email address" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-phone">Contact no.1</Label>
+                  <Input id="edit-phone" value={editForm.phone ?? ""} onChange={e => handleEditChange("phone", e.target.value)} placeholder="Student phone" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-father-phone">Contact no.2</Label>
+                  <Input id="edit-father-phone" value={editForm.father_phone ?? ""} onChange={e => handleEditChange("father_phone", e.target.value)} placeholder="Parent / guardian phone" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-father-name">Father Name</Label>
+                  <Input id="edit-father-name" value={editForm.father_name ?? ""} onChange={e => handleEditChange("father_name", e.target.value)} placeholder="Father's name" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-dob">Date of Birth</Label>
+                  <Input id="edit-dob" type="date" value={editForm.dob ?? ""} onChange={e => handleEditChange("dob", e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-aadhar">Aadhar Number</Label>
+                  <Input id="edit-aadhar" value={editForm.aadhar ?? ""} onChange={e => handleEditChange("aadhar", e.target.value)} placeholder="12-digit Aadhar number" maxLength={12} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-caste">Caste / Religion</Label>
+                  <Input id="edit-caste" value={editForm.caste_religion ?? ""} onChange={e => handleEditChange("caste_religion", e.target.value)} placeholder="Caste or religion" />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label htmlFor="edit-address">Address</Label>
+                  <Input id="edit-address" value={editForm.address ?? ""} onChange={e => handleEditChange("address", e.target.value)} placeholder="Full address" />
+                </div>
+              </div>
+
+              {/* Academic Info */}
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Academic Information</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="edit-standard">Standard</Label>
+                  <Input id="edit-standard" value={editForm.standard ?? ""} onChange={e => handleEditChange("standard", e.target.value)} placeholder="e.g. 10th Standard" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-course">Course</Label>
+                  <Input id="edit-course" value={editForm.course ?? ""} onChange={e => handleEditChange("course", e.target.value)} placeholder="e.g. JEE / NEET" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-branch">Branch</Label>
+                  <Input id="edit-branch" value={editForm.branch ?? ""} onChange={e => handleEditChange("branch", e.target.value)} placeholder="Branch name" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-hostel">Hostel</Label>
+                  <Input id="edit-hostel" value={editForm.hostel ?? ""} onChange={e => handleEditChange("hostel", e.target.value)} placeholder="Hostel name or N/A" />
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEdit} disabled={editSaving} className="bg-violet-600 hover:bg-violet-700">
+              {editSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
