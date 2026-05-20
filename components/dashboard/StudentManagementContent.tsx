@@ -1482,16 +1482,22 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
                     <TableHead className="text-white sticky left-0 bg-slate-900 z-10">Name</TableHead>
                     <TableHead className="text-white">Std</TableHead>
                     <TableHead className="text-white">Board</TableHead>
-                    {bulkSubjects.map((col, idx) => (
-                      <TableHead key={col.id} className="text-white min-w-[130px]">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-amber-300 text-[10px] font-normal">Subject #{idx + 1}</span>
-                          <span className="truncate max-w-[120px]">
-                            {col.subject.trim() || <span className="opacity-50 italic text-xs">Unnamed</span>}
-                          </span>
-                        </div>
-                      </TableHead>
-                    ))}
+                   {bulkSubjects.map((col, idx) => (
+                    <TableHead key={col.id} className="text-white min-w-[130px]">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-amber-300 text-[10px] font-normal">Subject #{idx + 1}</span>
+                        <span className="truncate max-w-[120px]">
+                          {col.subject.trim() || <span className="opacity-50 italic text-xs">Unnamed</span>}
+                        </span>
+                      </div>
+                    </TableHead>
+                  ))}
+                  <TableHead className="text-white min-w-[100px]">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-emerald-300 text-[10px] font-normal">Auto</span>
+                      <span>% Score</span>
+                    </div>
+                  </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
