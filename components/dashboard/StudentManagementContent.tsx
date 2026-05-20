@@ -1543,7 +1543,7 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (filledEntries.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
     const rowTotal = filledEntries.reduce((sum, v) => sum + Number(v), 0);
     const tm = bulkCommon.total_marks !== "" ? Number(bulkCommon.total_marks) : null;
-    const maxPossible = tm && tm > 0 ? tm * filledEntries.length : null;
+    const maxPossible = tm && tm > 0 ? tm : null;
     return (
       <div className="flex flex-col gap-0.5">
         <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-800 inline-block w-fit">
@@ -1572,7 +1572,7 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         </span>
       );
     }
-    const maxPossible = tm * filledEntries.length;
+    const maxPossible = tm;
     const pct = ((totalObtained / maxPossible) * 100).toFixed(1);
     const pctNum = parseFloat(pct);
     const color =
@@ -1639,7 +1639,13 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
                             }).length, 0);
                           if (totalFilledCells === 0) return <span className="text-muted-foreground text-xs">—</span>;
                           const tm = bulkCommon.total_marks !== "" ? Number(bulkCommon.total_marks) : null;
-                          const maxPossible = tm && tm > 0 ? tm * totalFilledCells : null;
+                          const filledStudentCount2 = filteredStudents.filter((student) =>
+                            bulkSubjects.some((col) => {
+                              const val = bulkMarks[student.id]?.[col.id];
+                              return val !== undefined && val !== "" && !Number.isNaN(Number(val));
+                            })
+                          ).length;
+                          const maxPossible = tm && tm > 0 ? tm * filledStudentCount2 : null;
                           return (
                             <div className="flex flex-col gap-0.5">
                               <span className="rounded-full bg-blue-200 px-2.5 py-0.5 text-xs font-bold text-blue-900 inline-block w-fit">
@@ -1677,7 +1683,13 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
                               </span>
                             );
                           }
-                          const maxPossible = tm * totalFilledCells;
+                          const filledStudentCount = filteredStudents.filter((student) =>
+                            bulkSubjects.some((col) => {
+                              const val = bulkMarks[student.id]?.[col.id];
+                              return val !== undefined && val !== "" && !Number.isNaN(Number(val));
+                            })
+                          ).length;
+                          const maxPossible = tm * filledStudentCount;
                           const pct = ((grandObtained / maxPossible) * 100).toFixed(1);
                           const pctNum = parseFloat(pct);
                           const color =
