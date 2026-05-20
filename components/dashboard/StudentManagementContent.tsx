@@ -1562,6 +1562,80 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
                       </TableRow>
                     ))
                   )}
+                {filteredStudents.length > 0 && (
+                    <TableRow className="bg-slate-50 border-t-2 border-slate-200 font-semibold">
+                      <TableCell className="sticky left-0 bg-slate-50 z-10 text-slate-700 text-sm font-bold">
+                        Total
+                      </TableCell>
+                      <TableCell />
+                      <TableCell />
+                      {bulkSubjects.map((col) => {
+                        const colTotal = filteredStudents.reduce((sum, student) => {
+                          const val = bulkMarks[student.id]?.[col.id];
+                          if (val === undefined || val === "") return sum;
+                          const num = Number(val);
+                          return Number.isNaN(num) ? sum : sum + num;
+                        }, 0);
+                        const filledCount = filteredStudents.filter((student) => {
+                          const val = bulkMarks[student.id]?.[col.id];
+                          return val !== undefined && val !== "" && !Number.isNaN(Number(val));
+                        }).length;
+                        return (
+                          <TableCell key={col.id}>
+                            {filledCount > 0 ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-bold text-slate-800 inline-block w-fit">
+                                  Σ {colTotal}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground pl-1">{filledCount} students</span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
+                          </TableCell>
+                        );
+                      })}
+                      {/* Grand total % cell */}
+                      <TableCell>
+                        {(() => {
+                          const grandObtained = filteredStudents.reduce((sum, student) => {
+                            return sum + bulkSubjects.reduce((s2, col) => {
+                              const val = bulkMarks[student.id]?.[col.id];
+                              if (val === undefined || val === "") return s2;
+                              const num = Number(val);
+                              return Number.isNaN(num) ? s2 : s2 + num;
+                            }, 0);
+                          }, 0);
+                          const tm = bulkCommon.total_marks !== "" ? Number(bulkCommon.total_marks) : null;
+                          const totalFilledCells = filteredStudents.reduce((sum, student) =>
+                            sum + bulkSubjects.filter((col) => {
+                              const val = bulkMarks[student.id]?.[col.id];
+                              return val !== undefined && val !== "" && !Number.isNaN(Number(val));
+                            }).length, 0);
+                          if (totalFilledCells === 0) return <span className="text-muted-foreground text-xs">—</span>;
+                          if (!tm || tm <= 0) {
+                            return (
+                              <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-bold text-slate-800">
+                                Σ {grandObtained}
+                              </span>
+                            );
+                          }
+                          const maxPossible = tm * totalFilledCells;
+                          const pct = ((grandObtained / maxPossible) * 100).toFixed(1);
+                          const pctNum = parseFloat(pct);
+                          const color =
+                            pctNum >= 75 ? "bg-emerald-100 text-emerald-700" :
+                            pctNum >= 50 ? "bg-amber-100 text-amber-700" :
+                            "bg-red-100 text-red-700";
+                          return (
+                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${color}`}>
+                              {pct}%
+                            </span>
+                          );
+                        })()}
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
