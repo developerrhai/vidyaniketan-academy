@@ -1367,69 +1367,68 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
           </DialogHeader>
 
           <div className="space-y-4 flex-1 overflow-y-auto pr-1">
-            {/* Common fields: Examination + Date (no subject here anymore) */}
-            {/* Common fields: Examination + Date + Total Marks */}
-            <div className="space-y-3 rounded-xl bg-muted/50 p-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="space-y-1">
-                  <Label>Examination <span className="text-red-500">*</span></Label>
-                  <Input
-                    value={bulkCommon.examination}
-                    onChange={(e) => setBulkCommon((p) => ({ ...p, examination: e.target.value }))}
-                    placeholder="e.g. Unit Test 1"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Date <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="date"
-                    value={bulkCommon.exam_date}
-                    onChange={(e) => setBulkCommon((p) => ({ ...p, exam_date: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Total Marks <span className="text-muted-foreground text-xs font-normal">(optional — all subjects)</span></Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={bulkCommon.total_marks}
-                    onChange={(e) => setBulkCommon((p) => ({ ...p, total_marks: e.target.value }))}
-                    placeholder="e.g. 100"
-                  />
-                </div>
-              </div>
-              {/* Import / Export row */}
-              <div className="flex items-center gap-2 pt-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 rounded-full gap-1.5 text-xs"
-                  onClick={exportBulkCSV}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Export CSV
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 rounded-full gap-1.5 text-xs"
-                  onClick={() => bulkImportRef.current?.click()}
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  Import CSV
-                </Button>
-                <input
-                  ref={bulkImportRef}
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  onChange={handleBulkImportFile}
-                />
-                <span className="text-xs text-muted-foreground">Import a previously exported bulk CSV to pre-fill marks.</span>
-              </div>
-            </div>
+           {/* Common fields: Examination + Date + Total Marks */}
+<div className="space-y-3 rounded-xl bg-muted/50 p-4">
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="space-y-1">
+      <Label>Examination <span className="text-red-500">*</span></Label>
+      <Input
+        value={bulkCommon.examination}
+        onChange={(e) => setBulkCommon((p) => ({ ...p, examination: e.target.value }))}
+        placeholder="e.g. Unit Test 1"
+      />
+    </div>
+    <div className="space-y-1">
+      <Label>Date <span className="text-red-500">*</span></Label>
+      <Input
+        type="date"
+        value={bulkCommon.exam_date}
+        onChange={(e) => setBulkCommon((p) => ({ ...p, exam_date: e.target.value }))}
+      />
+    </div>
+    <div className="space-y-1">
+      <Label>Total Marks <span className="text-muted-foreground text-xs font-normal">(optional — all subjects)</span></Label>
+      <Input
+        type="number"
+        min={0}
+        value={bulkCommon.total_marks}
+        onChange={(e) => setBulkCommon((p) => ({ ...p, total_marks: e.target.value }))}
+        placeholder="e.g. 100"
+      />
+    </div>
+  </div>
+  {/* Import / Export row */}
+  <div className="flex items-center gap-2 pt-1">
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-8 rounded-full gap-1.5 text-xs"
+      onClick={exportBulkCSV}
+    >
+      <Download className="h-3.5 w-3.5" />
+      Export CSV
+    </Button>
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-8 rounded-full gap-1.5 text-xs"
+      onClick={() => bulkImportRef.current?.click()}
+    >
+      <Upload className="h-3.5 w-3.5" />
+      Import CSV
+    </Button>
+    <input
+      ref={bulkImportRef}
+      type="file"
+      accept=".csv"
+      className="hidden"
+      onChange={handleBulkImportFile}
+    />
+    <span className="text-xs text-muted-foreground">Import a previously exported bulk CSV to pre-fill marks.</span>
+  </div>
+</div>
 
             {/* Subject columns management */}
             <div className="space-y-2">
@@ -1509,7 +1508,7 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
                 <TableBody>
                   {filteredStudents.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4 + bulkSubjects.length} className="text-center py-8 text-muted-foreground text-sm">
+                     <TableCell colSpan={4 + bulkSubjects.length} className="text-center py-8 text-muted-foreground text-sm">
                         No students match current filters.
                       </TableCell>
                     </TableRow>
@@ -1520,16 +1519,16 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
                         <TableCell>{student.standard}</TableCell>
                         <TableCell>{student.board}</TableCell>
                         {bulkSubjects.map((col) => (
-                        <TableCell key={col.id}>
-                          <Input
-                            type="number"
-                            min={0}
-                            placeholder="—"
-                            value={bulkMarks[student.id]?.[col.id] ?? ""}
-                            onChange={(e) => updateBulkMark(student.id, col.id, e.target.value)}
-                            className="h-8 w-28 rounded-full text-sm"
-                          />
-                        </TableCell>
+                          <TableCell key={col.id}>
+                            <Input
+                              type="number"
+                              min={0}
+                              placeholder="—"
+                              value={bulkMarks[student.id]?.[col.id] ?? ""}
+                              onChange={(e) => updateBulkMark(student.id, col.id, e.target.value)}
+                              className="h-8 w-28 rounded-full text-sm"
+                            />
+                          </TableCell>
                         ))}
                         <TableCell>
                           {(() => {
