@@ -300,10 +300,9 @@ export function StudentManagementContent() {
 
   // ── Bulk marks state ──────────────────────────────────────────────────────────
   const [bulkOpen, setBulkOpen] = useState(false);
- const [bulkCommon, setBulkCommon] = useState({
+  const [bulkCommon, setBulkCommon] = useState({
     examination: "",
     exam_date: new Date().toISOString().split("T")[0],
-    total_marks: "",
   });
   // Dynamic subject columns — start with one empty column
   const [bulkSubjects, setBulkSubjects] = useState<SubjectCol[]>([
@@ -408,59 +407,6 @@ export function StudentManagementContent() {
   }, [filteredStudents, page, pageSize]);
 
   // ── Export ────────────────────────────────────────────────────────────────
-
-
-  // ── Bulk marks export ─────────────────────────────────────────────────────────
-const exportBulkCSV = () => {
-  const subjectHeaders = bulkSubjects.map((c) => c.subject || `Subject_${c.id}`);
-  const headerRow = ["student_id", "name", "standard", "board", ...subjectHeaders, "percentage"];
-  const rows = filteredStudents.map((student) => {
-    const markValues = bulkSubjects.map((col) => bulkMarks[student.id]?.[col.id] ?? "");
-    const filled = markValues.map(Number).filter((v, i) => bulkMarks[student.id]?.[bulkSubjects[i].id]?.trim());
-    const totalObtained = filled.reduce((a, b) => a + b, 0);
-    const totalPossible = bulkCommon.total_marks !== "" ? Number(bulkCommon.total_marks) * filled.length : null;
-    const pct = totalPossible && totalPossible > 0 ? ((totalObtained / totalPossible) * 100).toFixed(1) + "%" : "";
-    return [student.id, student.name, student.standard, student.board, ...markValues, pct].join(",");
-  });
-  downloadBlob([headerRow.join(","), ...rows].join("\n"), "bulk_marks.csv", "text/csv;charset=utf-8;");
-};
-
-const bulkImportRef = useRef<HTMLInputElement>(null);
-
-const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    try {
-      const text = ev.target?.result as string;
-      const rows = parseCSV(text);
-      if (rows.length === 0) return;
-      // Detect subject columns (everything except student_id, name, standard, board, percentage)
-      const skip = new Set(["student_id", "name", "standard", "board", "percentage"]);
-      const subjectCols = Object.keys(rows[0]).filter((k) => !skip.has(k));
-      // Rebuild subject columns
-      const newCols: SubjectCol[] = subjectCols.map((s, i) => ({ id: `import-col-${i}`, subject: s }));
-      setBulkSubjects(newCols);
-      // Fill marks
-      const newMarks: Record<number, Record<string, string>> = {};
-      for (const row of rows) {
-        const sid = Number(row.student_id);
-        if (!sid) continue;
-        newMarks[sid] = {};
-        for (const col of newCols) {
-          const val = row[col.subject];
-          if (val !== undefined && val !== "") newMarks[sid][col.id] = val;
-        }
-      }
-      setBulkMarks(newMarks);
-    } catch (err) {
-      console.error("Bulk import error", err);
-    }
-    if (e.target) e.target.value = "";
-  };
-  reader.readAsText(file);
-};
 
   const exportCSV = () => {
     const csv = studentsToCSV(filteredStudents);
@@ -861,8 +807,8 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     setBulkProgress(null);
     setBulkOpen(false);
     setBulkMarks({});
-   setBulkCommon({ examination: "", exam_date: new Date().toISOString().split("T")[0], total_marks: "" });
-    
+    setBulkSubjects([{ id: "col-0", subject: "" }]);
+    setBulkCommon({ examination: "", exam_date: new Date().toISOString().split("T")[0] });
   };
 
   const deleteStudent = async (student: Student) => {
@@ -1367,68 +1313,24 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
 
           <div className="space-y-4 flex-1 overflow-y-auto pr-1">
             {/* Common fields: Examination + Date (no subject here anymore) */}
-            {/* Common fields: Examination + Date + Total Marks */}
-<div className="space-y-3 rounded-xl bg-muted/50 p-4">
-  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-    <div className="space-y-1">
-      <Label>Examination <span className="text-red-500">*</span></Label>
-      <Input
-        value={bulkCommon.examination}
-        onChange={(e) => setBulkCommon((p) => ({ ...p, examination: e.target.value }))}
-        placeholder="e.g. Unit Test 1"
-      />
-    </div>
-    <div className="space-y-1">
-      <Label>Date <span className="text-red-500">*</span></Label>
-      <Input
-        type="date"
-        value={bulkCommon.exam_date}
-        onChange={(e) => setBulkCommon((p) => ({ ...p, exam_date: e.target.value }))}
-      />
-    </div>
-    <div className="space-y-1">
-      <Label>Total Marks <span className="text-muted-foreground text-xs font-normal">(optional — all subjects)</span></Label>
-      <Input
-        type="number"
-        min={0}
-        value={bulkCommon.total_marks}
-        onChange={(e) => setBulkCommon((p) => ({ ...p, total_marks: e.target.value }))}
-        placeholder="e.g. 100"
-      />
-    </div>
-  </div>
-  {/* Import / Export row */}
-  <div className="flex items-center gap-2 pt-1">
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="h-8 rounded-full gap-1.5 text-xs"
-      onClick={exportBulkCSV}
-    >
-      <Download className="h-3.5 w-3.5" />
-      Export CSV
-    </Button>
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="h-8 rounded-full gap-1.5 text-xs"
-      onClick={() => bulkImportRef.current?.click()}
-    >
-      <Upload className="h-3.5 w-3.5" />
-      Import CSV
-    </Button>
-    <input
-      ref={bulkImportRef}
-      type="file"
-      accept=".csv"
-      className="hidden"
-      onChange={handleBulkImportFile}
-    />
-    <span className="text-xs text-muted-foreground">Import a previously exported bulk CSV to pre-fill marks.</span>
-  </div>
-</div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-xl bg-muted/50 p-4">
+              <div className="space-y-1">
+                <Label>Examination <span className="text-red-500">*</span></Label>
+                <Input
+                  value={bulkCommon.examination}
+                  onChange={(e) => setBulkCommon((p) => ({ ...p, examination: e.target.value }))}
+                  placeholder="e.g. Unit Test 1"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Date <span className="text-red-500">*</span></Label>
+                <Input
+                  type="date"
+                  value={bulkCommon.exam_date}
+                  onChange={(e) => setBulkCommon((p) => ({ ...p, exam_date: e.target.value }))}
+                />
+              </div>
+            </div>
 
             {/* Subject columns management */}
             <div className="space-y-2">
@@ -1450,22 +1352,27 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
 
               {/* Subject name inputs row */}
               <div className="flex flex-wrap gap-2">
-               {bulkSubjects.map((col, idx) => (
-  <TableHead key={col.id} className="text-white min-w-[130px]">
-    <div className="flex flex-col gap-0.5">
-      <span className="text-amber-300 text-[10px] font-normal">Subject #{idx + 1}</span>
-      <span className="truncate max-w-[120px]">
-        {col.subject.trim() || <span className="opacity-50 italic text-xs">Unnamed</span>}
-      </span>
-    </div>
-  </TableHead>
-))}
-<TableHead className="text-white min-w-[100px]">
-  <div className="flex flex-col gap-0.5">
-    <span className="text-emerald-300 text-[10px] font-normal">Auto</span>
-    <span>% Score</span>
-  </div>
-</TableHead>
+                {bulkSubjects.map((col, idx) => (
+                  <div key={col.id} className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1">
+                    <span className="text-xs text-amber-500 font-semibold min-w-[1.2rem]">#{idx + 1}</span>
+                    <Input
+                      value={col.subject}
+                      onChange={(e) => updateBulkSubjectName(col.id, e.target.value)}
+                      placeholder="Subject name"
+                      className="h-7 w-36 rounded-full border-amber-200 text-xs px-2 bg-white focus-visible:ring-amber-300"
+                    />
+                    {bulkSubjects.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeBulkSubjectCol(col.id)}
+                        className="flex h-5 w-5 items-center justify-center rounded-full text-amber-400 hover:bg-amber-200 hover:text-amber-700 transition-colors"
+                        title="Remove subject"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1482,28 +1389,22 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
                     <TableHead className="text-white sticky left-0 bg-slate-900 z-10">Name</TableHead>
                     <TableHead className="text-white">Std</TableHead>
                     <TableHead className="text-white">Board</TableHead>
-                   {bulkSubjects.map((col, idx) => (
-                    <TableHead key={col.id} className="text-white min-w-[130px]">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-amber-300 text-[10px] font-normal">Subject #{idx + 1}</span>
-                        <span className="truncate max-w-[120px]">
-                          {col.subject.trim() || <span className="opacity-50 italic text-xs">Unnamed</span>}
-                        </span>
-                      </div>
-                    </TableHead>
-                  ))}
-                  <TableHead className="text-white min-w-[100px]">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-emerald-300 text-[10px] font-normal">Auto</span>
-                      <span>% Score</span>
-                    </div>
-                  </TableHead>
+                    {bulkSubjects.map((col, idx) => (
+                      <TableHead key={col.id} className="text-white min-w-[130px]">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-amber-300 text-[10px] font-normal">Subject #{idx + 1}</span>
+                          <span className="truncate max-w-[120px]">
+                            {col.subject.trim() || <span className="opacity-50 italic text-xs">Unnamed</span>}
+                          </span>
+                        </div>
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredStudents.length === 0 ? (
                     <TableRow>
-                     <TableCell colSpan={4 + bulkSubjects.length} className="text-center py-8 text-muted-foreground text-sm">
+                      <TableCell colSpan={3 + bulkSubjects.length} className="text-center py-8 text-muted-foreground text-sm">
                         No students match current filters.
                       </TableCell>
                     </TableRow>
@@ -1513,48 +1414,18 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
                         <TableCell className="font-medium sticky left-0 bg-card z-10">{student.name}</TableCell>
                         <TableCell>{student.standard}</TableCell>
                         <TableCell>{student.board}</TableCell>
-                       {bulkSubjects.map((col) => (
-  <TableCell key={col.id}>
-    <Input
-      type="number"
-      min={0}
-      placeholder="—"
-      value={bulkMarks[student.id]?.[col.id] ?? ""}
-      onChange={(e) => updateBulkMark(student.id, col.id, e.target.value)}
-      className="h-8 w-28 rounded-full text-sm"
-    />
-  </TableCell>
+                        {bulkSubjects.map((col) => (
+                          <TableCell key={col.id}>
+                            <Input
+                              type="number"
+                              min={0}
+                              placeholder="—"
+                              value={bulkMarks[student.id]?.[col.id] ?? ""}
+                              onChange={(e) => updateBulkMark(student.id, col.id, e.target.value)}
+                              className="h-8 w-28 rounded-full text-sm"
+                            />
+                          </TableCell>
                         ))}
-                        <TableCell>
-                          {(() => {
-                            const filledEntries = bulkSubjects
-                              .map((col) => bulkMarks[student.id]?.[col.id])
-                              .filter((v) => v !== undefined && v !== "");
-                            if (filledEntries.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
-                            const totalObtained = filledEntries.reduce((sum, v) => sum + Number(v), 0);
-                            const tm = bulkCommon.total_marks !== "" ? Number(bulkCommon.total_marks) : null;
-                            if (!tm || tm <= 0) {
-                              // No total marks set — show sum only
-                              return (
-                                <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-                                  Σ {totalObtained}
-                                </span>
-                              );
-                            }
-                            const maxPossible = tm * filledEntries.length;
-                            const pct = ((totalObtained / maxPossible) * 100).toFixed(1);
-                            const pctNum = parseFloat(pct);
-                            const color =
-                              pctNum >= 75 ? "bg-emerald-100 text-emerald-700" :
-                              pctNum >= 50 ? "bg-amber-100 text-amber-700" :
-                              "bg-red-100 text-red-700";
-                            return (
-                              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${color}`}>
-                                {pct}%
-                              </span>
-                            );
-                          })()}
-                        </TableCell>
                       </TableRow>
                     ))
                   )}
