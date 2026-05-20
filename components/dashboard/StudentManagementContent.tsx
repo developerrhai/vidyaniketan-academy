@@ -1498,6 +1498,12 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
                     ))}
                     <TableHead className="text-white min-w-[100px]">
                       <div className="flex flex-col gap-0.5">
+                        <span className="text-blue-300 text-[10px] font-normal">Auto</span>
+                        <span>Total</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-white min-w-[100px]">
+                      <div className="flex flex-col gap-0.5">
                         <span className="text-emerald-300 text-[10px] font-normal">Auto</span>
                         <span>% Score</span>
                       </div>
@@ -1507,7 +1513,7 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
                 <TableBody>
                   {filteredStudents.length === 0 ? (
                     <TableRow>
-                     <TableCell colSpan={4 + bulkSubjects.length} className="text-center py-8 text-muted-foreground text-sm">
+                    <TableCell colSpan={5 + bulkSubjects.length} className="text-center py-8 text-muted-foreground text-sm">
                         No students match current filters.
                       </TableCell>
                     </TableRow>
@@ -1529,6 +1535,27 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     />
   </TableCell>
 ))}
+<TableCell>
+  {(() => {
+    const filledEntries = bulkSubjects
+      .map((col) => bulkMarks[student.id]?.[col.id])
+      .filter((v) => v !== undefined && v !== "");
+    if (filledEntries.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
+    const rowTotal = filledEntries.reduce((sum, v) => sum + Number(v), 0);
+    const tm = bulkCommon.total_marks !== "" ? Number(bulkCommon.total_marks) : null;
+    const maxPossible = tm && tm > 0 ? tm * filledEntries.length : null;
+    return (
+      <div className="flex flex-col gap-0.5">
+        <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-800 inline-block w-fit">
+          {rowTotal}
+        </span>
+        {maxPossible && (
+          <span className="text-[10px] text-muted-foreground pl-1">/ {maxPossible}</span>
+        )}
+      </div>
+    );
+  })()}
+</TableCell>
 <TableCell>
   {(() => {
     const filledEntries = bulkSubjects
@@ -1595,6 +1622,36 @@ const handleBulkImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
                           </TableCell>
                         );
                       })}
+                      {/* Grand row total cell */}
+                      <TableCell>
+                        {(() => {
+                          const grandTotal = filteredStudents.reduce((sum, student) =>
+                            sum + bulkSubjects.reduce((s2, col) => {
+                              const val = bulkMarks[student.id]?.[col.id];
+                              if (!val || val === "") return s2;
+                              const num = Number(val);
+                              return Number.isNaN(num) ? s2 : s2 + num;
+                            }, 0), 0);
+                          const totalFilledCells = filteredStudents.reduce((sum, student) =>
+                            sum + bulkSubjects.filter((col) => {
+                              const val = bulkMarks[student.id]?.[col.id];
+                              return val !== undefined && val !== "" && !Number.isNaN(Number(val));
+                            }).length, 0);
+                          if (totalFilledCells === 0) return <span className="text-muted-foreground text-xs">—</span>;
+                          const tm = bulkCommon.total_marks !== "" ? Number(bulkCommon.total_marks) : null;
+                          const maxPossible = tm && tm > 0 ? tm * totalFilledCells : null;
+                          return (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="rounded-full bg-blue-200 px-2.5 py-0.5 text-xs font-bold text-blue-900 inline-block w-fit">
+                                {grandTotal}
+                              </span>
+                              {maxPossible && (
+                                <span className="text-[10px] text-muted-foreground pl-1">/ {maxPossible}</span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
                       {/* Grand total % cell */}
                       <TableCell>
                         {(() => {
