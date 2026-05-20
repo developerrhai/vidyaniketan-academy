@@ -15,7 +15,6 @@
   import { AssessmentHistory } from "../performdashboard/assessment-history";
   import { AddAttendanceDialog } from "../performdashboard/add-attendance-dialog";
   import { RankHistory, type RankHistoryRow } from "../performdashboard/rank-history";
-  import {PerformanceFilters,type PerformanceFiltersValue,} from "../performdashboard/performance-filters";
   import {
     studentsUniversalApi,
     teacherStudentAssessmentsApi,
@@ -186,14 +185,6 @@
   }
 
 
-  const [filters, setFilters] = useState<PerformanceFiltersValue>({
-  examination: "",
-  subject: "",
-  dateFrom: "",
-  dateTo: "",
-});
-
-
   // ─── Report HTML builder ──────────────────────────────────────────────────────
 
   function generateReportHTML(data: DashboardData): string {
@@ -341,18 +332,6 @@
     );
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
     const [historyRows, setHistoryRows] = useState<AssessmentRow[]>([]);
-
-    const filteredHistoryRows = useMemo(() => {
-  return historyRows.filter((row) => {
-    if (filters.examination && row.examination !== filters.examination) return false;
-    if (filters.subject && row.subject !== filters.subject) return false;
-    if (filters.dateFrom && row.exam_date && row.exam_date < filters.dateFrom) return false;
-    if (filters.dateTo   && row.exam_date && row.exam_date > filters.dateTo)   return false;
-    return true;
-  });
-}, [historyRows, filters]);
- 
-
     const [rankHistoryRows, setRankHistoryRows] = useState<RankHistoryRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [studentLoading, setStudentLoading] = useState(false);
@@ -818,7 +797,7 @@
               </div>
             )}
 
-            {/* <div className="mb-6 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="mb-6 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <StudentProfile
                 name={displayData!.name}
                 phone={displayData!.phone}
@@ -838,39 +817,7 @@
                 <StatsCard title="Attendance" value={`${displayData!.stats.attendance}%`}
                   change={displayData!.stats.attendanceChange} changeLabel="vs Last Term" icon="attendance" />
               </div>
-            </div> */}
-
-            <div className="mb-6 flex flex-col gap-6">
-  {/* Row 1: Profile + Stats (unchanged) */}
-  <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-    <StudentProfile
-      name={displayData!.name}
-      phone={displayData!.phone}
-      className={displayData!.class}
-      board={displayData!.board}
-      location={displayData!.location}
-    />
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatsCard title="Overall Percentage" value={`${displayData!.stats.overallPercentage}%`}
-        change={displayData!.stats.percentageChange} changeLabel="vs Last Term" icon="percentage" />
-      <StatsCard title="Average Marks" value={displayData!.stats.averageMarks}
-        subValue={`/ ${displayData!.stats.totalMarks}`} change={displayData!.stats.averageChange}
-        changeLabel="vs Last Term" icon="star" />
-      <StatsCard title="Class Rank" value={displayData!.stats.classRank}
-        subValue={`/ ${displayData!.stats.totalStudents}`} change={displayData!.stats.rankChange}
-        changeLabel="vs Last Term" icon="rank" />
-      <StatsCard title="Attendance" value={`${displayData!.stats.attendance}%`}
-        change={displayData!.stats.attendanceChange} changeLabel="vs Last Term" icon="attendance" />
-    </div>
-  </div>
- 
-  {/* ── Row 2: Filters (NEW — sits between profile/stats and charts) ── */}
-  <PerformanceFilters
-    assessmentRows={historyRows}
-    value={filters}
-    onChange={setFilters}
-  />
-</div>
+            </div>
 
             <div className="mb-6 grid gap-6 lg:grid-cols-3">
               <div className="lg:col-span-1"><PerformanceChart data={displayData!.performanceData} /></div>
@@ -882,7 +829,7 @@
 
             <DetailedAnalysis subjects={displayData!.subjects} />
             <div className="mt-6">
-             <AssessmentHistory rows={filteredHistoryRows} loading={studentLoading} />
+              <AssessmentHistory rows={historyRows} loading={studentLoading} />
             </div>
             <div className="mt-6">
               <RankHistory rows={rankHistoryRows} loading={studentLoading} />
