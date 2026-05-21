@@ -661,26 +661,52 @@ export function StudentsContent() {
                 </div>
               </div>
 
-              {/* Academic Info */}
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Academic Information</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="edit-standard">Standard</Label>
-                  <Input id="edit-standard" value={editForm.standard ?? ""} onChange={e => handleEditChange("standard", e.target.value)} placeholder="e.g. 10th Standard" />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="edit-course">Course</Label>
-                  <Input id="edit-course" value={editForm.course ?? ""} onChange={e => handleEditChange("course", e.target.value)} placeholder="e.g. JEE / NEET" />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="edit-branch">Branch</Label>
-                  <Input id="edit-branch" value={editForm.branch ?? ""} onChange={e => handleEditChange("branch", e.target.value)} placeholder="Branch name" />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="edit-hostel">Hostel</Label>
-                  <Input id="edit-hostel" value={editForm.hostel ?? ""} onChange={e => handleEditChange("hostel", e.target.value)} placeholder="Hostel name or N/A" />
-                </div>
+           {/* Academic Info */}
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Academic Information</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>Standard</Label>
+                <Select value={editForm.standard ?? ""} onValueChange={val => handleEditChange("standard", val)}>
+                  <SelectTrigger><SelectValue placeholder="Select Standard" /></SelectTrigger>
+                  <SelectContent>
+                    {["1st","2nd","3rd","4th","5th","6th","7th","8th","9th","10th"].map((std, i) => (
+                      <SelectItem key={i+1} value={String(i+1)}>{std} Standard</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+              <div className="space-y-1">
+                <Label>Course</Label>
+                <Select value={editForm.course ?? ""} onValueChange={val => handleEditChange("course", val)}>
+                  <SelectTrigger><SelectValue placeholder="Select Course" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="JEE">JEE</SelectItem>
+                    <SelectItem value="NEET">NEET</SelectItem>
+                    <SelectItem value="Foundation">Foundation</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Branch</Label>
+                <Select value={editForm.branch ?? ""} onValueChange={val => handleEditChange("branch", val)}>
+                  <SelectTrigger><SelectValue placeholder="Select Branch" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Main Branch">Main Branch</SelectItem>
+                    <SelectItem value="SOF Branch">SOF Branch</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Hostel</Label>
+                <Select value={editForm.hostel ?? ""} onValueChange={val => handleEditChange("hostel", val)}>
+                  <SelectTrigger><SelectValue placeholder="Select Hostel" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Yes">Yes</SelectItem>
+                    <SelectItem value="No">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
             </div>
           )}
