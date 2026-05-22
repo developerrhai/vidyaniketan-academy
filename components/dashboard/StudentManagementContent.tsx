@@ -814,7 +814,7 @@ export function StudentManagementContent() {
       return;
     }
 
-    type Entry = { studentId: number; colId: string; subject: string; marks: number };
+    type Entry = { studentId: number; colId: string; subject: string; marks: number; total_marks?: number };
     const entries: Entry[] = [];
 
     for (const [sidStr, colMap] of Object.entries(bulkMarks)) {
@@ -828,10 +828,20 @@ export function StudentManagementContent() {
         }
         const col = bulkSubjects.find((c) => c.id === colId);
         if (!col) continue;
-        entries.push({ studentId, colId, subject: col.subject, marks: marksNum });
+        const resolvedTotalMarks = resolveSubjectTotalMarks(col);
+        if (resolvedTotalMarks !== null && marksNum > resolvedTotalMarks) {
+          alert(`Marks for "${col.subject}" (${marksNum}) cannot exceed Total Marks (${resolvedTotalMarks}).`);
+          return;
+        }
+        entries.push({
+          studentId,
+          colId,
+          subject: col.subject,
+          marks: marksNum,
+          ...(resolvedTotalMarks !== null && { total_marks: resolvedTotalMarks }),
+        });
       }
     }
-
     if (entries.length === 0) {
       alert("Enter marks for at least one student.");
       return;
@@ -847,6 +857,7 @@ export function StudentManagementContent() {
         await teacherStudentAssessmentsApi.createByStudent(entry.studentId, {
           subject: entry.subject,
           marks: entry.marks,
+          ...(entry.total_marks !== undefined && { total_marks: entry.total_marks }),
           examination: bulkCommon.examination,
           exam_date: bulkCommon.exam_date,
         });
