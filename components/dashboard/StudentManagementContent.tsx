@@ -316,7 +316,7 @@ export function StudentManagementContent() {
   const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null);
   const [xlsxMarksRows, setXlsxMarksRows] = useState<Array<{
     student_id: number; studentName: string; subject: string;
-    marks: number; examination: string; exam_date: string;
+    marks: number; total_marks?: number; examination: string; exam_date: string;
   }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bulkImportRef = useRef<HTMLInputElement>(null);
@@ -460,6 +460,9 @@ export function StudentManagementContent() {
             studentName: studentMap.get(Number(r.student_id)) || String(r.student_id),
             subject: r.subject || "",
             marks: Number(r.marks),
+            total_marks: r.total_marks !== "" && r.total_marks !== undefined
+              ? Number(r.total_marks)
+              : undefined,
             examination: r.examination || "",
             exam_date: r.exam_date ? String(r.exam_date).split("T")[0] : today,
           }))
@@ -539,6 +542,7 @@ export function StudentManagementContent() {
           await teacherStudentAssessmentsApi.createByStudent(row.student_id, {
             subject: row.subject,
             marks: row.marks,
+            ...(row.total_marks !== undefined && { total_marks: row.total_marks }),
             examination: row.examination,
             exam_date: row.exam_date,
           });
@@ -669,12 +673,12 @@ export function StudentManagementContent() {
         prev.map((s) =>
           s.id === selectedStudent.id
             ? {
-                ...s,
-                subject: latest?.subject || "",
-                marks: latest?.marks !== undefined ? Number(latest.marks) : undefined,
-                examination: latest?.examination || "",
-                exam_date: latest?.exam_date || "",
-              }
+              ...s,
+              subject: latest?.subject || "",
+              marks: latest?.marks !== undefined ? Number(latest.marks) : undefined,
+              examination: latest?.examination || "",
+              exam_date: latest?.exam_date || "",
+            }
             : s
         )
       );
@@ -1229,7 +1233,7 @@ export function StudentManagementContent() {
                 <FileText className="h-8 w-8 text-emerald-500" />
                 <FileJson className="h-8 w-8 text-blue-500" />
                 <svg className="h-8 w-8 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/><path d="m6 13 2 2 4-4"/>
+                  <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /><path d="m6 13 2 2 4-4" />
                 </svg>
               </div>
               <p className="text-sm font-medium">Click to choose CSV, JSON or Excel file</p>
@@ -1266,6 +1270,7 @@ export function StudentManagementContent() {
                         <TableHead>Subject</TableHead>
                         <TableHead>Examination</TableHead>
                         <TableHead>Marks</TableHead>
+                        <TableHead>Total Marks</TableHead>
                         <TableHead>Date</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1279,17 +1284,21 @@ export function StudentManagementContent() {
                           <TableCell>
                             <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700">{r.marks}</span>
                           </TableCell>
-                          <TableCell>{r.exam_date || "—"}</TableCell>
-                        </TableRow>
-                      ))}
-                      {xlsxMarksRows.length > 10 && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center text-xs text-muted-foreground py-2">
-                            …and {xlsxMarksRows.length - 10} more
+                          <TableCell>
+                            {r.total_marks !== undefined
+                              ? <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">{r.total_marks}</span>
+                              : "—"}
                           </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
+                          <TableCell>{r.exam_date || "—"}</TableCell>
+                      ))}
+                          {xlsxMarksRows.length > 10 && (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center text-xs text-muted-foreground py-2">
+                                …and {xlsxMarksRows.length - 10} more
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
                   </Table>
                 </div>
               </div>
@@ -1653,8 +1662,8 @@ export function StudentManagementContent() {
                               pctNum >= 75
                                 ? "bg-emerald-100 text-emerald-700"
                                 : pctNum >= 50
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-red-100 text-red-700";
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-red-100 text-red-700";
                             return (
                               <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${color}`}>
                                 {pct}%
@@ -1800,8 +1809,8 @@ export function StudentManagementContent() {
                             pctNum >= 75
                               ? "bg-emerald-100 text-emerald-700"
                               : pctNum >= 50
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-red-100 text-red-700";
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-red-100 text-red-700";
                           return (
                             <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${color}`}>
                               {pct}%
