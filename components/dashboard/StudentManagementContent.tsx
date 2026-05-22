@@ -1290,15 +1290,16 @@ export function StudentManagementContent() {
                               : "—"}
                           </TableCell>
                           <TableCell>{r.exam_date || "—"}</TableCell>
+                        </TableRow>
                       ))}
-                          {xlsxMarksRows.length > 10 && (
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center text-xs text-muted-foreground py-2">
-                                …and {xlsxMarksRows.length - 10} more
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
+                      {xlsxMarksRows.length > 10 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-xs text-muted-foreground py-2">
+                            …and {xlsxMarksRows.length - 10} more
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
                   </Table>
                 </div>
               </div>
