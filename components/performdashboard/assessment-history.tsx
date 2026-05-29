@@ -8,51 +8,103 @@ type AssessmentHistoryProps = {
   loading?: boolean;
 };
 
+function getColor(pct: number) {
+  if (pct >= 80) return "#3B6D11";
+  if (pct >= 60) return "#185FA5";
+  return "#A32D2D";
+}
+
 export function AssessmentHistory({ rows, loading }: AssessmentHistoryProps) {
+  // Derive unique subjects and unique exams (preserving insertion order)
+  const subjects = [...new Set(rows.map((r) => r.subject))];
+  const examKeys = [...new Map(
+    rows.map((r) => [r.examination, { examination: r.examination, exam_date: r.exam_date }])
+  ).values()];
+
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm border border-slate-100">
-      <h3 className="mb-4 text-lg font-semibold text-slate-800">
+    <div className="rounded-xl bg-white border border-slate-100 shadow-sm overflow-hidden">
+      <h3 className="px-5 py-4 text-[15px] font-medium text-slate-800 border-b border-slate-100">
         Assessment History
       </h3>
+
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-slate-700 text-white">
-              <th className="px-4 py-3 text-left font-semibold rounded-l-lg">Subject</th>
-              <th className="px-4 py-3 text-left font-semibold">Examination</th>
-              <th className="px-4 py-3 text-center font-semibold">Marks</th>
-              <th className="px-4 py-3 text-center font-semibold">Total</th>
-              <th className="px-4 py-3 text-center font-semibold rounded-r-lg">Date</th>
+            <tr className="bg-slate-50">
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 border-r border-slate-100 whitespace-nowrap">
+                Examination
+              </th>
+              {subjects.map((subject) => (
+                <th
+                  key={subject}
+                  className="px-4 py-3 text-center text-[13px] font-medium text-slate-700 min-w-[100px]"
+                >
+                  {subject}
+                </th>
+              ))}
             </tr>
           </thead>
+
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-slate-500">
+                <td
+                  colSpan={subjects.length + 1}
+                  className="py-8 text-center text-slate-400"
+                >
                   <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-slate-500">
+                <td
+                  colSpan={subjects.length + 1}
+                  className="py-8 text-center text-slate-400 text-sm"
+                >
                   No assessments recorded yet. Use Add Marks to enter results.
                 </td>
               </tr>
             ) : (
-              rows.map((row, index) => (
-                <tr
-                  key={`${row.id ?? index}-${row.subject}-${row.exam_date}`}
-                  className="border-b border-slate-100 hover:bg-slate-50"
-                >
-                  <td className="px-4 py-3 font-medium text-slate-700">{row.subject}</td>
-                  <td className="px-4 py-3 text-slate-600">{row.examination}</td>
-                  <td className="px-4 py-3 text-center text-slate-600">{row.marks}</td>
-                  <td className="px-4 py-3 text-center text-slate-600">
-                    {row.total_marks && row.total_marks > 0 ? row.total_marks : 100}
+              examKeys.map((exam) => (
+                <tr key={exam.examination} className="border-t border-slate-100 hover:bg-slate-50">
+                  {/* Exam label */}
+                  <td className="px-4 py-3 border-r border-slate-100 whitespace-nowrap">
+                    <p className="font-medium text-slate-700">{exam.examination}</p>
+                    <p className="text-[11px] text-slate-400">
+                      {exam.exam_date ? String(exam.exam_date).split("T")[0] : "—"}
+                    </p>
                   </td>
-                  <td className="px-4 py-3 text-center text-slate-600">
-                    {row.exam_date ? String(row.exam_date).split("T")[0] : "—"}
-                  </td>
+
+                  {/* One cell per subject */}
+                  {subjects.map((subject) => {
+                    const match = rows.find(
+                      (r) => r.subject === subject && r.examination === exam.examination
+                    );
+                    const total = match?.total_marks && match.total_marks > 0 ? match.total_marks : 100;
+                    const pct = match ? Math.round((match.marks / total) * 100) : null;
+                    const color = pct !== null ? getColor(pct) : undefined;
+
+                    return (
+                      <td key={subject} className="px-4 py-3 text-center">
+                        {match && pct !== null ? (
+                          <>
+                            <span className="font-medium" style={{ color }}>
+                              {match.marks}
+                            </span>
+                            <span className="text-slate-400"> / {total}</span>
+                            <div className="mt-1 h-[3px] rounded-full bg-slate-100 overflow-hidden">
+                              <div
+                                className="h-full rounded-full"
+                                style={{ width: `${pct}%`, backgroundColor: color }}
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             )}
