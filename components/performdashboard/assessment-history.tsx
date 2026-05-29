@@ -30,19 +30,19 @@ export function AssessmentHistory({ rows, loading }: AssessmentHistoryProps) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr style={{ backgroundColor: "#314158" }}>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 border-r border-slate-100 whitespace-nowrap">
-                Examination
+        <tr style={{ backgroundColor: "#314158" }}>
+            <th className="px-4 py-3 text-left text-xs font-medium text-white border-r border-white/10 whitespace-nowrap">
+              Examination
+            </th>
+            {subjects.map((subject) => (
+              <th
+                key={subject}
+                className="px-4 py-3 text-center text-[13px] font-medium text-white min-w-[100px]"
+              >
+                {subject}
               </th>
-              {subjects.map((subject) => (
-                <th
-                  key={subject}
-                  className="px-4 py-3 text-center text-[13px] font-medium text-slate-700 min-w-[100px]"
-                >
-                  {subject}
-                </th>
-              ))}
-            </tr>
+            ))}
+          </tr>
           </thead>
 
           <tbody>
