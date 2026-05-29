@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Filter, BookOpen, FlaskConical, CalendarRange, X, ChevronDown } from "lucide-react";
+import { Filter, BookOpen, FlaskConical, CalendarRange, X, ChevronDown, Trash } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -274,6 +274,25 @@ export function PerformanceFilters({
                   </button>
                 </span>
               ))}
+          {/* Delete all examinations button */}
+          {safeValue.examinations.length > 0 && (
+            <button
+              type="button"
+              onClick={async () => {
+                // call backend to delete examination
+                try {
+                  await examinationsApi.remove(safeValue.examinations[0]);
+                } catch (e) {
+                  console.error('Failed to delete examination', e);
+                }
+                onChange({ ...safeValue, examinations: [] })
+              }}
+              className="mt-2 flex items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors"
+            >
+              <Trash className="h-3.5 w-3.5" />
+              Delete Examination
+            </button>
+          )}
             </div>
           )}
         </div>
