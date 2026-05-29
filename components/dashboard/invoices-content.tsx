@@ -173,33 +173,57 @@ export function InvoicesContent() {
   }
 
   const handleSave = async () => {
-    if (!form.student_name || !form.amount || !form.due_date) {
-      alert("Fill required fields"); return
-    }
-    setSaving(true)
-    try {
-      const payload = {
-        student_name:     form.student_name,
-        student_id:       form.student_id || undefined,
-        amount:           parseFloat(form.amount),
-        paid_amount:      parseFloat(form.paid_amount) || 0,
-        due_date:         form.due_date,
-        install_date:     form.install_date || undefined,
-        transaction_type: form.transaction_type,
-        description:      form.description,
-      }
-
-      if (editing) {
-        await invoicesApi.update(editing.id, payload)
-      } else {
-        await invoicesApi.create(payload)
-      }
-      setModalOpen(false)
-      setEditing(null)
-      load()
-    } catch (err: any) { alert(err.message) }
-    finally { setSaving(false) }
+  if (!form.student_name || !form.amount || !form.due_date) {
+    alert("Fill required fields"); return
   }
+  setSaving(true)
+  try {
+    const payload = {
+      student_name:     form.student_name,
+      student_id:       form.student_id || undefined,
+      amount:           parseFloat(form.amount),
+      paid_amount:      parseFloat(form.paid_amount) || 0,
+      due_date:         form.due_date,
+      install_date:     form.install_date || undefined,
+      transaction_type: form.transaction_type,
+      description:      form.description,
+    }
+
+    if (editing) {
+      const oldPaid = Number(editing.paid_amount) || 0
+      const newPaid = parseFloat(form.paid_amount) || 0
+      const diff    = newPaid - oldPaid          // could be negative
+
+      await invoicesApi.update(editing.id, payload)
+
+      // Sync student paid_fee if student is linked and paid changed
+      if (form.student_id && diff !== 0) {
+        const stuRes: any = await studentsApi.getOne(Number(form.student_id))
+        const stu: Student = stuRes.data
+        await studentsApi.update(Number(form.student_id), {
+          paid_fee: Number(stu.paid_fee) + diff,
+        })
+      }
+    } else {
+      await invoicesApi.create(payload)
+
+      // Sync student paid_fee on new invoice
+      if (form.student_id && parseFloat(form.paid_amount) > 0) {
+        const stuRes: any = await studentsApi.getOne(Number(form.student_id))
+        const stu: Student = stuRes.data
+        await studentsApi.update(Number(form.student_id), {
+          paid_fee: Number(stu.paid_fee) + (parseFloat(form.paid_amount) || 0),
+        })
+      }
+    }
+
+    setModalOpen(false)
+    setEditing(null)
+    load()
+  } catch (err: any) { alert(err.message) }
+  finally { setSaving(false) }
+}
+
 
   const openEdit = (inv: Invoice) => {
     setEditing(inv)
