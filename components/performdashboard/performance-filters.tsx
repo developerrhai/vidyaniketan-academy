@@ -53,12 +53,12 @@ const PRESETS: { label: string; value: Preset }[] = [
 
 function presetToDates(p: Preset): { dateFrom: string; dateTo: string } {
   switch (p) {
-    case "all":        return { dateFrom: "", dateTo: "" };
+    case "all": return { dateFrom: "", dateTo: "" };
     case "this_month": return { dateFrom: startOfMonth(), dateTo: isoToday() };
     case "last_month": return { dateFrom: startOfLastMonth(), dateTo: endOfLastMonth() };
-    case "last_3":     return { dateFrom: isoMonthsAgo(3), dateTo: isoToday() };
-    case "last_6":     return { dateFrom: isoMonthsAgo(6), dateTo: isoToday() };
-    case "custom":     return { dateFrom: "", dateTo: "" };
+    case "last_3": return { dateFrom: isoMonthsAgo(3), dateTo: isoToday() };
+    case "last_6": return { dateFrom: isoMonthsAgo(6), dateTo: isoToday() };
+    case "custom": return { dateFrom: "", dateTo: "" };
   }
 }
 
@@ -78,6 +78,9 @@ function activeFilterCount(v: PerformanceFiltersValue): number {
 
 // ─── Multi-select Dropdown ────────────────────────────────────────────────────
 
+import { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
+
 function MultiSelectDropdown({
   options,
   selected,
@@ -90,12 +93,36 @@ function MultiSelectDropdown({
   placeholder: string;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
-  // Close on outside click
+  // Position the dropdown using fixed coords so overflow:hidden doesn't clip it
+  function reposition() {
+    if (!triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    reposition();
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [open]);
+
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
+      ) {
+        const menu = document.getElementById("ms-dropdown-menu");
+        if (!menu?.contains(e.target as Node)) setOpen(false);
+      }
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -103,7 +130,9 @@ function MultiSelectDropdown({
 
   function toggle(opt: string) {
     onChange(
-      selected.includes(opt) ? selected.filter((s) => s !== opt) : [...selected, opt]
+      selected.includes(opt)
+        ? selected.filter((s) => s !== opt)
+        : [...selected, opt]
     );
   }
 
@@ -115,12 +144,63 @@ function MultiSelectDropdown({
     selected.length === 0
       ? placeholder
       : selected.length === 1
-      ? selected[0]
-      : `${selected.length} selected`;
+        ? selected[0]
+        : `${selected.length} selected`;
+
+  const menu = open
+    ? createPortal(
+      <div
+        id="ms-dropdown-menu"
+        style={{
+          position: "fixed",
+          top: dropPos.top,
+          left: dropPos.left,
+          width: dropPos.width,
+          zIndex: 9999,
+        }}
+        className="rounded-lg border border-slate-200 bg-white shadow-lg overflow-hidden"
+      >
+        <label className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 border-b border-slate-100">
+          <input
+            type="checkbox"
+            checked={selected.length === options.length}
+            ref={(el) => {
+              if (el)
+                el.indeterminate =
+                  selected.length > 0 && selected.length < options.length;
+            }}
+            onChange={toggleAll}
+            className="h-3.5 w-3.5 rounded accent-teal-600"
+          />
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            All Examinations
+          </span>
+        </label>
+        <div className="max-h-48 overflow-y-auto">
+          {options.map((opt) => (
+            <label
+              key={opt}
+              className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 text-sm text-slate-700"
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(opt)}
+                onChange={() => toggle(opt)}
+                className="h-3.5 w-3.5 rounded accent-teal-600"
+              />
+              {opt}
+            </label>
+          ))}
+        </div>
+      </div>,
+      document.body
+    )
+    : null;
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between h-9 pl-3 pr-2.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition hover:border-slate-300"
@@ -132,44 +212,7 @@ function MultiSelectDropdown({
           className={`h-3.5 w-3.5 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
-
-      {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg overflow-hidden">
-          {/* Select all row */}
-          <label className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 border-b border-slate-100">
-            <input
-              type="checkbox"
-              checked={selected.length === options.length}
-              ref={(el) => {
-                if (el) el.indeterminate = selected.length > 0 && selected.length < options.length;
-              }}
-              onChange={toggleAll}
-              className="h-3.5 w-3.5 rounded accent-teal-600"
-            />
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-              All Examinations
-            </span>
-          </label>
-
-          {/* Options */}
-          <div className="max-h-48 overflow-y-auto">
-            {options.map((opt) => (
-              <label
-                key={opt}
-                className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 text-sm text-slate-700"
-              >
-                <input
-                  type="checkbox"
-                  checked={selected.includes(opt)}
-                  onChange={() => toggle(opt)}
-                  className="h-3.5 w-3.5 rounded accent-teal-600"
-                />
-                {opt}
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
+      {menu}
     </div>
   );
 }
