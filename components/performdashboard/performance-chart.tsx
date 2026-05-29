@@ -15,7 +15,7 @@ interface PerformanceChartProps {
   data: Array<{
     subject: string;
     thisTerm: number;
-    lastTerm: number;
+    lastTerm?: number;
   }>;
 }
 

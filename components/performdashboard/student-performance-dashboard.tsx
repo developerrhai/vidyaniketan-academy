@@ -220,11 +220,13 @@ function generateReportHTML(data: DashboardData): string {
         </tr>`;
   }).join("");
 
-  const compRows = data.performanceData.map((p) => {
-    const diff = p.thisTerm - p.lastTerm;
-    const arrow = diff > 0 ? "&#9650;" : diff < 0 ? "&#9660;" : "&#8212;";
-    const color = diff > 0 ? "#16a34a" : diff < 0 ? "#dc2626" : "#94a3b8";
-    return `
+  const compRows = data.performanceData
+    .filter((p) => p.lastTerm !== undefined && p.lastTerm !== null)
+    .map((p) => {
+      const diff = p.thisTerm - (p.lastTerm as number);
+      const arrow = diff > 0 ? "&#9650;" : diff < 0 ? "&#9660;" : "&#8212;";
+      const color = diff > 0 ? "#16a34a" : diff < 0 ? "#dc2626" : "#94a3b8";
+      return `
         <tr>
           <td style="padding:10px 12px;font-weight:500;color:#1e293b">${p.subject}</td>
           <td style="padding:10px 12px;text-align:center;color:#475569">${p.lastTerm}</td>
@@ -233,7 +235,7 @@ function generateReportHTML(data: DashboardData): string {
             ${arrow} ${Math.abs(diff)}
           </td>
         </tr>`;
-  }).join("");
+    }).join("");
 
   const changeClass = (v: number) => (v >= 0 ? "change-pos" : "change-neg");
   const arrowHTML = (v: number) => (v >= 0 ? "&#9650;" : "&#9660;");
@@ -288,11 +290,11 @@ function generateReportHTML(data: DashboardData): string {
     <div class="section-title">Performance Overview</div>
     <div class="stats-grid">
       <div class="stat-box"><div class="label">Overall %</div><div class="value">${data.stats.overallPercentage}%</div>
-        <div class="${changeClass(data.stats.percentageChange)}">${arrowHTML(data.stats.percentageChange)} ${Math.abs(data.stats.percentageChange)}% vs Last Term</div></div>
+        ${data.stats.percentageChange !== undefined && data.stats.percentageChange !== null ? `<div class="${changeClass(data.stats.percentageChange)}">${arrowHTML(data.stats.percentageChange)} ${Math.abs(data.stats.percentageChange)}% vs Last Term</div>` : ""}</div>
       <div class="stat-box"><div class="label">Avg Marks</div><div class="value">${data.stats.averageMarks}</div><div class="sub">out of ${data.stats.totalMarks}</div></div>
       <div class="stat-box"><div class="label">Class Rank</div><div class="value">${data.stats.classRank}</div><div class="sub">of ${data.stats.totalStudents} students</div></div>
       <div class="stat-box"><div class="label">Attendance</div><div class="value">${data.stats.attendance}%</div>
-        <div class="${changeClass(data.stats.attendanceChange)}">${arrowHTML(data.stats.attendanceChange)} ${Math.abs(data.stats.attendanceChange)}% vs Last Term</div></div>
+        ${data.stats.attendanceChange !== undefined && data.stats.attendanceChange !== null ? `<div class="${changeClass(data.stats.attendanceChange)}">${arrowHTML(data.stats.attendanceChange)} ${Math.abs(data.stats.attendanceChange)}% vs Last Term</div>` : ""}</div>
     </div>
     <div class="section-title">Subject-wise Performance</div>
     <table>
@@ -334,7 +336,7 @@ export default function StudentPerformanceDashboard() {
   // const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [historyRows, setHistoryRows] = useState<AssessmentRow[]>([]);
   const [filters, setFilters] = useState<PerformanceFiltersValue>({
-    examination: "",
+    examinations: [],
     subject: "",
     dateFrom: "",
     dateTo: "",
@@ -404,7 +406,7 @@ export default function StudentPerformanceDashboard() {
   const handleStudentChange = (id: number) => {
     setSelectedStudentId(id);
     setFilters({
-      examination: "",
+      examinations: [],
       subject: "",
       dateFrom: "",
       dateTo: "",
@@ -541,7 +543,7 @@ export default function StudentPerformanceDashboard() {
 
   const filteredHistoryRows = useMemo(() => {
     return historyRows.filter((row) => {
-      if (filters.examination && row.examination !== filters.examination) {
+      if (filters.examinations && filters.examinations.length > 0 && !filters.examinations.includes(row.examination)) {
         return false;
       }
       if (filters.subject && row.subject !== filters.subject) {
@@ -564,6 +566,7 @@ export default function StudentPerformanceDashboard() {
         totalStudents: rankExtras.totalStudents ?? students.length,
         ...rankExtras,
         ...attendanceExtras,
+        aggregate: filters.examinations && filters.examinations.length > 0,
       });
     }
     return emptyDashboard({
@@ -574,7 +577,7 @@ export default function StudentPerformanceDashboard() {
       board: "",
       location: "",
     });
-  }, [selectedStudent, filteredHistoryRows, rankExtras, attendanceExtras, students.length, loading]);
+  }, [selectedStudent, filteredHistoryRows, rankExtras, attendanceExtras, students.length, loading, filters.examinations]);
 
   const insights = useMemo(() => {
     if (!displayData) {

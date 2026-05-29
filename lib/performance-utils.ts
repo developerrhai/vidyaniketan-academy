@@ -27,10 +27,10 @@ export type DashboardData = {
   location: string;
   stats: {
     overallPercentage: number;
-    percentageChange: number;
+    percentageChange?: number;
     averageMarks: number;
     totalMarks: number;
-    averageChange: number;
+    averageChange?: number;
     classRank: number;
     totalStudents: number;
     rankChange: number;
@@ -38,7 +38,7 @@ export type DashboardData = {
     attendanceChange: number;
   };
   subjects: DashboardSubject[];
-  performanceData: Array<{ subject: string; thisTerm: number; lastTerm: number }>;
+  performanceData: Array<{ subject: string; thisTerm: number; lastTerm?: number }>;
 };
 
 export type InsightItem = {
@@ -63,6 +63,7 @@ export type PerformanceExtras = {
   rankChange?: number;
   attendance?: number;
   attendanceChange?: number;
+  aggregate?: boolean;
 };
 
 export function parseAttendanceExtras(
@@ -143,22 +144,49 @@ export function buildDashboardData(
 
   let index = 0;
   for (const [name, subjectRows] of subjectMap.entries()) {
-    const latest = subjectRows[0];
-    const previous = subjectRows[1];
-    const total = toNum(latest?.total_marks) > 0 ? toNum(latest.total_marks) : 100;
-    const marks = toNum(latest?.marks);
+    if (options.aggregate) {
+      let totalMarksSum = 0;
+      let marksScoredSum = 0;
+      for (const r of subjectRows) {
+        marksScoredSum += toNum(r.marks);
+        totalMarksSum += toNum(r.total_marks) > 0 ? toNum(r.total_marks) : 100;
+      }
+      subjects.push({
+        name,
+        marks: marksScoredSum,
+        total: totalMarksSum,
+        color: SUBJECT_COLORS[index % SUBJECT_COLORS.length],
+      });
+      const thisTermPct = totalMarksSum > 0 ? Math.round((marksScoredSum / totalMarksSum) * 100) : 0;
+      performanceData.push({
+        subject: name,
+        thisTerm: thisTermPct,
+        lastTerm: undefined,
+      });
+    } else {
+      const latest = subjectRows[0];
+      const previous = subjectRows[1];
+      const total = toNum(latest?.total_marks) > 0 ? toNum(latest.total_marks) : 100;
+      const marks = toNum(latest?.marks);
 
-    subjects.push({
-      name,
-      marks,
-      total,
-      color: SUBJECT_COLORS[index % SUBJECT_COLORS.length],
-    });
-    performanceData.push({
-      subject: name,
-      thisTerm: marks,
-      lastTerm: toNum(previous?.marks),
-    });
+      subjects.push({
+        name,
+        marks,
+        total,
+        color: SUBJECT_COLORS[index % SUBJECT_COLORS.length],
+      });
+
+      const thisTermPct = total > 0 ? Math.round((marks / total) * 100) : 0;
+      const prevTotal = previous && toNum(previous.total_marks) > 0 ? toNum(previous.total_marks) : 100;
+      const prevMarks = previous ? toNum(previous.marks) : 0;
+      const lastTermPct = previous ? Math.round((prevMarks / prevTotal) * 100) : undefined;
+
+      performanceData.push({
+        subject: name,
+        thisTerm: thisTermPct,
+        lastTerm: lastTermPct,
+      });
+    }
     index += 1;
   }
 
@@ -168,12 +196,15 @@ export function buildDashboardData(
       ? Number((percentages.reduce((a, b) => a + b, 0) / percentages.length).toFixed(1))
       : 0;
 
-  const prevPcts = performanceData
-    .filter((p) => p.lastTerm > 0)
-    .map((p) => p.lastTerm);
-  const prevAvg =
-    prevPcts.length > 0 ? prevPcts.reduce((a, b) => a + b, 0) / prevPcts.length : 0;
-  const averageChange = Number((overallPercentage - prevAvg).toFixed(1));
+  let averageChange: number | undefined = undefined;
+  if (!options.aggregate) {
+    const prevPcts = performanceData
+      .filter((p) => p.lastTerm !== undefined && p.lastTerm !== null && p.lastTerm > 0)
+      .map((p) => p.lastTerm as number);
+    const prevAvg =
+      prevPcts.length > 0 ? prevPcts.reduce((a, b) => a + b, 0) / prevPcts.length : 0;
+    averageChange = Number((overallPercentage - prevAvg).toFixed(1));
+  }
 
   const averageMarks =
     subjects.length > 0
@@ -219,24 +250,26 @@ export function buildInsights(data: DashboardData): InsightItem[] {
   }
 
   const change = data.stats.percentageChange;
-  if (change > 0) {
-    insights.push({
-      type: "success",
-      title: "Improving",
-      description: `Overall performance is up by ${Math.abs(change)} points compared to the previous term for tracked subjects.`,
-    });
-  } else if (change < 0) {
-    insights.push({
-      type: "warning",
-      title: "Needs attention",
-      description: `Performance dipped by ${Math.abs(change)} points vs the previous term. Review weaker subjects below.`,
-    });
-  } else {
-    insights.push({
-      type: "info",
-      title: "Stable performance",
-      description: "Marks are consistent with the previous term across recorded subjects.",
-    });
+  if (change !== undefined) {
+    if (change > 0) {
+      insights.push({
+        type: "success",
+        title: "Improving",
+        description: `Overall performance is up by ${Math.abs(change)} points compared to the previous term for tracked subjects.`,
+      });
+    } else if (change < 0) {
+      insights.push({
+        type: "warning",
+        title: "Needs attention",
+        description: `Performance dipped by ${Math.abs(change)} points vs the previous term. Review weaker subjects below.`,
+      });
+    } else {
+      insights.push({
+        type: "info",
+        title: "Stable performance",
+        description: "Marks are consistent with the previous term across recorded subjects.",
+      });
+    }
   }
 
   const ranked = [...data.subjects].sort(
