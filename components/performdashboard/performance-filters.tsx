@@ -181,6 +181,13 @@ export function PerformanceFilters({
   value,
   onChange,
 }: PerformanceFiltersProps) {
+  // Ensure value fields have safe defaults
+  const safeValue: PerformanceFiltersValue = {
+    examinations: value?.examinations ?? [],
+    subject: value?.subject ?? "",
+    dateFrom: value?.dateFrom ?? "",
+    dateTo: value?.dateTo ?? "",
+  };
   const [preset, setPreset] = useState<Preset>("all");
   const [showCustom, setShowCustom] = useState(false);
 
@@ -193,12 +200,12 @@ export function PerformanceFilters({
     [assessmentRows]
   );
 
-  const activeCount = activeFilterCount(value);
+  const activeCount = activeFilterCount(safeValue);
 
   function handlePreset(p: Preset) {
     setPreset(p);
     setShowCustom(p === "custom");
-    if (p !== "custom") onChange({ ...value, ...presetToDates(p) });
+    if (p !== "custom") onChange({ ...safeValue, ...presetToDates(p) });
   }
 
   function handleClearAll() {
@@ -243,15 +250,15 @@ export function PerformanceFilters({
 
           <MultiSelectDropdown
             options={examinations}
-            selected={value.examinations}
-            onChange={(next) => onChange({ ...value, examinations: next })}
+            selected={safeValue.examinations}
+            onChange={(next) => onChange({ ...safeValue, examinations: next })}
             placeholder="All Examinations"
           />
 
           {/* Selected pills */}
-          {value.examinations.length > 0 && (
+          {safeValue.examinations.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-0.5">
-              {value.examinations.map((ex) => (
+              {safeValue.examinations.map((ex) => (
                 <span
                   key={ex}
                   className="inline-flex items-center gap-1 text-[11px] bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full font-medium"
@@ -259,7 +266,7 @@ export function PerformanceFilters({
                   {ex}
                   <button
                     onClick={() =>
-                      onChange({ ...value, examinations: value.examinations.filter((e) => e !== ex) })
+                      onChange({ ...safeValue, examinations: safeValue.examinations.filter((e) => e !== ex) })
                     }
                   >
                     <X className="h-3 w-3" />
@@ -278,8 +285,8 @@ export function PerformanceFilters({
           </label>
           <div className="relative">
             <select
-              value={value.subject}
-              onChange={(e) => onChange({ ...value, subject: e.target.value })}
+              value={safeValue.subject}
+              onChange={(e) => onChange({ ...safeValue, subject: e.target.value })}
               className="w-full appearance-none h-9 pl-3 pr-8 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
             >
               <option value="">All Subjects</option>
@@ -289,10 +296,10 @@ export function PerformanceFilters({
             </select>
             <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           </div>
-          {value.subject && (
+          {safeValue.subject && (
             <span className="inline-flex items-center gap-1 self-start text-[11px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full font-medium">
-              {value.subject}
-              <button onClick={() => onChange({ ...value, subject: "" })}>
+              {safeValue.subject}
+              <button onClick={() => onChange({ ...safeValue, subject: "" })}>
                 <X className="h-3 w-3" />
               </button>
             </span>
@@ -317,9 +324,9 @@ export function PerformanceFilters({
             </select>
             <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           </div>
-          {(value.dateFrom || value.dateTo) && !showCustom && (
+          {(safeValue.dateFrom || safeValue.dateTo) && !showCustom && (
             <span className="inline-flex items-center gap-1 self-start text-[11px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-medium">
-              {value.dateFrom || "…"} → {value.dateTo || "today"}
+              {safeValue.dateFrom || "…"} → {safeValue.dateTo || "today"}
               <button onClick={() => handlePreset("all")}>
                 <X className="h-3 w-3" />
               </button>
@@ -335,9 +342,9 @@ export function PerformanceFilters({
             <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">From</label>
             <input
               type="date"
-              value={value.dateFrom}
-              max={value.dateTo || isoToday()}
-              onChange={(e) => onChange({ ...value, dateFrom: e.target.value })}
+              value={safeValue.dateFrom}
+              max={safeValue.dateTo || isoToday()}
+              onChange={(e) => onChange({ ...safeValue, dateFrom: e.target.value })}
               className="h-9 px-3 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent"
             />
           </div>
@@ -345,18 +352,18 @@ export function PerformanceFilters({
             <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">To</label>
             <input
               type="date"
-              value={value.dateTo}
-              min={value.dateFrom}
+              value={safeValue.dateTo}
+              min={safeValue.dateFrom}
               max={isoToday()}
-              onChange={(e) => onChange({ ...value, dateTo: e.target.value })}
+              onChange={(e) => onChange({ ...safeValue, dateTo: e.target.value })}
               className="h-9 px-3 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent"
             />
           </div>
-          {(value.dateFrom || value.dateTo) && (
+          {(safeValue.dateFrom || safeValue.dateTo) && (
             <div className="col-span-2">
               <span className="inline-flex items-center gap-1 text-[11px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-medium">
-                {value.dateFrom || "Any start"} → {value.dateTo || "Any end"}
-                <button onClick={() => onChange({ ...value, dateFrom: "", dateTo: "" })}>
+                {safeValue.dateFrom || "Any start"} → {safeValue.dateTo || "Any end"}
+                <button onClick={() => onChange({ ...safeValue, dateFrom: "", dateTo: "" })}>
                   <X className="h-3 w-3" />
                 </button>
               </span>
