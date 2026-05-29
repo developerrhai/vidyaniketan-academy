@@ -134,20 +134,20 @@ export function InvoicesContent() {
     return () => clearTimeout(timer)
   }, [studentSearch])
 
-  const pickStudent = (s: Student) => {
-    setSelectedStudent(s)
-    setStudentSearch(s.name)
-    setShowDropdown(false)
-    const remaining = Number(s.fee) - Number(s.paid_fee)
-    setForm(prev => ({
-      ...prev,
-      student_name: s.name,
-      student_id:   String(s.id),
-      amount:       remaining > 0 ? String(remaining) : String(s.fee),
-      paid_amount:  "0",
-      description:  `Tuition Fee – ${s.course || s.standard + "th Std"}`,
-    }))
-  }
+ const pickStudent = (s: Student) => {
+  setSelectedStudent(s)
+  setStudentSearch(s.name)
+  setShowDropdown(false)
+  const remaining = Number(s.fee) - Number(s.paid_fee)
+  setForm(prev => ({
+    ...prev,
+    student_name: s.name,
+    student_id:   String(s.id),
+    amount:       remaining > 0 ? String(remaining) : String(s.fee),
+    paid_amount:  String(s.paid_fee),   // ← was "0", now uses student's paid_fee
+    description:  `Tuition Fee – ${s.course || s.standard + "th Std"}`,
+  }))
+}
 
   const clearStudent = () => {
     setSelectedStudent(null)
