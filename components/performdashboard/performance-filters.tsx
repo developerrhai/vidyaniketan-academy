@@ -1,18 +1,19 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Filter, BookOpen, FlaskConical, CalendarRange, X, ChevronDown } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface PerformanceFiltersValue {
-  examinations: string[];  // [] = all (changed from single string)
-  subject: string;
-  dateFrom: string;
-  dateTo: string;
+  examination: string;   // "" = all
+  subject: string;       // "" = all
+  dateFrom: string;      // ISO date string "YYYY-MM-DD" | ""
+  dateTo: string;        // ISO date string "YYYY-MM-DD" | ""
 }
 
 interface PerformanceFiltersProps {
+  /** All assessment rows — used to derive unique examination & subject lists */
   assessmentRows: Array<{
     subject: string;
     examination: string;
@@ -26,20 +27,34 @@ interface PerformanceFiltersProps {
 
 type Preset = "all" | "this_month" | "last_month" | "last_3" | "last_6" | "custom";
 
-function isoToday(): string { return new Date().toISOString().slice(0, 10); }
+function isoToday(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function isoMonthsAgo(n: number): string {
-  const d = new Date(); d.setMonth(d.getMonth() - n); d.setDate(1);
+  const d = new Date();
+  d.setMonth(d.getMonth() - n);
+  d.setDate(1);
   return d.toISOString().slice(0, 10);
 }
+
 function startOfMonth(): string {
-  const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10);
-}
-function startOfLastMonth(): string {
-  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
+  const d = new Date();
+  d.setDate(1);
   return d.toISOString().slice(0, 10);
 }
+
+function startOfLastMonth(): string {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
 function endOfLastMonth(): string {
-  const d = new Date(); d.setDate(0); return d.toISOString().slice(0, 10);
+  const d = new Date();
+  d.setDate(0); // last day of previous month
+  return d.toISOString().slice(0, 10);
 }
 
 const PRESETS: { label: string; value: Preset }[] = [
@@ -70,108 +85,10 @@ function unique(arr: string[]): string[] {
 
 function activeFilterCount(v: PerformanceFiltersValue): number {
   let n = 0;
-  if (v.examinations.length) n++;
+  if (v.examination) n++;
   if (v.subject) n++;
   if (v.dateFrom || v.dateTo) n++;
   return n;
-}
-
-// ─── Multi-select Dropdown ────────────────────────────────────────────────────
-
-function MultiSelectDropdown({
-  options,
-  selected,
-  onChange,
-  placeholder,
-}: {
-  options: string[];
-  selected: string[];
-  onChange: (next: string[]) => void;
-  placeholder: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  // Close on outside click
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  function toggle(opt: string) {
-    onChange(
-      selected.includes(opt) ? selected.filter((s) => s !== opt) : [...selected, opt]
-    );
-  }
-
-  function toggleAll() {
-    onChange(selected.length === options.length ? [] : [...options]);
-  }
-
-  const label =
-    selected.length === 0
-      ? placeholder
-      : selected.length === 1
-      ? selected[0]
-      : `${selected.length} selected`;
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between h-9 pl-3 pr-2.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition hover:border-slate-300"
-      >
-        <span className={selected.length === 0 ? "text-slate-400" : "text-slate-700"}>
-          {label}
-        </span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg overflow-hidden">
-          {/* Select all row */}
-          <label className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 border-b border-slate-100">
-            <input
-              type="checkbox"
-              checked={selected.length === options.length}
-              ref={(el) => {
-                if (el) el.indeterminate = selected.length > 0 && selected.length < options.length;
-              }}
-              onChange={toggleAll}
-              className="h-3.5 w-3.5 rounded accent-teal-600"
-            />
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-              All Examinations
-            </span>
-          </label>
-
-          {/* Options */}
-          <div className="max-h-48 overflow-y-auto">
-            {options.map((opt) => (
-              <label
-                key={opt}
-                className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 text-sm text-slate-700"
-              >
-                <input
-                  type="checkbox"
-                  checked={selected.includes(opt)}
-                  onChange={() => toggle(opt)}
-                  className="h-3.5 w-3.5 rounded accent-teal-600"
-                />
-                {opt}
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -198,13 +115,16 @@ export function PerformanceFilters({
   function handlePreset(p: Preset) {
     setPreset(p);
     setShowCustom(p === "custom");
-    if (p !== "custom") onChange({ ...value, ...presetToDates(p) });
+    if (p !== "custom") {
+      const dates = presetToDates(p);
+      onChange({ ...value, ...dates });
+    }
   }
 
   function handleClearAll() {
     setPreset("all");
     setShowCustom(false);
-    onChange({ examinations: [], subject: "", dateFrom: "", dateTo: "" });
+    onChange({ examination: "", subject: "", dateFrom: "", dateTo: "" });
   }
 
   return (
@@ -234,39 +154,32 @@ export function PerformanceFilters({
       {/* ── Filter controls ── */}
       <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-        {/* 1. Examination multi-select */}
+        {/* 1. Examination selector */}
         <div className="flex flex-col gap-1.5">
           <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             <FlaskConical className="h-3.5 w-3.5 text-violet-500" />
             Examination
           </label>
-
-          <MultiSelectDropdown
-            options={examinations}
-            selected={value.examinations}
-            onChange={(next) => onChange({ ...value, examinations: next })}
-            placeholder="All Examinations"
-          />
-
-          {/* Selected pills */}
-          {value.examinations.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-0.5">
-              {value.examinations.map((ex) => (
-                <span
-                  key={ex}
-                  className="inline-flex items-center gap-1 text-[11px] bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full font-medium"
-                >
-                  {ex}
-                  <button
-                    onClick={() =>
-                      onChange({ ...value, examinations: value.examinations.filter((e) => e !== ex) })
-                    }
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
+          <div className="relative">
+            <select
+              value={value.examination}
+              onChange={(e) => onChange({ ...value, examination: e.target.value })}
+              className="w-full appearance-none h-9 pl-3 pr-8 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
+            >
+              <option value="">All Examinations</option>
+              {examinations.map((ex) => (
+                <option key={ex} value={ex}>{ex}</option>
               ))}
-            </div>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          </div>
+          {value.examination && (
+            <span className="inline-flex items-center gap-1 self-start text-[11px] bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full font-medium">
+              {value.examination}
+              <button onClick={() => onChange({ ...value, examination: "" })}>
+                <X className="h-3 w-3" />
+              </button>
+            </span>
           )}
         </div>
 
@@ -320,7 +233,7 @@ export function PerformanceFilters({
           {(value.dateFrom || value.dateTo) && !showCustom && (
             <span className="inline-flex items-center gap-1 self-start text-[11px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-medium">
               {value.dateFrom || "…"} → {value.dateTo || "today"}
-              <button onClick={() => handlePreset("all")}>
+              <button onClick={() => { handlePreset("all"); }}>
                 <X className="h-3 w-3" />
               </button>
             </span>
@@ -328,7 +241,7 @@ export function PerformanceFilters({
         </div>
       </div>
 
-      {/* ── Custom date picker ── */}
+      {/* ── Custom date picker (shown when "Custom Range" is selected) ── */}
       {showCustom && (
         <div className="px-5 pb-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
           <div className="flex flex-col gap-1">
