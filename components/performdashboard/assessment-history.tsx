@@ -30,7 +30,7 @@ export function AssessmentHistory({ rows, loading }: AssessmentHistoryProps) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-        <tr style={{ backgroundColor: "#314158" }} className="rounded-xl">
+        <tr style={{ backgroundColor: "#314158" }} className="rounded-xl bg-white border border-slate-100 shadow-sm overflow-hidden">
             <th className="px-4 py-3 text-left text-xs font-medium text-white border-r border-white/10 whitespace-nowrap">
               Examination
             </th>
