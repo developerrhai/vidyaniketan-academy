@@ -190,30 +190,45 @@ export function InvoicesContent() {
     }
 
     if (editing) {
+      // ── EDIT: calculate diff and patch student ──────────
       const oldPaid = Number(editing.paid_amount) || 0
       const newPaid = parseFloat(form.paid_amount) || 0
-      const diff    = newPaid - oldPaid          // could be negative
+      const diff    = newPaid - oldPaid
 
       await invoicesApi.update(editing.id, payload)
 
-      // Sync student paid_fee if student is linked and paid changed
       if (form.student_id && diff !== 0) {
-        const stuRes: any = await studentsApi.getOne(Number(form.student_id))
-        const stu: Student = stuRes.data
-        await studentsApi.update(Number(form.student_id), {
-          paid_fee: Number(stu.paid_fee) + diff,
-        })
+        // fetch fresh student data to get current paid_fee
+        const stuRes: any = await studentsApi.getAll({ search: form.student_name })
+        const stu: Student = (stuRes.data || []).find(
+          (s: Student) => String(s.id) === String(form.student_id)
+        )
+        if (stu) {
+          const updatedPaidFee = Math.max(0, Number(stu.paid_fee) + diff)
+          await studentsApi.update(Number(form.student_id), {
+            ...stu,
+            paid_fee: updatedPaidFee,
+          })
+        }
       }
+
     } else {
+      // ── CREATE: add paid_amount to student's paid_fee ───
       await invoicesApi.create(payload)
 
-      // Sync student paid_fee on new invoice
-      if (form.student_id && parseFloat(form.paid_amount) > 0) {
-        const stuRes: any = await studentsApi.getOne(Number(form.student_id))
-        const stu: Student = stuRes.data
-        await studentsApi.update(Number(form.student_id), {
-          paid_fee: Number(stu.paid_fee) + (parseFloat(form.paid_amount) || 0),
-        })
+      const paidNow = parseFloat(form.paid_amount) || 0
+      if (form.student_id && paidNow > 0) {
+        const stuRes: any = await studentsApi.getAll({ search: form.student_name })
+        const stu: Student = (stuRes.data || []).find(
+          (s: Student) => String(s.id) === String(form.student_id)
+        )
+        if (stu) {
+          const updatedPaidFee = Number(stu.paid_fee) + paidNow
+          await studentsApi.update(Number(form.student_id), {
+            ...stu,
+            paid_fee: updatedPaidFee,
+          })
+        }
       }
     }
 
