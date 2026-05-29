@@ -215,7 +215,8 @@ export function PerformanceFilters({
   }
 
   return (
-    <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+    // AFTER
+<div className="rounded-xl border border-slate-100 bg-white shadow-sm">
       {/* ── Header bar ── */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50/60">
         <div className="flex items-center gap-2">
