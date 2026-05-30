@@ -252,6 +252,11 @@ export const teacherStudentAssessmentsApi = {
     post(`/teacher-student-assessments/${studentId}`, data),
 };
 
+export const examinationsApi = {
+  remove: (examinationName: string) =>
+    del(`/teacher-student-assessments/examination/${encodeURIComponent(examinationName)}`),
+};
+
 export const studentAttendanceApi = {
   getByStudent: (studentId: string | number) => get(`/student-attendance/${studentId}`),
   createByStudent: (studentId: string | number, data: Record<string, unknown>) =>

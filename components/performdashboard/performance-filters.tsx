@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Filter, BookOpen, FlaskConical, CalendarRange, X, ChevronDown, Trash } from "lucide-react";
+import { examinationsApi } from "../../lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ interface PerformanceFiltersProps {
   }>;
   value: PerformanceFiltersValue;
   onChange: (next: PerformanceFiltersValue) => void;
+  onExaminationDeleted?: () => void;
 }
 
 // ─── Preset date ranges ───────────────────────────────────────────────────────
@@ -180,6 +182,7 @@ export function PerformanceFilters({
   assessmentRows,
   value,
   onChange,
+  onExaminationDeleted,
 }: PerformanceFiltersProps) {
   // Ensure value fields have safe defaults
   const safeValue: PerformanceFiltersValue = {
@@ -280,8 +283,13 @@ export function PerformanceFilters({
               type="button"
               onClick={async () => {
                 // call backend to delete examination
+                const examToDelete = safeValue.examinations[0];
+                if (!window.confirm(`Are you sure you want to delete all assessments for the examination "${examToDelete}"? This cannot be undone.`)) {
+                  return;
+                }
                 try {
-                  await examinationsApi.remove(safeValue.examinations[0]);
+                  await examinationsApi.remove(examToDelete);
+                  onExaminationDeleted?.();
                 } catch (e) {
                   console.error('Failed to delete examination', e);
                 }

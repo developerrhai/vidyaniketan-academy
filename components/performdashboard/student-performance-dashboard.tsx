@@ -563,7 +563,6 @@ export default function StudentPerformanceDashboard() {
     // if (dashboardData) return dashboardData;
     if (selectedStudent) {
       return buildDashboardData(selectedStudent, filteredHistoryRows, {
-        totalStudents: rankExtras.totalStudents ?? students.length,
         ...rankExtras,
         ...attendanceExtras,
         aggregate: filters.examinations && filters.examinations.length > 0,
@@ -890,6 +889,7 @@ export default function StudentPerformanceDashboard() {
               assessmentRows={historyRows}
               value={filters}
               onChange={setFilters}
+              onExaminationDeleted={refreshStudentPerformance}
             />
           </div>
 
