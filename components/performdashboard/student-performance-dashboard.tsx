@@ -894,7 +894,9 @@ export default function StudentPerformanceDashboard() {
           </div>
 
           <div className="mb-6 grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-1"><PerformanceChart data={displayData!.performanceData} /></div>
+            <div className="lg:col-span-1">
+              <PerformanceChart assessmentRows={filteredHistoryRows} />
+            </div>
             <div className="lg:col-span-1">
               <SubjectMarksChart subjects={displayData!.subjects} average={displayData!.stats.overallPercentage} />
             </div>
