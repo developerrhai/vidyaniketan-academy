@@ -31,9 +31,6 @@ interface FormData {
   photo: string
   admissionType: string[]
   admissionDate: string
-  schoolFees: string
-  academyFees: string
-  hostelFees: string
 }
 
 const initial: FormData = {
@@ -44,9 +41,6 @@ const initial: FormData = {
   casteReligion: "", photo: "",
   admissionType: [],
   admissionDate: "", gender: "",
-  schoolFees: "",
-  academyFees: "",
-  hostelFees: "",
 }
 
 export default function AdmissionFormPage() {
@@ -93,9 +87,6 @@ export default function AdmissionFormPage() {
       key !== "fatherName" &&
       key !== "admissionType" &&
       key !== "admissionDate" &&
-      key !== "schoolFees" &&
-      key !== "academyFees" &&
-      key !== "hostelFees" &&
       !form[key].trim()
     ) {
       return "This field is required"
@@ -151,9 +142,6 @@ export default function AdmissionFormPage() {
           photo:          form.photo,
           admission_type: form.admissionType.join(","),
           admission_date: form.admissionDate,
-          school_fees:    form.schoolFees,
-          academy_fees:   form.academyFees,
-          hostel_fees:    form.hostelFees,
         }),
       })
       const data = await res.json()
@@ -435,49 +423,6 @@ export default function AdmissionFormPage() {
               />
             </Section>
 
-            {/* Fees Details */}
-            <Section label="Fees Details" color="sky">
-              <InputField
-                placeholder="School/College Fees (₹)"
-                type="number"
-                value={form.schoolFees}
-                onChange={v => set("schoolFees", v)}
-                error={fieldError("schoolFees")}
-                icon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-              />
-              <InputField
-                placeholder="Academy Fee (₹)"
-                type="number"
-                value={form.academyFees}
-                onChange={v => set("academyFees", v)}
-                error={fieldError("academyFees")}
-                icon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-              />
-              <InputField
-                placeholder="Hostel Fee (₹)"
-                type="number"
-                value={form.hostelFees}
-                onChange={v => set("hostelFees", v)}
-                error={fieldError("hostelFees")}
-                icon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-              />
-            </Section>
-
             {/* Error */}
             {error && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
@@ -559,8 +504,6 @@ function GenderField({
   )
 }
 
-
-
 /* ── Checkbox Group Field ───────────────────────────── */
 function CheckboxGroupField({
   options, value, onChange
@@ -609,10 +552,18 @@ function PhotoUploadField({
 }: {
   value: string; onChange: (v: string) => void; error?: string
 }) {
+  const [sizeError, setSizeError] = useState("")
+
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     if (!file.type.startsWith("image/")) return
+    if (file.size > 1 * 1024 * 1024) {
+      setSizeError("Photo must be under 1 MB. Please choose a smaller image.")
+      e.target.value = ""
+      return
+    }
+    setSizeError("")
     const reader = new FileReader()
     reader.onload = () => { onChange(reader.result as string) }
     reader.readAsDataURL(file)
@@ -621,12 +572,13 @@ function PhotoUploadField({
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation()
     onChange("")
+    setSizeError("")
   }
 
   return (
     <div>
       <label className={`flex items-center gap-3 px-4 py-3 rounded-xl border bg-white cursor-pointer transition-all duration-200 ${
-        error ? "border-red-300 bg-red-50/30" : "border-gray-200 hover:border-blue-300"
+        error || sizeError ? "border-red-300 bg-red-50/30" : "border-gray-200 hover:border-blue-300"
       }`}>
         <span className="text-gray-400 shrink-0">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -642,7 +594,7 @@ function PhotoUploadField({
               className="w-12 h-14 object-cover rounded-lg border border-gray-200" />
             <div className="flex-1">
               <p className="text-sm text-gray-700 font-medium">Photo uploaded</p>
-              <p className="text-xs text-gray-400">Tap to change</p>
+              <p className="text-xs text-gray-400">Tap to change · max 1 MB</p>
             </div>
             <button
               type="button"
@@ -658,11 +610,13 @@ function PhotoUploadField({
             </button>
           </div>
         ) : (
-          <span className="text-gray-400 text-sm flex-1">Upload Passport size photo</span>
+          <span className="text-gray-400 text-sm flex-1">Upload Passport size photo · max 1 MB</span>
         )}
-        <input type="file" accept="image/*" capture="user" onChange={handleFile} className="hidden" />
+        {/* No capture="user" — gallery/file picker only */}
+        <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
       </label>
-      {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
+      {sizeError && <p className="text-red-500 text-xs mt-1 ml-1">{sizeError}</p>}
+      {!sizeError && error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
     </div>
   )
 }
