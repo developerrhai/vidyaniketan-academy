@@ -14,8 +14,23 @@ const BRANCHES = ["Main branch", "SOF branch"]
 
 const COURSES = ["IIT-JEE", "MHT-CET", "NEET"]
 
+const RULES = [
+  "माझ्या पाल्याची अकॅडमीमधील उपस्थिती किमान 85% ठेवणे बंधनकारक राहील.",
+  "अकॅडमीमध्ये दिलेला प्रवेश व आकारण्यात आलेली फी ही फक्त चालू शैक्षणिक वर्षासाठीच वैध राहील.",
+  "फीचे सर्व हप्ते संस्थेने ठरवून दिलेल्या वेळेनुसार भरणे मला मान्य आहे.",
+  "माझ्या पाल्याकडून संस्थेच्या मालमत्तेचे नुकसान झाल्यास त्याचा खर्च भरण्याची जबाबदारी माझी राहील.",
+  "अकॅडमी परिसराच्या बाहेरील कोणत्याही घटनेसाठी संस्था जबाबदार राहणार नाही, हे मला मान्य आहे.",
+  "हॉस्टेलमधील सर्व नियम व शिस्तीचे पालन करणे मला मान्य आहे.",
+  "हॉस्टेल प्रशासनाची परवानगी घेतल्याशिवाय हॉस्टेल सोडता येणार नाही व बाहेर जाताना/परत येताना नोंद करणे बंधनकारक राहील.",
+  "संध्याकाळी 8:00 नंतर परवानगीशिवाय प्रवेश दिला जाणार नाही, हे मला मान्य आहे.",
+  "अकॅडमी व हॉस्टेलमधील सर्व नियम व अटी मी वाचल्या असून त्यांचे पालन करणे मला मान्य आहे.",
+]
+
 interface FormData {
-  studentName: string
+  // studentName: string
+  firstName: string
+  middleName: string
+  lastName: string
   studentPhone: string
   fatherName: string
   fatherPhone: string
@@ -31,16 +46,18 @@ interface FormData {
   photo: string
   admissionType: string[]
   admissionDate: string
+  rulesAccepted: string[]
 }
 
 const initial: FormData = {
-  studentName: "", studentPhone: "",
+   firstName: "", middleName: "", lastName: "", studentPhone: "",
   fatherName: "", fatherPhone: "",
   studentDOB: "", aadharNumber: "", address: "",
   email: "", standard: "", branch: "", course: "",
   casteReligion: "", photo: "",
   admissionType: [],
   admissionDate: "", gender: "",
+  rulesAccepted: [],
 }
 
 export default function AdmissionFormPage() {
@@ -77,7 +94,7 @@ export default function AdmissionFormPage() {
   const fieldError = (key: keyof FormData) => {
     if (!touched[key]) return ""
     if (
-      key !== "studentDOB" &&
+      key !== "middleName" &&       // ← middleName is optional
       key !== "email" &&
       key !== "fatherPhone" &&
       key !== "casteReligion" &&
@@ -87,6 +104,7 @@ export default function AdmissionFormPage() {
       key !== "fatherName" &&
       key !== "admissionType" &&
       key !== "admissionDate" &&
+      key !== "rulesAccepted" &&
       !form[key].trim()
     ) {
       return "This field is required"
@@ -105,13 +123,13 @@ export default function AdmissionFormPage() {
   }
 
   const validate = () => {
-    const required: (keyof FormData)[] = ["studentName", "studentPhone", "standard", "branch"]
+    const required: (keyof FormData)[] = ["firstName","lastName", "studentPhone", "standard", "branch"]
     if (isSenior) required.push("course")
     const allTouched: Partial<Record<keyof FormData, boolean>> = {}
     required.forEach(k => { allTouched[k] = true })
     setTouched(allTouched)
     for (const k of required) {
-      if (k !== "studentDOB" && k !== "admissionType" && k !== "admissionDate" && !form[k].trim()) return "Please fill all required fields"
+      if (k !== "studentDOB" && k !== "admissionType" && k !== "admissionDate" && k !== "rulesAccepted" && !form[k].trim()) return "Please fill all required fields"
     }
   }
 
@@ -129,7 +147,7 @@ export default function AdmissionFormPage() {
           aadhar:         form.aadharNumber,
           address:        form.address,
           dob:            form.studentDOB,
-          name:           form.studentName,
+          name: [form.firstName, form.middleName, form.lastName].filter(Boolean).join(" "),
           phone:          form.studentPhone,
           father_name:    form.fatherName,
           email:          form.email,
@@ -142,6 +160,7 @@ export default function AdmissionFormPage() {
           photo:          form.photo,
           admission_type: form.admissionType.join(","),
           admission_date: form.admissionDate,
+          rules_accepted: form.rulesAccepted.join(","),
         }),
       })
       const data = await res.json()
@@ -168,7 +187,9 @@ export default function AdmissionFormPage() {
             </div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Admission Submitted!</h2>
             <p className="text-gray-500 mb-1">
-              Thank you, <span className="font-semibold text-[#0d6efd]">{form.studentName}</span>
+              Thank you, <span className="font-semibold text-[#0d6efd]">
+  {[form.firstName, form.middleName, form.lastName].filter(Boolean).join(" ")}
+</span>
             </p>
             <p className="text-gray-400 text-sm mb-6">
               Our team will call you at <span className="text-gray-600 font-medium">{form.studentPhone}</span> shortly.
@@ -240,13 +261,13 @@ export default function AdmissionFormPage() {
 
           <form onSubmit={handleSubmit} className="px-6 py-6 space-y-5" noValidate>
 
-            {/* Student Details */}
-            <Section label="Student Details" color="blue">
+            {/* Replace the studentName InputField with these three: */}
+            <div className="grid grid-cols-3 gap-2">
               <InputField
-                placeholder="Student Name"
-                value={form.studentName}
-                onChange={v => set("studentName", v)}
-                error={fieldError("studentName")}
+                placeholder="First Name"
+                value={form.firstName}
+                onChange={v => set("firstName", v)}
+                error={fieldError("firstName")}
                 icon={
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -255,79 +276,18 @@ export default function AdmissionFormPage() {
                 }
               />
               <InputField
-                placeholder="Contact no.1 (Whatsapp)"
-                type="tel"
-                value={form.studentPhone}
-                onChange={v => set("studentPhone", v)}
-                error={fieldError("studentPhone")}
-                icon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                }
+                placeholder="Middle Name"
+                value={form.middleName}
+                onChange={v => set("middleName", v)}
+                error={fieldError("middleName")}
               />
               <InputField
-                placeholder="Contact no.2"
-                type="tel"
-                value={form.fatherPhone}
-                onChange={v => set("fatherPhone", v)}
-                error={fieldError("fatherPhone")}
-                icon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                }
+                placeholder="Last Name"
+                value={form.lastName}
+                onChange={v => set("lastName", v)}
+                error={fieldError("lastName")}
               />
-
-              <DOBField
-                label="Date of Birth"
-                value={form.studentDOB}
-                onChange={v => set("studentDOB", v)}
-                error={fieldError("studentDOB")}
-              />
-
-              <InputField
-                placeholder="Email Address"
-                type="email"
-                value={form.email}
-                onChange={v => set("email", v)}
-                error={fieldError("email")}
-                icon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                }
-              />
-              <InputField
-                placeholder="Aadhar Number"
-                value={form.aadharNumber}
-                onChange={v => set("aadharNumber", v)}
-                error={fieldError("aadharNumber")}
-                icon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0" />
-                  </svg>
-                }
-              />
-              <InputField
-                placeholder="Address"
-                value={form.address}
-                onChange={v => set("address", v)}
-                error={fieldError("address")}
-                icon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                }
-              />
-            </Section>
+            </div>
 
             {/* Personal Details */}
             <Section label="Personal Details" color="indigo">
@@ -421,6 +381,63 @@ export default function AdmissionFormPage() {
                   setError("")
                 }}
               />
+            </Section>
+
+            {/* Rules & Regulations */}
+            <Section label="Rules & Regulations Acceptance" color="rose">
+              <div className="space-y-2">
+                {RULES.map((rule, index) => {
+                  const key = String(index + 1)
+                  const checked = form.rulesAccepted.includes(key)
+                  return (
+                    <label
+                      key={index}
+                      onClick={() => {
+                        const next = checked
+                          ? form.rulesAccepted.filter(v => v !== key)
+                          : [...form.rulesAccepted, key]
+                        setForm(prev => ({ ...prev, rulesAccepted: next }))
+                        setError("")
+                      }}
+                      className={`flex items-start gap-3 px-4 py-3 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:border-rose-300 select-none ${
+                        checked ? "border-rose-200 bg-rose-50/40" : "border-gray-200"
+                      }`}
+                    >
+                      <div className={`w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
+                        checked
+                          ? "bg-rose-500 border-rose-500"
+                          : "border-gray-300 bg-white"
+                      }`}>
+                        {checked && (
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm text-gray-700 leading-relaxed" style={{ fontFamily: "'Noto Sans Devanagari', sans-serif" }}>
+                        {rule}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+              {form.rulesAccepted.length > 0 && form.rulesAccepted.length < RULES.length && (
+                <p className="text-xs text-amber-600 flex items-center gap-1.5 mt-1">
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                  {form.rulesAccepted.length} of {RULES.length} rules accepted
+                </p>
+              )}
+              {form.rulesAccepted.length === RULES.length && (
+                <p className="text-xs text-emerald-600 flex items-center gap-1.5 mt-1">
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                  All rules accepted
+                </p>
+              )}
             </Section>
 
             {/* Error */}
@@ -612,7 +629,6 @@ function PhotoUploadField({
         ) : (
           <span className="text-gray-400 text-sm flex-1">Upload Passport size photo · max 1 MB</span>
         )}
-        {/* No capture="user" — gallery/file picker only */}
         <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
       </label>
       {sizeError && <p className="text-red-500 text-xs mt-1 ml-1">{sizeError}</p>}
@@ -672,6 +688,7 @@ function Section({ label, color, children }: { label: string; color: string; chi
     indigo: "text-indigo-600 border-indigo-200 bg-indigo-50/50",
     cyan:   "text-cyan-600 border-cyan-200 bg-cyan-50/50",
     sky:    "text-sky-600 border-sky-200 bg-sky-50/50",
+    rose:   "text-rose-600 border-rose-200 bg-rose-50/50",
   }
   return (
     <div className="space-y-3">
