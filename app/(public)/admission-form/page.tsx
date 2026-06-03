@@ -300,24 +300,42 @@ export default function AdmissionFormPage() {
               </div>
 
               {/* Consent error */}
-              {consentError === "SERVER_ERROR" ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <img
-                  src="/server-error.png"
-                  alt="Server Error"
-                  className="w-64 h-64 object-contain"
-                />
-                <p className="text-red-600 font-semibold mt-4 text-center">
-                  Server is temporarily unavailable.
-                  <br />
-                  Please try again later.
-                </p>
-              </div>
-            ) : consentError ? (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
-                {consentError}
-              </div>
-            ) : null}
+           {/* Consent error */}
+{consentError === "SERVER_ERROR" ? (
+  <div className="flex flex-col items-center justify-center py-8">
+    <img
+      src="/server-error.png"
+      alt="Server Error"
+      className="max-h-72 w-auto object-contain"
+    />
+
+    <h3 className="mt-4 text-xl font-bold text-red-600">
+      Submission Failed
+    </h3>
+
+    <p className="mt-2 text-sm text-gray-500 text-center max-w-sm">
+      Unable to submit your admission form at the moment.
+      Please try again after some time.
+    </p>
+  </div>
+        ) : consentError ? (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
+            <svg
+              className="w-4 h-4 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            {consentError}
+          </div>
+        ) : null}
 
               {/* Confirm button */}
               <button
