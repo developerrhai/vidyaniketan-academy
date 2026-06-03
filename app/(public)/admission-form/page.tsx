@@ -135,10 +135,10 @@ export default function AdmissionFormPage() {
       const data = await res.json()
       if (data.success) setStep("done")
       else setConsentError(data.message || "Submission failed. Please try again.")
-    } catch {
-      setConsentError("Network error. Please check your connection.")
-    } finally {
-      setSubmitting(false)
+   } catch {
+    setConsentError("SERVER_ERROR")
+   } finally {
+        setSubmitting(false)
     }
   }
 
@@ -300,15 +300,24 @@ export default function AdmissionFormPage() {
               </div>
 
               {/* Consent error */}
-              {consentError && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
-                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {consentError}
-                </div>
-              )}
+              {consentError === "SERVER_ERROR" ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <img
+                  src="/server-error.png"
+                  alt="Server Error"
+                  className="w-64 h-64 object-contain"
+                />
+                <p className="text-red-600 font-semibold mt-4 text-center">
+                  Server is temporarily unavailable.
+                  <br />
+                  Please try again later.
+                </p>
+              </div>
+            ) : consentError ? (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
+                {consentError}
+              </div>
+            ) : null}
 
               {/* Confirm button */}
               <button
