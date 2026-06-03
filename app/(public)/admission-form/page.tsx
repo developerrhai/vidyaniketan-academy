@@ -25,6 +25,10 @@ const RULES = [
   "अकॅडमी व हॉस्टेलमधील सर्व नियम व अटी मी वाचल्या असून त्यांचे पालन करणे मला मान्य आहे.",
 ]
 
+const NUMBERED_RULES = RULES.slice(0, 8)   // rules 1–8 (display only)
+const FINAL_RULE     = RULES[8]            // rule 9 (checkbox)
+const FINAL_RULE_KEY = "9"
+
 interface FormData {
   firstName: string
   middleName: string
@@ -58,14 +62,14 @@ const initial: FormData = {
 type Step = "form" | "consent" | "done"
 
 export default function AdmissionFormPage() {
-  const [form, setForm]           = useState<FormData>(initial)
-  const [step, setStep]           = useState<Step>("form")
+  const [form, setForm]             = useState<FormData>(initial)
+  const [step, setStep]             = useState<Step>("form")
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError]         = useState("")
-  const [touched, setTouched]     = useState<Partial<Record<keyof FormData, boolean>>>({})
+  const [error, setError]           = useState("")
+  const [touched, setTouched]       = useState<Partial<Record<keyof FormData, boolean>>>({})
   const [showRefreshConfirm, setShowRefreshConfirm] = useState(false)
-  const [rulesAccepted, setRulesAccepted] = useState<string[]>([])
-  const [consentError, setConsentError]   = useState("")
+  const [finalRuleAccepted, setFinalRuleAccepted]   = useState(false)
+  const [consentError, setConsentError]             = useState("")
 
   const isSenior = form.standard === "11th Standard" || form.standard === "12th Standard"
   const fullName = [form.firstName, form.middleName, form.lastName].filter(Boolean).join(" ")
@@ -76,33 +80,11 @@ export default function AdmissionFormPage() {
     setError("")
   }
 
-  const fieldError = (key: keyof FormData) => {
-    if (!touched[key]) return ""
-    const optional = new Set<keyof FormData>([
-      "middleName", "email", "fatherPhone", "casteReligion",
-      "photo", "aadharNumber", "address", "fatherName",
-      "admissionDate", "studentDOB",
-    ])
-    if (!optional.has(key) && key !== "admissionType" && !(form[key] as string).trim()) {
-      return "This field is required"
-    }
-    if (key === "studentPhone" && !/^\d{10}$/.test(form[key].replace(/\s/g, "")))
-      return "Enter a valid 10-digit number"
-    if (key === "fatherPhone" && form[key].trim() !== "" && !/^\d{10}$/.test(form[key].replace(/\s/g, "")))
-      return "Enter a valid 10-digit number"
-    return ""
-  }
+  // All fields are optional — no validation errors shown
+  const fieldError = (_key: keyof FormData) => ""
 
-  const validate = (): string | undefined => {
-    const required: (keyof FormData)[] = ["firstName", "lastName", "studentPhone", "standard", "branch"]
-    if (isSenior) required.push("course")
-    const allTouched: Partial<Record<keyof FormData, boolean>> = {}
-    required.forEach(k => { allTouched[k] = true })
-    setTouched(allTouched)
-    for (const k of required) {
-      if (!(form[k] as string).trim()) return "Please fill all required fields"
-    }
-  }
+  // No required fields — always passes
+  const validate = (): string | undefined => undefined
 
   // Step 1 → go to consent screen
   const handleNext = (e: React.FormEvent) => {
@@ -110,7 +92,7 @@ export default function AdmissionFormPage() {
     const err = validate()
     if (err) { setError(err); return }
     setError("")
-    setRulesAccepted([])
+    setFinalRuleAccepted(false)
     setConsentError("")
     setStep("consent")
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -118,12 +100,14 @@ export default function AdmissionFormPage() {
 
   // Step 2 → final submit
   const handleFinalSubmit = async () => {
-    if (rulesAccepted.length < RULES.length) {
-      setConsentError("कृपया सर्व नियम व अटी स्वीकारा. (Please accept all rules & regulations.)")
+    if (!finalRuleAccepted) {
+      setConsentError("कृपया शेवटची अट स्वीकारा. (Please accept the final rule & regulation.)")
       return
     }
     setConsentError("")
     setSubmitting(true)
+    // All numbered rules are auto-included; final rule is the checkbox gate
+    const rulesAccepted = [...NUMBERED_RULES.map((_, i) => String(i + 1)), FINAL_RULE_KEY]
     try {
       const res = await fetch(process.env.NEXT_PUBLIC_API_URL + "/admissions/public", {
         method: "POST",
@@ -181,7 +165,7 @@ export default function AdmissionFormPage() {
               Vidyaaniketan Professional Academy · {form.branch} Branch
             </div>
             <button
-              onClick={() => { setForm(initial); setTouched({}); setStep("form"); setRulesAccepted([]) }}
+              onClick={() => { setForm(initial); setTouched({}); setStep("form"); setFinalRuleAccepted(false) }}
               className="mt-6 text-sm text-gray-400 hover:text-gray-600 underline transition-colors"
             >
               Submit another form
@@ -194,14 +178,6 @@ export default function AdmissionFormPage() {
 
   /* ── CONSENT SCREEN ──────────────────────────────── */
   if (step === "consent") {
-    const allAccepted = rulesAccepted.length === RULES.length
-    const toggleRule = (key: string) => {
-      setRulesAccepted(prev =>
-        prev.includes(key) ? prev.filter(v => v !== key) : [...prev, key]
-      )
-      setConsentError("")
-    }
-
     return (
       <div className="min-h-screen bg-[#e8f4f8] flex items-center justify-center p-4 py-10">
         <div className="w-full max-w-[42rem]">
@@ -240,13 +216,13 @@ export default function AdmissionFormPage() {
 
                 <div className="px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
                   <ReviewRow label="Phone" value={form.studentPhone} />
-                  {form.fatherPhone && <ReviewRow label="Contact 2" value={form.fatherPhone} />}
-                  {form.fatherName  && <ReviewRow label="Father" value={form.fatherName} />}
-                  {form.email       && <ReviewRow label="Email" value={form.email} />}
-                  {form.studentDOB  && <ReviewRow label="Date of Birth" value={form.studentDOB} />}
+                  {form.fatherPhone   && <ReviewRow label="Contact 2" value={form.fatherPhone} />}
+                  {form.fatherName    && <ReviewRow label="Father" value={form.fatherName} />}
+                  {form.email         && <ReviewRow label="Email" value={form.email} />}
+                  {form.studentDOB    && <ReviewRow label="Date of Birth" value={form.studentDOB} />}
                   {form.admissionDate && <ReviewRow label="Admission Date" value={form.admissionDate} />}
-                  {form.gender      && <ReviewRow label="Gender" value={form.gender} />}
-                  {form.aadharNumber && <ReviewRow label="Aadhar" value={form.aadharNumber} />}
+                  {form.gender        && <ReviewRow label="Gender" value={form.gender} />}
+                  {form.aadharNumber  && <ReviewRow label="Aadhar" value={form.aadharNumber} />}
                   {form.casteReligion && <ReviewRow label="Caste/Religion" value={form.casteReligion} />}
                   {form.admissionType.length > 0 && (
                     <ReviewRow label="Admission In" value={form.admissionType.join(", ")} />
@@ -259,59 +235,68 @@ export default function AdmissionFormPage() {
                 </div>
               </div>
 
-              {/* ── Rules ── */}
+              {/* ── Rules Section ── */}
               <div className="space-y-3">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-bold tracking-wider uppercase text-rose-600 border-rose-200 bg-rose-50/50">
-                  Rules &amp; Regulations Acceptance
+                  Rules &amp; Regulations
                 </div>
 
-                <div className="space-y-2">
-                  {RULES.map((rule, index) => {
-                    const key = String(index + 1)
-                    const checked = rulesAccepted.includes(key)
-                    return (
-                      <label
-                        key={index}
-                        onClick={() => toggleRule(key)}
-                        className={`flex items-start gap-3 px-4 py-3 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:border-rose-300 select-none ${
-                          checked ? "border-rose-200 bg-rose-50/40" : "border-gray-200"
-                        }`}
+                {/* Rules 1–8: numbered, read-only */}
+                <div className="rounded-xl border border-gray-200 bg-white overflow-hidden divide-y divide-gray-100">
+                  {NUMBERED_RULES.map((rule, index) => (
+                    <div key={index} className="flex items-start gap-3 px-4 py-3">
+                      <span className="text-xs font-bold text-[#0d6efd] shrink-0 mt-0.5 w-5 text-right">
+                        {index + 1}.
+                      </span>
+                      <span
+                        className="text-sm text-gray-700 leading-relaxed"
+                        style={{ fontFamily: "'Noto Sans Devanagari', sans-serif" }}
                       >
-                        <div className={`w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
-                          checked ? "bg-rose-500 border-rose-500" : "border-gray-300 bg-white"
-                        }`}>
-                          {checked && (
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="text-sm text-gray-700 leading-relaxed" style={{ fontFamily: "'Noto Sans Devanagari', sans-serif" }}>
-                          {rule}
-                        </span>
-                      </label>
-                    )
-                  })}
+                        {rule}
+                      </span>
+                    </div>
+                  ))}
                 </div>
 
-                {/* Accept-all progress */}
-                {rulesAccepted.length > 0 && !allAccepted && (
-                  <p className="text-xs text-amber-600 flex items-center gap-1.5">
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                    </svg>
-                    {rulesAccepted.length} of {RULES.length} rules accepted
+                {/* Rule 9: checkbox — must tick to submit */}
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-rose-600 uppercase tracking-wider px-1">
+                    Acceptance Required
                   </p>
-                )}
-                {allAccepted && (
-                  <p className="text-xs text-emerald-600 flex items-center gap-1.5">
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                    All rules accepted
-                  </p>
-                )}
+                  <label
+                    onClick={() => { setFinalRuleAccepted(prev => !prev); setConsentError("") }}
+                    className={`flex items-start gap-3 px-4 py-3 rounded-xl border bg-white cursor-pointer transition-all duration-200 select-none ${
+                      finalRuleAccepted
+                        ? "border-rose-300 bg-rose-50/40"
+                        : "border-gray-300 hover:border-rose-300"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
+                      finalRuleAccepted ? "bg-rose-500 border-rose-500" : "border-gray-300 bg-white"
+                    }`}>
+                      {finalRuleAccepted && (
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <span
+                      className="text-sm text-gray-700 leading-relaxed font-medium"
+                      style={{ fontFamily: "'Noto Sans Devanagari', sans-serif" }}
+                    >
+                      {FINAL_RULE}
+                    </span>
+                  </label>
+
+                  {finalRuleAccepted && (
+                    <p className="text-xs text-emerald-600 flex items-center gap-1.5 px-1">
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                      All rules accepted
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Consent error */}
@@ -351,7 +336,7 @@ export default function AdmissionFormPage() {
               </button>
 
               <p className="text-center text-xs text-gray-400">
-                By confirming, you accept all rules & regulations above
+                By confirming, you accept all rules &amp; regulations above
               </p>
             </div>
           </div>
@@ -408,7 +393,7 @@ export default function AdmissionFormPage() {
 
           <form onSubmit={handleNext} className="px-6 py-6 space-y-5" noValidate>
 
-            {/* Name */}
+            {/* Student Details */}
             <Section label="Student Details" color="blue">
               <div className="grid grid-cols-3 gap-2">
                 <InputField placeholder="First Name" value={form.firstName}
@@ -479,7 +464,7 @@ export default function AdmissionFormPage() {
               />
             </Section>
 
-            {/* Personal */}
+            {/* Personal Details */}
             <Section label="Personal Details" color="indigo">
               <InputField placeholder="Father's Name" value={form.fatherName}
                 onChange={v => set("fatherName", v)} error={fieldError("fatherName")}
@@ -503,7 +488,7 @@ export default function AdmissionFormPage() {
               <PhotoUploadField value={form.photo} onChange={v => set("photo", v)} error={fieldError("photo")} />
             </Section>
 
-            {/* Academic */}
+            {/* Academic Details */}
             <Section label="Academic Details" color="cyan">
               <SelectField placeholder="Select Standard" value={form.standard}
                 onChange={v => { set("standard", v); set("course", "") }}
@@ -587,7 +572,7 @@ export default function AdmissionFormPage() {
   )
 }
 
-/* ── Review row ─────────────────────────────────────── */
+/* ── Review Row ─────────────────────────────────────── */
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
