@@ -21,6 +21,35 @@ interface Student {
   caste_religion: string; photo: string;
 }
 
+const STANDARDS = [
+  "4th Standard",
+  "4th Scholarship",
+  "5th Standard",
+  "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard",
+  "6th Foundation",
+  "7th Standard",
+  "7th Scholarship",
+  "7th Foundation",
+  "6th–7th Foundation",
+  "8th Standard",
+  "8th Foundation",
+  "8th Regular",
+  "9th Standard",
+  "9th Photon",
+  "9th Foundation",
+  "10th Standard",
+  "11th Standard",
+  "12th Standard",
+  "Basic Foundation 1 (4th to 6th)",
+  "Basic Foundation 2 (7th to 9th)"
+]
+
+const BRANCHES = [
+  "Main Branch",
+  "SOF (School of Foundation)"
+]
+
 const feeStatus = (s: Student) => {
   const fee = Number(s.fee)
   const paid = Number(s.paid_fee)
@@ -49,7 +78,6 @@ export function StudentsContent() {
   const [filterStandard, setFilterStandard] = useState("all")
   const [filterCourse, setFilterCourse] = useState("all")
   const [filterBranch, setFilterBranch] = useState("all")
-  const [branches, setBranches] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [selected, setSelected] = useState<Student | null>(null)
@@ -97,15 +125,9 @@ export function StudentsContent() {
         result = primary?.data || []
       }
 
-      const uniqueBranches = Array.from(
-        new Set(result.map((s) => s.branch?.trim()).filter(Boolean))
-      ) as string[]
-      setBranches(uniqueBranches)
-
       if (filterStandard !== "all") {
         result = result.filter((s) => {
-          const stored = String(s.standard ?? "").trim().replace(/[^0-9]/g, "")
-          return stored === String(filterStandard).trim()
+          return String(s.standard ?? "").trim().toLowerCase() === String(filterStandard).trim().toLowerCase()
         })
       }
 
@@ -379,8 +401,8 @@ export function StudentsContent() {
               <SelectTrigger><SelectValue placeholder="All Standards" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Standards</SelectItem>
-                {Array.from({ length: 12 }, (_, i) => (
-                  <SelectItem key={i + 1} value={String(i + 1)}>{i + 1}th Standard</SelectItem>
+                {STANDARDS.map(std => (
+                  <SelectItem key={std} value={std}>{std}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -407,8 +429,8 @@ export function StudentsContent() {
               <SelectTrigger><SelectValue placeholder="All Branches" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Branches</SelectItem>
-                {branches.map((branch) => (
-                  <SelectItem key={branch} value={branch.toLowerCase()}>
+                {BRANCHES.map((branch) => (
+                  <SelectItem key={branch} value={branch}>
                     {branch}
                   </SelectItem>
                 ))}
@@ -659,6 +681,30 @@ export function StudentsContent() {
                   <Label htmlFor="edit-address">Address</Label>
                   <Input id="edit-address" value={editForm.address ?? ""} onChange={e => handleEditChange("address", e.target.value)} placeholder="Full address" />
                 </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label>Student Photo</Label>
+                  <div className="flex items-center gap-4 p-2 border border-dashed border-gray-300 rounded-lg bg-gray-50/50">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => handleEditChange("photo", reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="text-sm"
+                    />
+                    {editForm.photo && (
+                      <div className="flex items-center gap-2">
+                        <img src={editForm.photo} alt="Preview" className="w-10 h-12 object-cover rounded border border-gray-200" />
+                        <Button type="button" variant="destructive" size="sm" onClick={() => handleEditChange("photo", "")}>Remove</Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
            {/* Academic Info */}
@@ -669,8 +715,8 @@ export function StudentsContent() {
                 <Select value={editForm.standard ?? ""} onValueChange={val => handleEditChange("standard", val)}>
                   <SelectTrigger><SelectValue placeholder="Select Standard" /></SelectTrigger>
                   <SelectContent>
-                    {["1st","2nd","3rd","4th","5th","6th","7th","8th","9th","10th"].map((std, i) => (
-                      <SelectItem key={i+1} value={String(i+1)}>{std} Standard</SelectItem>
+                    {STANDARDS.map(std => (
+                      <SelectItem key={std} value={std}>{std}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -692,7 +738,7 @@ export function StudentsContent() {
                   <SelectTrigger><SelectValue placeholder="Select Branch" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Main Branch">Main Branch</SelectItem>
-                    <SelectItem value="SOF Branch">SOF Branch</SelectItem>
+                    <SelectItem value="SOF (School of Foundation)">SOF (School of Foundation)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

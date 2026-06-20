@@ -25,12 +25,37 @@ import {
 import {
   type AssessmentRow,
   type DashboardData,
+  type InsightItem,
   buildDashboardData,
   buildInsights,
   parseAttendanceExtras,
   parseRankExtras,
   toNum,
 } from "../../lib/performance-utils";
+
+const STANDARDS = [
+  "4th Standard",
+  "4th Scholarship",
+  "5th Standard",
+  "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard",
+  "6th Foundation",
+  "7th Standard",
+  "7th Scholarship",
+  "7th Foundation",
+  "6th–7th Foundation",
+  "8th Standard",
+  "8th Foundation",
+  "8th Regular",
+  "9th Standard",
+  "9th Photon",
+  "9th Foundation",
+  "10th Standard",
+  "11th Standard",
+  "12th Standard",
+  "Basic Foundation 1 (4th to 6th)",
+  "Basic Foundation 2 (7th to 9th)"
+];
 
 type Student = {
   id: number;
@@ -63,6 +88,7 @@ function getPerformanceLabel(pct: number): string {
 function mapAssessmentRows(data: unknown[]): AssessmentRow[] {
   return (data || []).map((r: any) => ({
     id: r.id,
+    student_id: r.student_id ? Number(r.student_id) : undefined,
     subject: r.subject || "",
     marks: toNum(r.marks),
     total_marks: r.total_marks != null ? toNum(r.total_marks) : undefined,
@@ -369,39 +395,212 @@ export default function StudentPerformanceDashboard() {
   const [showBulkResults, setShowBulkResults] = useState(false);
   // Raw assessments cache per student: studentId → rows
   const [assessmentCache, setAssessmentCache] = useState<Map<number, AssessmentRow[]>>(new Map());
+  const [selectedStandard, setSelectedStandard] = useState<string>("all");
 
   const selectedStudent = useMemo(
     () => students.find((s) => s.id === selectedStudentId) ?? null,
     [students, selectedStudentId]
   );
+
+  const [classAssessments, setClassAssessments] = useState<AssessmentRow[]>([]);
+  const [classLoading, setClassLoading] = useState(false);
+
+  const isStudentView = selectedStudentId !== null && selectedStudent !== null;
+
+  const classStudents = useMemo(() => {
+    if (selectedStandard === "all") return students;
+    return students.filter((s) => s.standard === selectedStandard);
+  }, [students, selectedStandard]);
+
+  const classStats = useMemo(() => {
+    if (classAssessments.length === 0) {
+      return {
+        overallPercentage: 0,
+        averageMarks: 0,
+        totalStudents: classStudents.length,
+        totalTests: 0,
+      };
+    }
+    const totalMarks = classAssessments.reduce((acc, curr) => acc + Number(curr.marks), 0);
+    const avg = Number((totalMarks / classAssessments.length).toFixed(1));
+    const uniqueExams = new Set(classAssessments.map((a) => a.examination));
+    return {
+      overallPercentage: avg,
+      averageMarks: avg,
+      totalStudents: classStudents.length,
+      totalTests: uniqueExams.size,
+    };
+  }, [classAssessments, classStudents.length]);
+
+  const classPerformanceChartRows = useMemo<AssessmentRow[]>(() => {
+    const groupedByDate = new Map<string, { total: number; count: number; examName: string }>();
+    classAssessments.forEach((a) => {
+      const date = (a.exam_date || "").split("T")[0];
+      if (!date) return;
+      const existing = groupedByDate.get(date) || { total: 0, count: 0, examName: a.examination };
+      existing.total += Number(a.marks);
+      existing.count += 1;
+      groupedByDate.set(date, existing);
+    });
+    return Array.from(groupedByDate.entries())
+      .map(([date, data]) => ({
+        id: 0,
+        subject: "Class Avg",
+        exam_date: date,
+        marks: Number((data.total / data.count).toFixed(1)),
+        examination: data.examName || "Class Avg",
+      }))
+      .sort((a, b) => a.exam_date.localeCompare(b.exam_date));
+  }, [classAssessments]);
+
+  const classSubjects = useMemo(() => {
+    const groupedBySubject = new Map<string, { total: number; count: number }>();
+    classAssessments.forEach((a) => {
+      const sub = a.subject || "General";
+      const existing = groupedBySubject.get(sub) || { total: 0, count: 0 };
+      existing.total += Number(a.marks);
+      existing.count += 1;
+      groupedBySubject.set(sub, existing);
+    });
+    const subjectColors = ["#22c55e", "#3b82f6", "#eab308", "#8b5cf6", "#f97316", "#ec4899", "#14b8a6"];
+    return Array.from(groupedBySubject.entries()).map(([name, data], idx) => ({
+      name,
+      marks: Number((data.total / data.count).toFixed(1)),
+      total: 100,
+      color: subjectColors[idx % subjectColors.length],
+    }));
+  }, [classAssessments]);
+
+  const classInsights = useMemo<InsightItem[]>(() => {
+    const list: InsightItem[] = [
+      {
+        type: "info",
+        title: "Class Average",
+        description: `The overall average across all students is ${classStats.overallPercentage}%.`,
+      },
+      {
+        type: "success",
+        title: "Total Records",
+        description: `A total of ${classAssessments.length} assessment records are registered for ${classStudents.length} students in this class.`,
+      },
+    ];
+    if (classSubjects.length > 0) {
+      const bestSubject = [...classSubjects].sort((a, b) => b.marks - a.marks)[0];
+      list.push({
+        type: "tip",
+        title: "Highest Performing Subject",
+        description: `${bestSubject.name} is the highest performing subject, averaging ${bestSubject.marks}%.`,
+      });
+    }
+    return list;
+  }, [classStats.overallPercentage, classAssessments.length, classStudents.length, classSubjects]);
+
+  const studentRankList = useMemo(() => {
+    return classStudents
+      .map((student) => {
+        const studentAssessments = classAssessments.filter((a) => Number(a.student_id) === student.id);
+        const avg =
+          studentAssessments.length > 0
+            ? Number(
+                (
+                  studentAssessments.reduce((acc, a) => acc + Number(a.marks), 0) /
+                  studentAssessments.length
+                ).toFixed(1)
+              )
+            : 0;
+        return {
+          ...student,
+          average: avg,
+          testsCount: studentAssessments.length,
+        };
+      })
+      .sort((a, b) => b.average - a.average);
+  }, [classStudents, classAssessments]);
+
+  const fetchClassAssessments = async (standard: string) => {
+    setClassLoading(true);
+    try {
+      if (standard === "all") {
+        const res: any = await teacherStudentAssessmentsApi.getLatestAll();
+        setClassAssessments(mapAssessmentRows(res?.data || []));
+      } else {
+        const res: any = await teacherStudentAssessmentsApi.getByStandard(standard);
+        setClassAssessments(mapAssessmentRows(res?.data || []));
+      }
+    } catch (e: any) {
+      console.error("Failed to load class assessments:", e);
+    } finally {
+      setClassLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClassAssessments(selectedStandard);
+  }, [selectedStandard]);
+
   useEffect(() => {
     const loadStudents = async () => {
-      setLoading(true); setError(null);
+      setLoading(true);
+      setError(null);
       try {
         const studentsRes: any = await studentsUniversalApi.getAll();
         const allStudents: Student[] = (studentsRes?.data || []).map((s: any) => ({
-          id: Number(s.id), name: s.name || "", phone: s.phone || "",
-          standard: s.standard || "", board: s.board || "", location: s.location || "",
+          id: Number(s.id),
+          name: s.name || "",
+          phone: s.phone || "",
+          standard: s.standard || "",
+          board: s.board || "",
+          location: s.location || "",
         }));
         setStudents(allStudents);
         if (allStudents.length > 0) {
-          const queryMatch = allStudents.find((s) => s.id === preferredStudentId);
-          setSelectedStudentId(queryMatch ? queryMatch.id : allStudents[0].id);
-        } else {
-          // setDashboardData(null);
+          if (Number.isFinite(preferredStudentId)) {
+            const queryMatch = allStudents.find((s) => s.id === preferredStudentId);
+            if (queryMatch) {
+              setSelectedStudentId(queryMatch.id);
+              setSelectedStandard(queryMatch.standard || "all");
+              return;
+            }
+          }
+          const urlStd = searchParams.get("standard") || "all";
+          setSelectedStandard(urlStd);
+          setSelectedStudentId(null);
         }
-
-      } catch (e: any) { setError(e?.message || "Failed to load students"); }
-      finally { setLoading(false); }
+      } catch (e: any) {
+        setError(e?.message || "Failed to load students");
+      } finally {
+        setLoading(false);
+      }
     };
     loadStudents();
-  }, [preferredStudentId]);
+  }, [preferredStudentId, searchParams]);
 
   useEffect(() => {
-    if (!students.length || !Number.isFinite(preferredStudentId)) return;
-    const queryMatch = students.find((s) => s.id === preferredStudentId);
-    if (queryMatch && queryMatch.id !== selectedStudentId) setSelectedStudentId(queryMatch.id);
-  }, [preferredStudentId, students, selectedStudentId]);
+    if (!students.length) return;
+    if (Number.isFinite(preferredStudentId)) {
+      const queryMatch = students.find((s) => s.id === preferredStudentId);
+      if (queryMatch) {
+        if (queryMatch.id !== selectedStudentId) setSelectedStudentId(queryMatch.id);
+        setSelectedStandard(queryMatch.standard || "all");
+      }
+    } else {
+      setSelectedStudentId(null);
+      const urlStd = searchParams.get("standard") || "all";
+      setSelectedStandard(urlStd);
+    }
+  }, [preferredStudentId, students, selectedStudentId, searchParams]);
+
+  const handleStandardChange = (std: string) => {
+    setSelectedStandard(std);
+    setSelectedStudentId(null);
+    setFilters({
+      examinations: [],
+      subject: "",
+      dateFrom: "",
+      dateTo: "",
+    });
+    router.replace(`/teacherdashboard/performanceanalysis?standard=${encodeURIComponent(std)}`);
+  };
 
   const handleStudentChange = (id: number) => {
     setSelectedStudentId(id);
@@ -694,32 +893,31 @@ export default function StudentPerformanceDashboard() {
             </button>
             <div className="flex items-center gap-2">
               <GraduationCap className="h-6 w-6 text-teal-600" />
-              <h1 className="text-xl font-bold text-slate-800 sm:text-2xl">Student Performance Analysis</h1>
+              <h1 className="text-xl font-bold text-slate-800 sm:text-2xl">
+                {isStudentView ? "Student Performance Analysis" : "Class Performance Analysis"}
+              </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <select
-              value={selectedStudentId ?? ""}
-              onChange={(e) => handleStudentChange(Number(e.target.value))}
-              className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700"
+              value={selectedStandard}
+              onChange={(e) => handleStandardChange(e.target.value)}
+              className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 font-medium shadow-sm"
               disabled={loading || students.length === 0}
             >
-              {students.length === 0 ? (
-                <option value="">No students</option>
-              ) : (
-                students.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name || `Student ${s.id}`}</option>
-                ))
-              )}
+              <option value="all">All Classes</option>
+              {STANDARDS.map((std) => (
+                <option key={std} value={std}>{std}</option>
+              ))}
             </select>
 
             {/* 📤 Bulk Send Button */}
             <Button
               onClick={handleBulkSend}
-              disabled={bulkSending || loading || students.length === 0}
+              disabled={bulkSending || loading || classStudents.length === 0}
               className="bg-green-600 hover:bg-green-700 text-white gap-2 shadow-md disabled:opacity-60"
-              title="Send latest test report to all students via WhatsApp"
+              title="Send latest test report to all students in this class via WhatsApp"
             >
               {bulkSending ? (
                 <>
@@ -736,7 +934,7 @@ export default function StudentPerformanceDashboard() {
 
             <Button
               onClick={() => setAddMarksOpen(true)}
-              disabled={loading || !selectedStudentId}
+              disabled={loading || !isStudentView}
               className="bg-violet-600 hover:bg-violet-700 text-white gap-2 shadow-md disabled:opacity-60"
             >
               <Plus className="h-4 w-4" />
@@ -745,7 +943,7 @@ export default function StudentPerformanceDashboard() {
 
             <Button
               onClick={() => setAddAttendanceOpen(true)}
-              disabled={loading || !selectedStudentId}
+              disabled={loading || !isStudentView}
               className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-md disabled:opacity-60"
             >
               <CalendarCheck className="h-4 w-4" />
@@ -754,7 +952,7 @@ export default function StudentPerformanceDashboard() {
 
             <Button
               onClick={() => setBulkMarksOpen(true)}
-              disabled={loading || students.length === 0}
+              disabled={loading || classStudents.length === 0}
               variant="outline"
               className="border-amber-400 text-amber-700 hover:bg-amber-50 gap-2"
             >
@@ -765,7 +963,7 @@ export default function StudentPerformanceDashboard() {
             {/* 📥 Download Button */}
             <Button
               onClick={handleDownloadReport}
-              disabled={downloading || loading || studentLoading || !displayData}
+              disabled={downloading || loading || studentLoading || !isStudentView || !displayData}
               className="bg-teal-500 hover:bg-teal-600 text-white gap-2 shadow-md disabled:opacity-60"
             >
               {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -854,62 +1052,178 @@ export default function StudentPerformanceDashboard() {
           <div className="mb-4 rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
 
+        {isStudentView && (
+          <Button
+            variant="outline"
+            onClick={() => router.replace(`/teacherdashboard/performanceanalysis?standard=${encodeURIComponent(selectedStandard)}`)}
+            className="mb-4 gap-1.5 rounded-full border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Class Overview
+          </Button>
+        )}
+
         {/* ── Dashboard Card ── */}
         <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
-          {(loading || studentLoading) && (
+          {(loading || studentLoading || classLoading) && (
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-sky-100 bg-sky-50 p-3 text-sm text-sky-700">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading dashboard data...
             </div>
           )}
 
-          <div className="mb-6 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <StudentProfile
-              name={displayData!.name}
-              phone={displayData!.phone}
-              className={displayData!.class}
-              board={displayData!.board}
-              location={displayData!.location}
-            />
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <StatsCard title="Overall Percentage" value={`${displayData!.stats.overallPercentage}%`}
-                change={displayData!.stats.percentageChange} changeLabel="vs Last Term" icon="percentage" />
-              <StatsCard title="Average Marks" value={displayData!.stats.averageMarks}
-                subValue={`/ ${displayData!.stats.totalMarks}`} change={displayData!.stats.averageChange}
-                changeLabel="vs Last Term" icon="star" />
-              <StatsCard title="Class Rank" value={displayData!.stats.classRank}
-                subValue={`/ ${displayData!.stats.totalStudents}`} change={displayData!.stats.rankChange}
-                changeLabel="vs Last Term" icon="rank" />
-              <StatsCard title="Attendance" value={`${displayData!.stats.attendance}%`}
-                change={displayData!.stats.attendanceChange} changeLabel="vs Last Term" icon="attendance" />
-            </div>
-          </div>
+          {isStudentView ? (
+            <>
+              {/* Individual Student Dashboard View */}
+              <div className="mb-6 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <StudentProfile
+                  name={displayData!.name}
+                  phone={displayData!.phone}
+                  className={displayData!.class}
+                  board={displayData!.board}
+                  location={displayData!.location}
+                />
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <StatsCard title="Overall Percentage" value={`${displayData!.stats.overallPercentage}%`}
+                    change={displayData!.stats.percentageChange} changeLabel="vs Last Term" icon="percentage" />
+                  <StatsCard title="Average Marks" value={displayData!.stats.averageMarks}
+                    subValue={`/ ${displayData!.stats.totalMarks}`} change={displayData!.stats.averageChange}
+                    changeLabel="vs Last Term" icon="star" />
+                  <StatsCard title="Class Rank" value={displayData!.stats.classRank}
+                    subValue={`/ ${displayData!.stats.totalStudents}`} change={displayData!.stats.rankChange}
+                    changeLabel="vs Last Term" icon="rank" />
+                  <StatsCard title="Attendance" value={`${displayData!.stats.attendance}%`}
+                    change={displayData!.stats.attendanceChange} changeLabel="vs Last Term" icon="attendance" />
+                </div>
+              </div>
 
-          <div className="mb-6">
-            <PerformanceFilters
-              assessmentRows={historyRows}
-              value={filters}
-              onChange={setFilters}
-              onExaminationDeleted={refreshStudentPerformance}
-            />
-          </div>
+              <div className="mb-6">
+                <PerformanceFilters
+                  assessmentRows={historyRows}
+                  value={filters}
+                  onChange={setFilters}
+                  onExaminationDeleted={refreshStudentPerformance}
+                />
+              </div>
 
-          <div className="mb-6 grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-1">
-              <PerformanceChart assessmentRows={filteredHistoryRows} />
-            </div>
-            <div className="lg:col-span-1">
-              <SubjectMarksChart subjects={displayData!.subjects} average={displayData!.stats.overallPercentage} />
-            </div>
-            <div className="lg:col-span-1"><PerformanceInsights insights={insights} /></div>
-          </div>
+              <div className="mb-6 grid gap-6 lg:grid-cols-3">
+                <div className="lg:col-span-1">
+                  <PerformanceChart assessmentRows={filteredHistoryRows} />
+                </div>
+                <div className="lg:col-span-1">
+                  <SubjectMarksChart subjects={displayData!.subjects} average={displayData!.stats.overallPercentage} />
+                </div>
+                <div className="lg:col-span-1"><PerformanceInsights insights={insights} /></div>
+              </div>
 
-          <DetailedAnalysis subjects={displayData!.subjects} />
-          <div className="mt-6">
-            <AssessmentHistory rows={filteredHistoryRows} loading={studentLoading} />
-          </div>
-          <div className="mt-6">
-            <RankHistory rows={rankHistoryRows} loading={studentLoading} />
-          </div>
+              <DetailedAnalysis subjects={displayData!.subjects} />
+              <div className="mt-6">
+                <AssessmentHistory rows={filteredHistoryRows} loading={studentLoading} />
+              </div>
+              <div className="mt-6">
+                <RankHistory rows={rankHistoryRows} loading={studentLoading} />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Class-level Overview Dashboard View */}
+              <div className="mb-6 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="relative h-20 w-20 overflow-hidden rounded-full bg-gradient-to-br from-teal-50 to-teal-100 flex items-center justify-center shadow-md">
+                    <GraduationCap className="h-10 w-10 text-teal-600" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-xl font-bold text-slate-800">
+                      {selectedStandard === "all" ? "All Classes Overview" : `${selectedStandard} Overview`}
+                    </h2>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
+                      <span>Total Students: {classStudents.length}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <StatsCard title="Class Average" value={`${classStats.overallPercentage}%`} icon="percentage" />
+                  <StatsCard title="Average Marks" value={classStats.averageMarks} subValue="/ 100" icon="star" />
+                  <StatsCard title="Total Students" value={classStats.totalStudents} icon="rank" />
+                  <StatsCard title="Total Assessments" value={classStats.totalTests} icon="attendance" />
+                </div>
+              </div>
+
+              <div className="mb-6 grid gap-6 lg:grid-cols-3">
+                <div className="lg:col-span-1">
+                  <PerformanceChart assessmentRows={classPerformanceChartRows} />
+                </div>
+                <div className="lg:col-span-1">
+                  <SubjectMarksChart subjects={classSubjects} average={classStats.overallPercentage} />
+                </div>
+                <div className="lg:col-span-1">
+                  <PerformanceInsights insights={classInsights} />
+                </div>
+              </div>
+
+              {/* Student rankings list */}
+              <div className="mt-6 rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+                <h3 className="text-lg font-bold text-slate-800 mb-4">Student Rankings & Performance Directory</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50 text-slate-500 text-xs font-semibold uppercase">
+                        <th className="px-4 py-3">Rank</th>
+                        <th className="px-4 py-3">Name</th>
+                        <th className="px-4 py-3">Phone</th>
+                        <th className="px-4 py-3">Board</th>
+                        <th className="px-4 py-3">Location</th>
+                        <th className="px-4 py-3 text-center">Tests Taken</th>
+                        <th className="px-4 py-3 text-center">Class Avg %</th>
+                        <th className="px-4 py-3 text-center">Grade</th>
+                        <th className="px-4 py-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {studentRankList.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="px-4 py-8 text-center text-slate-400">
+                            No students in this class.
+                          </td>
+                        </tr>
+                      ) : (
+                        studentRankList.map((s, index) => {
+                          const pct = s.average;
+                          const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B+" : pct >= 60 ? "B" : pct >= 50 ? "C" : "D";
+                          const badgeBg = pct >= 75 ? "bg-emerald-100 text-emerald-700" : pct >= 50 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700";
+                          return (
+                            <tr key={s.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                              <td className="px-4 py-3 font-semibold text-slate-700">#{index + 1}</td>
+                              <td className="px-4 py-3 font-medium text-slate-800">{s.name}</td>
+                              <td className="px-4 py-3 text-slate-500">{s.phone || "—"}</td>
+                              <td className="px-4 py-3 text-slate-500">{s.board || "—"}</td>
+                              <td className="px-4 py-3 text-slate-500">{s.location || "—"}</td>
+                              <td className="px-4 py-3 text-center text-slate-600">{s.testsCount}</td>
+                              <td className="px-4 py-3 text-center font-bold text-slate-700">{pct}%</td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeBg}`}>
+                                  {grade}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleStudentChange(s.id)}
+                                  className="bg-teal-600 hover:bg-teal-700 text-white rounded-full px-3 py-1 text-xs gap-1 shadow-sm"
+                                >
+                                  <GraduationCap className="h-3 w-3" />
+                                  View Performance
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <AddMarksDialog
@@ -923,7 +1237,7 @@ export default function StudentPerformanceDashboard() {
         <BulkAddMarksDialog
           open={bulkMarksOpen}
           onOpenChange={setBulkMarksOpen}
-          students={students.map((s) => ({ id: s.id, name: s.name }))}
+          students={classStudents.map((s) => ({ id: s.id, name: s.name }))}
           onSaved={refreshStudentPerformance}
         />
 

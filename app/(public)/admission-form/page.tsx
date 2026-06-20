@@ -4,13 +4,30 @@ import { Header } from "@/components/ui/header"
 import { useState } from "react"
 
 const STANDARDS = [
-  "1st Standard", "2nd Standard", "3rd Standard",
-  "4th Standard", "5th Standard", "6th Standard",
-  "7th Standard", "8th Standard", "9th Standard",
-  "10th Standard", "11th Standard", "12th Standard"
+  "4th Standard",
+  "4th Scholarship",
+  "5th Standard",
+  "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard",
+  "6th Foundation",
+  "7th Standard",
+  "7th Scholarship",
+  "7th Foundation",
+  "6th–7th Foundation",
+  "8th Standard",
+  "8th Foundation",
+  "8th Regular",
+  "9th Standard",
+  "9th Photon",
+  "9th Foundation",
+  "10th Standard",
+  "11th Standard",
+  "12th Standard",
+  "Basic Foundation 1 (4th to 6th)",
+  "Basic Foundation 2 (7th to 9th)"
 ]
 
-const BRANCHES = ["Main branch", "SOF branch"]
+const BRANCHES = ["Main Branch", "SOF (School of Foundation)"]
 const COURSES  = ["IIT-JEE", "MHT-CET", "NEET"]
 
 const RULES = [
@@ -71,7 +88,7 @@ export default function AdmissionFormPage() {
   const [finalRuleAccepted, setFinalRuleAccepted]   = useState(false)
   const [consentError, setConsentError]             = useState("")
 
-  const isSenior = form.standard === "11th Standard" || form.standard === "12th Standard"
+  const isSenior = !!form.standard
   const fullName = [form.firstName, form.middleName, form.lastName].filter(Boolean).join(" ")
 
   const set = (key: keyof FormData, val: string) => {
