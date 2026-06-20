@@ -5,6 +5,7 @@ export const SUBJECT_COLORS = [
 
 export type AssessmentRow = {
   id?: number;
+  student_id?: number;
   subject: string;
   marks: number;
   total_marks?: number;

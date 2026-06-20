@@ -50,6 +50,35 @@ import {
 import { Label } from "@/components/teacher/ui/label";
 import { studentsApi, studentsUniversalApi, teacherStudentAssessmentsApi } from "@/lib/api";
 
+const STANDARDS = [
+  "4th Standard",
+  "4th Scholarship",
+  "5th Standard",
+  "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard",
+  "6th Foundation",
+  "7th Standard",
+  "7th Scholarship",
+  "7th Foundation",
+  "6th–7th Foundation",
+  "8th Standard",
+  "8th Foundation",
+  "8th Regular",
+  "9th Standard",
+  "9th Photon",
+  "9th Foundation",
+  "10th Standard",
+  "11th Standard",
+  "12th Standard",
+  "Basic Foundation 1 (4th to 6th)",
+  "Basic Foundation 2 (7th to 9th)"
+];
+
+const BRANCHES = [
+  "Main Branch",
+  "SOF (School of Foundation)"
+];
+
 type Student = {
   id: number;
   name: string;
@@ -61,7 +90,7 @@ type Student = {
   exam_date?: string;
   standard: string;
   board: string;
-  location: string;
+  branch: string;
 };
 
 type AssessmentRow = {
@@ -81,7 +110,7 @@ type SubjectCol = { id: string; subject: string; total_marks: string };
 function studentsToCSV(students: Student[]): string {
   const headers = [
     "id", "name", "phone", "father_phone", "subject", "marks",
-    "examination", "exam_date", "standard", "board", "location",
+    "examination", "exam_date", "standard", "board", "branch",
   ];
   const escape = (v: unknown) => {
     const s = v === undefined || v === null ? "" : String(v);
@@ -270,7 +299,7 @@ export function StudentManagementContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [standardFilter, setStandardFilter] = useState("all");
   const [boardFilter, setBoardFilter] = useState("all");
-  const [locationFilter, setLocationFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -359,7 +388,7 @@ export function StudentManagementContent() {
             exam_date: latest?.exam_date || "",
             standard: s.standard || "",
             board: s.board || "",
-            location: s.location || "",
+            branch: s.branch || s.location || "",
           };
         });
 
@@ -373,16 +402,8 @@ export function StudentManagementContent() {
     load();
   }, []);
 
-  const standards = useMemo(
-    () => Array.from(new Set(students.map((s) => s.standard))).filter(Boolean),
-    [students]
-  );
   const boards = useMemo(
     () => Array.from(new Set(students.map((s) => s.board))).filter(Boolean),
-    [students]
-  );
-  const locations = useMemo(
-    () => Array.from(new Set(students.map((s) => s.location))).filter(Boolean),
     [students]
   );
 
@@ -396,14 +417,14 @@ export function StudentManagementContent() {
         String(student.father_phone || "").toLowerCase().includes(query);
       const matchesStandard = standardFilter === "all" || student.standard === standardFilter;
       const matchesBoard = boardFilter === "all" || student.board === boardFilter;
-      const matchesLocation = locationFilter === "all" || student.location === locationFilter;
-      return matchesQuery && matchesStandard && matchesBoard && matchesLocation;
+      const matchesBranch = branchFilter === "all" || student.branch === branchFilter;
+      return matchesQuery && matchesStandard && matchesBoard && matchesBranch;
     });
-  }, [students, searchTerm, standardFilter, boardFilter, locationFilter]);
+  }, [students, searchTerm, standardFilter, boardFilter, branchFilter]);
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, standardFilter, boardFilter, locationFilter]);
+  }, [searchTerm, standardFilter, boardFilter, branchFilter]);
 
   const paginatedStudents = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -500,7 +521,7 @@ export function StudentManagementContent() {
             exam_date: r.exam_date || "",
             standard: r.standard || "",
             board: r.board || "",
-            location: r.location || "",
+            branch: r.branch || r.location || "",
           }));
         } else {
           const rows = parseCSV(text);
@@ -515,7 +536,7 @@ export function StudentManagementContent() {
             exam_date: r.exam_date || "",
             standard: r.standard || "",
             board: r.board || "",
-            location: r.location || "",
+            branch: r.branch || r.location || "",
           }));
         }
 
@@ -992,8 +1013,8 @@ export function StudentManagementContent() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Standards</SelectItem>
-            {standards.map((s) => (
-              <SelectItem key={s} value={s}>Std {s}</SelectItem>
+            {STANDARDS.map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -1010,14 +1031,14 @@ export function StudentManagementContent() {
           </SelectContent>
         </Select>
 
-        <Select value={locationFilter} onValueChange={setLocationFilter}>
+        <Select value={branchFilter} onValueChange={setBranchFilter}>
           <SelectTrigger className="h-10 rounded-full">
-            <SelectValue placeholder="All Locations" />
+            <SelectValue placeholder="All Branches" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Locations</SelectItem>
-            {locations.map((l) => (
-              <SelectItem key={l} value={l}>{l}</SelectItem>
+            <SelectItem value="all">All Branches</SelectItem>
+            {BRANCHES.map((b) => (
+              <SelectItem key={b} value={b}>{b}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -1038,7 +1059,7 @@ export function StudentManagementContent() {
                 <TableHead className="text-white">Marks</TableHead>
                 <TableHead className="text-white">Std</TableHead>
                 <TableHead className="text-white">Board</TableHead>
-                <TableHead className="text-white">Location</TableHead>
+                <TableHead className="text-white">Branch</TableHead>
                 <TableHead className="text-right text-white">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -1063,7 +1084,7 @@ export function StudentManagementContent() {
                     </TableCell>
                     <TableCell>{student.standard}</TableCell>
                     <TableCell>{student.board}</TableCell>
-                    <TableCell>{student.location}</TableCell>
+                    <TableCell>{student.branch}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Button type="button" size="icon" className="h-9 w-9 rounded-full bg-cyan-500 text-white hover:bg-cyan-600" title="View" onClick={() => openView(student)}>
@@ -1112,7 +1133,7 @@ export function StudentManagementContent() {
                 <div><span className="text-muted-foreground">Phone:</span> {selectedStudent.phone}</div>
                 <div><span className="text-muted-foreground">Standard:</span> {selectedStudent.standard}</div>
                 <div><span className="text-muted-foreground">Board:</span> {selectedStudent.board}</div>
-                <div><span className="text-muted-foreground">Location:</span> {selectedStudent.location}</div>
+                <div><span className="text-muted-foreground">Branch:</span> {selectedStudent.branch}</div>
               </div>
               <div className="rounded-xl border border-border overflow-hidden">
                 <Table>
@@ -1232,7 +1253,7 @@ export function StudentManagementContent() {
               </p>
               <p>
                 <span className="font-medium text-foreground">CSV / JSON (students):</span>{" "}
-                columns <code className="text-xs bg-background rounded px-1">id, name, phone, standard, board, location …</code>
+                columns <code className="text-xs bg-background rounded px-1">id, name, phone, standard, board, branch …</code>
               </p>
             </div>
 
@@ -1329,7 +1350,7 @@ export function StudentManagementContent() {
                         <TableHead>Phone</TableHead>
                         <TableHead>Std</TableHead>
                         <TableHead>Board</TableHead>
-                        <TableHead>Location</TableHead>
+                        <TableHead>Branch</TableHead>
                         <TableHead>Marks</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1340,7 +1361,7 @@ export function StudentManagementContent() {
                           <TableCell>{s.phone || "—"}</TableCell>
                           <TableCell>{s.standard || "—"}</TableCell>
                           <TableCell>{s.board || "—"}</TableCell>
-                          <TableCell>{s.location || "—"}</TableCell>
+                          <TableCell>{s.branch || "—"}</TableCell>
                           <TableCell>{s.marks !== undefined ? s.marks : "—"}</TableCell>
                         </TableRow>
                       ))}

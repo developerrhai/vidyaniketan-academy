@@ -48,6 +48,35 @@ import {
 import { Label } from "@/components/teacher/ui/label";
 import { studentsApi, studentsUniversalApi, teacherStudentAssessmentsApi } from "@/lib/api";
 
+const STANDARDS = [
+  "4th Standard",
+  "4th Scholarship",
+  "5th Standard",
+  "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard",
+  "6th Foundation",
+  "7th Standard",
+  "7th Scholarship",
+  "7th Foundation",
+  "6th–7th Foundation",
+  "8th Standard",
+  "8th Foundation",
+  "8th Regular",
+  "9th Standard",
+  "9th Photon",
+  "9th Foundation",
+  "10th Standard",
+  "11th Standard",
+  "12th Standard",
+  "Basic Foundation 1 (4th to 6th)",
+  "Basic Foundation 2 (7th to 9th)"
+];
+
+const BRANCHES = [
+  "Main Branch",
+  "SOF (School of Foundation)"
+];
+
 type Student = {
   id: number;
   name: string;
@@ -318,9 +347,7 @@ export default function StudentManagementContent() {
     load();
   }, []);
 
-  const standards = useMemo(() => Array.from(new Set(students.map((s) => s.standard))).filter(Boolean), [students]);
   const boards = useMemo(() => Array.from(new Set(students.map((s) => s.board))).filter(Boolean), [students]);
-  const locations = useMemo(() => Array.from(new Set(students.map((s) => s.location))).filter(Boolean), [students]);
 
   const filteredStudents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -755,7 +782,7 @@ export default function StudentManagementContent() {
           <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Standards" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Standards</SelectItem>
-            {standards.map((s) => <SelectItem key={s} value={s}>Std {s}</SelectItem>)}
+            {STANDARDS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={boardFilter} onValueChange={setBoardFilter}>
@@ -766,10 +793,10 @@ export default function StudentManagementContent() {
           </SelectContent>
         </Select>
         <Select value={locationFilter} onValueChange={setLocationFilter}>
-          <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Locations" /></SelectTrigger>
+          <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Branches" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Locations</SelectItem>
-            {locations.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+            <SelectItem value="all">All Branches</SelectItem>
+            {BRANCHES.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>

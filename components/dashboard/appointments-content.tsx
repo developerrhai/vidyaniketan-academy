@@ -18,12 +18,41 @@ interface Appointment {
   whatsapp: string; status: "Pending"|"Confirmed"|"Done"|"Cancelled"
 }
 
+const STANDARDS = [
+  "4th Standard",
+  "4th Scholarship",
+  "5th Standard",
+  "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard",
+  "6th Foundation",
+  "7th Standard",
+  "7th Scholarship",
+  "7th Foundation",
+  "6th–7th Foundation",
+  "8th Standard",
+  "8th Foundation",
+  "8th Regular",
+  "9th Standard",
+  "9th Photon",
+  "9th Foundation",
+  "10th Standard",
+  "11th Standard",
+  "12th Standard",
+  "Basic Foundation 1 (4th to 6th)",
+  "Basic Foundation 2 (7th to 9th)"
+]
+
+const BRANCHES = [
+  "Main Branch",
+  "SOF (School of Foundation)"
+]
+
 const statusColor = (s: string) => ({
   Pending:"bg-yellow-100 text-yellow-700",Confirmed:"bg-blue-100 text-blue-700",
   Done:"bg-emerald-100 text-emerald-700",Cancelled:"bg-red-100 text-red-700",
 }[s] || "bg-gray-100 text-gray-700")
 
-const blank = { name:"", standard:"", board:"", course:"", date:"", time:"", location:"", whatsapp:"", status:"Pending" }
+const blank = { name:"", standard:"10th Standard", board:"", course:"", date:"", time:"", location:"Main Branch", whatsapp:"", status:"Pending" }
 
 export function AppointmentsContent() {
   const [apts,           setApts]           = useState<Appointment[]>([])
@@ -97,12 +126,12 @@ export function AppointmentsContent() {
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <Select value={filterLoc} onValueChange={setFilterLoc}>
-              <SelectTrigger><SelectValue placeholder="All Locations" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="All Branches" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                <SelectItem value="Chinchwad">Chinchwad</SelectItem>
-                <SelectItem value="Wakad">Wakad</SelectItem>
-                <SelectItem value="Thergaon">Thergaon</SelectItem>
+                <SelectItem value="all">All Branches</SelectItem>
+                {BRANCHES.map((b) => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={filterDate} onValueChange={setFilterDate}>
@@ -163,7 +192,16 @@ export function AppointmentsContent() {
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" />{editing?"Edit":"Add"} Appointment</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
             <div className="space-y-2"><Label>Student Name *</Label><Input value={form.name} onChange={e=>f("name",e.target.value)} placeholder="Name" /></div>
-            <div className="space-y-2"><Label>Standard</Label><Input value={form.standard} onChange={e=>f("standard",e.target.value)} placeholder="e.g. 10" /></div>
+            <div className="space-y-2"><Label>Standard</Label>
+              <Select value={form.standard} onValueChange={v=>f("standard",v)}>
+                <SelectTrigger><SelectValue placeholder="Standard" /></SelectTrigger>
+                <SelectContent>
+                  {STANDARDS.map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2"><Label>Board</Label>
               <Select value={form.board} onValueChange={v=>f("board",v)}>
                 <SelectTrigger><SelectValue placeholder="Board" /></SelectTrigger>
@@ -173,10 +211,14 @@ export function AppointmentsContent() {
             <div className="space-y-2"><Label>Course</Label><Input value={form.course} onChange={e=>f("course",e.target.value)} placeholder="Course" /></div>
             <div className="space-y-2"><Label>Date *</Label><Input type="date" value={form.date} onChange={e=>f("date",e.target.value)} /></div>
             <div className="space-y-2"><Label>Time *</Label><Input type="time" value={form.time} onChange={e=>f("time",e.target.value)} /></div>
-            <div className="space-y-2"><Label>Location</Label>
+            <div className="space-y-2"><Label>Branch</Label>
               <Select value={form.location} onValueChange={v=>f("location",v)}>
-                <SelectTrigger><SelectValue placeholder="Location" /></SelectTrigger>
-                <SelectContent><SelectItem value="Chinchwad">Chinchwad</SelectItem><SelectItem value="Wakad">Wakad</SelectItem><SelectItem value="Thergaon">Thergaon</SelectItem></SelectContent>
+                <SelectTrigger><SelectValue placeholder="Branch" /></SelectTrigger>
+                <SelectContent>
+                  {BRANCHES.map(b => (
+                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="space-y-2"><Label>WhatsApp</Label><Input value={form.whatsapp} onChange={e=>f("whatsapp",e.target.value)} placeholder="+91XXXXXXXXXX" /></div>

@@ -247,6 +247,7 @@ export const dashboardApi = {
 
 export const teacherStudentAssessmentsApi = {
   getLatestAll: () => get("/teacher-student-assessments"),
+  getByStandard: (standardName: string) => get(`/teacher-student-assessments/standard/${encodeURIComponent(standardName)}`),
   getByStudent: (studentId: string | number) => get(`/teacher-student-assessments/${studentId}`),
   createByStudent: (studentId: string | number, data: Record<string, unknown>) =>
     post(`/teacher-student-assessments/${studentId}`, data),

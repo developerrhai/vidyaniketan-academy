@@ -12,10 +12,27 @@ const BATCHES = [
 ]
 
 const STANDARDS = [
-  "1st Standard", "2nd Standard", "3rd Standard",
-  "4rth Standard", "5th Standard", "6th Standard",
-  "7th Standard", "8th Standard", "9th Standard",
-  "10th Standard", "11th Standard", "12th Standard",
+  "4th Standard",
+  "4th Scholarship",
+  "5th Standard",
+  "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard",
+  "6th Foundation",
+  "7th Standard",
+  "7th Scholarship",
+  "7th Foundation",
+  "6th–7th Foundation",
+  "8th Standard",
+  "8th Foundation",
+  "8th Regular",
+  "9th Standard",
+  "9th Photon",
+  "9th Foundation",
+  "10th Standard",
+  "11th Standard",
+  "12th Standard",
+  "Basic Foundation 1 (4th to 6th)",
+  "Basic Foundation 2 (7th to 9th)"
 ]
 
 const REFERENCES = [

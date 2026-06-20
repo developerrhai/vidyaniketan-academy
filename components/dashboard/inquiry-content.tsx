@@ -18,6 +18,35 @@ interface Inquiry {
   status: string; video: string; inquiry_date: string
 }
 
+const STANDARDS = [
+  "4th Standard",
+  "4th Scholarship",
+  "5th Standard",
+  "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard",
+  "6th Foundation",
+  "7th Standard",
+  "7th Scholarship",
+  "7th Foundation",
+  "6th–7th Foundation",
+  "8th Standard",
+  "8th Foundation",
+  "8th Regular",
+  "9th Standard",
+  "9th Photon",
+  "9th Foundation",
+  "10th Standard",
+  "11th Standard",
+  "12th Standard",
+  "Basic Foundation 1 (4th to 6th)",
+  "Basic Foundation 2 (7th to 9th)"
+]
+
+const BRANCHES = [
+  "Main Branch",
+  "SOF (School of Foundation)"
+]
+
 const statusColors: Record<string, string> = {
   "New":            "bg-blue-100 text-blue-700 border-blue-200",
   "Contacted":      "bg-yellow-100 text-yellow-700 border-yellow-200",
@@ -26,7 +55,7 @@ const statusColors: Record<string, string> = {
   "Not Interested": "bg-red-100 text-red-700 border-red-200",
 }
 
-const blank = { name:"", phone:"", father_name:"", father_phone:"", course:"", location:"", board:"", standard:"", status:"New", video:"" }
+const blank = { name:"", phone:"", father_name:"", father_phone:"", course:"", location:"Main Branch", board:"", standard:"10th Standard", status:"New", video:"" }
 
 export function InquiryContent() {
   const [inquiries,       setInquiries]       = useState<Inquiry[]>([])
@@ -110,20 +139,20 @@ export function InquiryContent() {
               </SelectContent>
             </Select>
             <Select value={filterLocation} onValueChange={setFilterLocation}>
-              <SelectTrigger><SelectValue placeholder="All Locations" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="All Branches" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                <SelectItem value="Chinchwad">Chinchwad</SelectItem>
-                <SelectItem value="Wakad">Wakad</SelectItem>
-                <SelectItem value="Thergaon">Thergaon</SelectItem>
+                <SelectItem value="all">All Branches</SelectItem>
+                {BRANCHES.map((b) => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={filterStandard} onValueChange={setFilterStandard}>
               <SelectTrigger><SelectValue placeholder="All Standards" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Standards</SelectItem>
-                {Array.from({length:12},(_,i)=>(
-                  <SelectItem key={i+1} value={String(i+1)}>{i+1}th Standard</SelectItem>
+                {STANDARDS.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -194,9 +223,9 @@ export function InquiryContent() {
               </div>
             ))}
             {[
-              { key:"location", label:"Location", items:["Chinchwad","Wakad","Thergaon"] },
+              { key:"location", label:"Branch",   items:BRANCHES },
               { key:"board",    label:"Board",    items:["CBSE","ICSE","State"] },
-              { key:"standard", label:"Standard", items: Array.from({length:12},(_,i)=>String(i+1)) },
+              { key:"standard", label:"Standard", items:STANDARDS },
               { key:"status",   label:"Status",   items:["New","Contacted","Follow Up","Admission Done","Not Interested"] },
             ].map(({ key, label, items }) => (
               <div key={key} className="space-y-2">

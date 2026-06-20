@@ -1,9 +1,9 @@
 export const studentData = {
   name: "Soham",
   phone: "9854785412",
-  class: "9",
+  class: "9th Standard",
   board: "ICSE",
-  location: "Wakad",
+  location: "SOF (School of Foundation)",
   avatar: "/student-avatar.png",
   stats: {
     overallPercentage: 88.4,
