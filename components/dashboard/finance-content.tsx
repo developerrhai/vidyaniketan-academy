@@ -11,8 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from "@/components/ui/dialog"
-import { Wallet, Users, Receipt, TrendingUp, TrendingDown, Trash2, IndianRupee, Loader2, Pencil } from "lucide-react"
-import { financeApi, teachersApi } from "@/lib/api"
+import { Wallet, Users, Receipt, TrendingUp, TrendingDown, Trash2, IndianRupee, Loader2, Pencil, FileSpreadsheet } from "lucide-react"
+import { financeApi, teachersApi, invoicesApi } from "@/lib/api"
 
 interface FinanceRecord {
   id: number; type: "Payroll" | "Expense"; name: string
@@ -30,6 +30,10 @@ export function FinanceContent() {
   const [timeFilter,   setTimeFilter]   = useState("thisMonth")
   const [fromDate,     setFromDate]     = useState("")
   const [toDate,       setToDate]       = useState("")
+  const [invoices,     setInvoices]     = useState<any[]>([])
+  const [collectionFilter, setCollectionFilter] = useState("thisMonth")
+  const [cFromDate,    setCFromDate]    = useState("")
+  const [cToDate,      setCToDate]      = useState("")
 
   // Payroll form
   const [pTeacher, setPTeacher] = useState("")
@@ -55,12 +59,14 @@ export function FinanceContent() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [recRes, sumRes]: any[] = await Promise.all([
+      const [recRes, sumRes, invRes]: any[] = await Promise.all([
         financeApi.getAll({ time_filter: timeFilter }),
         financeApi.summary(timeFilter),
+        invoicesApi.getAll()
       ])
       setRecords(recRes.data)
       setSummary(sumRes.data)
+      setInvoices(invRes.data || [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }, [timeFilter])
@@ -161,6 +167,178 @@ export function FinanceContent() {
       )
     : summary
 
+  // ── Collection Calculations ─────────────────────────────────────────────
+  const getFilteredInvoices = () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const getStartOfWeek = (d: Date) => {
+      const day = d.getDay()
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+      const start = new Date(d.setDate(diff))
+      start.setHours(0, 0, 0, 0)
+      return start
+    }
+
+    const startOfWeek = getStartOfWeek(new Date())
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+
+    return invoices.filter(inv => {
+      if (!inv.install_date) return false
+      const installDate = new Date(inv.install_date)
+      installDate.setHours(0, 0, 0, 0)
+
+      if (collectionFilter === "today") {
+        return installDate.getTime() === today.getTime()
+      }
+      if (collectionFilter === "thisWeek") {
+        return installDate.getTime() >= startOfWeek.getTime() && installDate.getTime() <= new Date().getTime()
+      }
+      if (collectionFilter === "thisMonth") {
+        return installDate.getTime() >= startOfMonth.getTime() && installDate.getTime() <= new Date().getTime()
+      }
+      if (collectionFilter === "custom") {
+        const instStr = inv.install_date.split("T")[0]
+        if (cFromDate && instStr < cFromDate) return false
+        if (cToDate && instStr > cToDate) return false
+        return true
+      }
+      return true
+    })
+  }
+
+  const filteredInvoices = getFilteredInvoices()
+  const cashCollection = filteredInvoices.reduce((sum, inv) => inv.transaction_type === "Cash" ? sum + Number(inv.paid_amount || 0) : sum, 0)
+  const onlineCollection = filteredInvoices.reduce((sum, inv) => inv.transaction_type !== "Cash" ? sum + Number(inv.paid_amount || 0) : sum, 0)
+  const totalCollection = cashCollection + onlineCollection
+
+  const dateWiseData = (() => {
+    const groups: Record<string, { date: string; cash: number; online: number; total: number }> = {}
+    filteredInvoices.forEach(inv => {
+      const dateStr = inv.install_date ? inv.install_date.split("T")[0] : "No Date"
+      if (!groups[dateStr]) {
+        groups[dateStr] = { date: dateStr, cash: 0, online: 0, total: 0 }
+      }
+      const paid = Number(inv.paid_amount || 0)
+      if (inv.transaction_type === "Cash") {
+        groups[dateStr].cash += paid
+      } else {
+        groups[dateStr].online += paid
+      }
+      groups[dateStr].total += paid
+    })
+    return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date))
+  })()
+
+  const weekWiseData = (() => {
+    const groups: Record<string, { weekId: string; range: string; cash: number; online: number; total: number }> = {}
+    filteredInvoices.forEach(inv => {
+      if (!inv.install_date) return
+      const dateStr = inv.install_date.split("T")[0]
+      const d = new Date(dateStr)
+      const day = d.getDay()
+      const mondayDiff = d.getDate() - day + (day === 0 ? -6 : 1)
+      const monday = new Date(d.setDate(mondayDiff))
+      const sunday = new Date(monday)
+      sunday.setDate(monday.getDate() + 6)
+
+      const formatShort = (dt: Date) => {
+        const dd = String(dt.getDate()).padStart(2, "0")
+        const mm = String(dt.getMonth() + 1).padStart(2, "0")
+        const yy = String(dt.getFullYear()).slice(-2)
+        return `${dd}/${mm}/${yy}`
+      }
+
+      const tempDate = new Date(d.valueOf())
+      tempDate.setHours(0, 0, 0, 0)
+      tempDate.setDate(tempDate.getDate() + 4 - (tempDate.getDay() || 7))
+      const yearStart = new Date(tempDate.getFullYear(), 0, 1)
+      const weekNo = Math.ceil((((tempDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+      const weekId = `${tempDate.getFullYear()}-W${String(weekNo).padStart(2, "0")}`
+      const range = `${formatShort(monday)} to ${formatShort(sunday)}`
+
+      if (!groups[weekId]) {
+        groups[weekId] = { weekId, range, cash: 0, online: 0, total: 0 }
+      }
+      const paid = Number(inv.paid_amount || 0)
+      if (inv.transaction_type === "Cash") {
+        groups[weekId].cash += paid
+      } else {
+        groups[weekId].online += paid
+      }
+      groups[weekId].total += paid
+    })
+    return Object.values(groups).sort((a, b) => b.weekId.localeCompare(a.weekId))
+  })()
+
+  const monthWiseData = (() => {
+    const groups: Record<string, { monthId: string; label: string; cash: number; online: number; total: number }> = {}
+    filteredInvoices.forEach(inv => {
+      if (!inv.install_date) return
+      const d = new Date(inv.install_date)
+      const monthId = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      const label = d.toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+      if (!groups[monthId]) {
+        groups[monthId] = { monthId, label, cash: 0, online: 0, total: 0 }
+      }
+      const paid = Number(inv.paid_amount || 0)
+      if (inv.transaction_type === "Cash") {
+        groups[monthId].cash += paid
+      } else {
+        groups[monthId].online += paid
+      }
+      groups[monthId].total += paid
+    })
+    return Object.values(groups).sort((a, b) => b.monthId.localeCompare(a.monthId))
+  })()
+
+  const handleExportCollection = () => {
+    if (!filteredInvoices.length) {
+      alert("No collections to export")
+      return
+    }
+
+    const headers = [
+      "Receipt No",
+      "Student Name",
+      "Student ID",
+      "Payment Date",
+      "Payment Mode",
+      "Amount Paid (₹)",
+      "Description"
+    ]
+
+    const rows = filteredInvoices.map((inv) => [
+      `INV${String(inv.id).padStart(3, "0")}`,
+      inv.student_name || "",
+      inv.student_id || "",
+      inv.install_date ? inv.install_date.split("T")[0] : "",
+      inv.transaction_type || "",
+      Number(inv.paid_amount || 0),
+      inv.description || ""
+    ])
+
+    const extraRows = [
+      [],
+      ["Summary Totals"],
+      ["Total Cash Collection (₹)", cashCollection],
+      ["Total Online Collection (₹)", onlineCollection],
+      ["Grand Total Collection (₹)", totalCollection],
+    ]
+
+    const esc = (value: any) => `"${String(value ?? "").replace(/"/g, "\"\"")}"`
+    const csvContent = [headers, ...rows, ...extraRows].map((row) => row.map(esc).join(",")).join("\n")
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `collection_report_${collectionFilter}_${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="space-y-6 pt-12 lg:pt-0">
       {/* ── Edit Dialog ──────────────────────────────────────── */}
@@ -250,10 +428,11 @@ export function FinanceContent() {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="payroll"  className="flex items-center gap-2"><Users      className="h-4 w-4"/><span className="hidden sm:inline">Payroll</span></TabsTrigger>
               <TabsTrigger value="expense"  className="flex items-center gap-2"><Receipt    className="h-4 w-4"/><span className="hidden sm:inline">Expense</span></TabsTrigger>
               <TabsTrigger value="report"   className="flex items-center gap-2"><TrendingUp className="h-4 w-4"/><span className="hidden sm:inline">Report</span></TabsTrigger>
+              <TabsTrigger value="collection" className="flex items-center gap-2"><Wallet className="h-4 w-4"/><span className="hidden sm:inline">Collection</span></TabsTrigger>
             </TabsList>
 
             {/* ── Payroll Tab ───────────────────────────────────── */}
@@ -398,10 +577,174 @@ export function FinanceContent() {
                 </Card>
               </div>
             </TabsContent>
+
+            {/* ── Collection Tab ────────────────────────────────── */}
+            <TabsContent value="collection" className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <Select value={collectionFilter} onValueChange={setCollectionFilter}>
+                  <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Time Filter"/></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="thisWeek">This Week</SelectItem>
+                    <SelectItem value="thisMonth">This Month</SelectItem>
+                    <SelectItem value="custom">Custom Date Range</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {collectionFilter === "custom" && (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+                    <Input
+                      type="date"
+                      value={cFromDate}
+                      onChange={(e) => setCFromDate(e.target.value)}
+                      className="w-full sm:w-[170px]"
+                    />
+                    <Input
+                      type="date"
+                      value={cToDate}
+                      onChange={(e) => setCToDate(e.target.value)}
+                      className="w-full sm:w-[170px]"
+                    />
+                  </div>
+                )}
+
+                <Button onClick={handleExportCollection} variant="outline" size="sm" className="w-full sm:w-auto ml-auto">
+                  <FileSpreadsheet className="h-4 w-4 mr-2" /> Export CSV
+                </Button>
+              </div>
+
+              {/* Collections Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card className="bg-gradient-to-br from-sky-500 to-blue-600 text-white border-0 shadow-md transition-all hover:scale-[1.01]">
+                  <CardContent className="p-4">
+                    <p className="text-[11px] uppercase tracking-wider font-semibold opacity-90">Cash Collection</p>
+                    <p className="text-2xl font-bold mt-1">₹{cashCollection.toLocaleString()}</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-0 shadow-md transition-all hover:scale-[1.01]">
+                  <CardContent className="p-4">
+                    <p className="text-[11px] uppercase tracking-wider font-semibold opacity-90">Online Collection</p>
+                    <p className="text-2xl font-bold mt-1">₹{onlineCollection.toLocaleString()}</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-0 shadow-md transition-all hover:scale-[1.01]">
+                  <CardContent className="p-4">
+                    <p className="text-[11px] uppercase tracking-wider font-semibold opacity-90">Total Collection</p>
+                    <p className="text-2xl font-bold mt-1">₹{totalCollection.toLocaleString()}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Grouped Reports Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Date-wise report */}
+                <Card className="border shadow-sm">
+                  <CardHeader className="py-4 border-b">
+                    <CardTitle className="text-sm font-semibold text-slate-800">Date-wise Report</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50 hover:bg-slate-50">
+                          <TableHead className="font-semibold text-xs text-slate-600">Date</TableHead>
+                          <TableHead className="font-semibold text-xs text-slate-600">Cash</TableHead>
+                          <TableHead className="font-semibold text-xs text-slate-600">Online</TableHead>
+                          <TableHead className="font-semibold text-xs text-slate-600">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dateWiseData.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-4 text-xs text-muted-foreground">No records</TableCell>
+                          </TableRow>
+                        ) : dateWiseData.map(d => (
+                          <TableRow key={d.date} className="hover:bg-muted/30">
+                            <TableCell className="font-medium text-xs">{d.date}</TableCell>
+                            <TableCell className="text-xs">₹{d.cash.toLocaleString()}</TableCell>
+                            <TableCell className="text-xs">₹{d.online.toLocaleString()}</TableCell>
+                            <TableCell className="font-bold text-xs">₹{d.total.toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* Week-wise report */}
+                <Card className="border shadow-sm">
+                  <CardHeader className="py-4 border-b">
+                    <CardTitle className="text-sm font-semibold text-slate-800">Week-wise Report</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50 hover:bg-slate-50">
+                          <TableHead className="font-semibold text-xs text-slate-600">Week ID</TableHead>
+                          <TableHead className="font-semibold text-xs text-slate-600">Date Range</TableHead>
+                          <TableHead className="font-semibold text-xs text-slate-600">Cash</TableHead>
+                          <TableHead className="font-semibold text-xs text-slate-600">Online</TableHead>
+                          <TableHead className="font-semibold text-xs text-slate-600">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {weekWiseData.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4 text-xs text-muted-foreground">No records</TableCell>
+                          </TableRow>
+                        ) : weekWiseData.map(w => (
+                          <TableRow key={w.weekId} className="hover:bg-muted/30">
+                            <TableCell className="font-medium text-xs">{w.weekId}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{w.range}</TableCell>
+                            <TableCell className="text-xs">₹{w.cash.toLocaleString()}</TableCell>
+                            <TableCell className="text-xs">₹{w.online.toLocaleString()}</TableCell>
+                            <TableCell className="font-bold text-xs">₹{w.total.toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* Month-wise report */}
+                <Card className="border shadow-sm lg:col-span-2">
+                  <CardHeader className="py-4 border-b">
+                    <CardTitle className="text-sm font-semibold text-slate-800">Month-wise Report</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50 hover:bg-slate-50">
+                          <TableHead className="font-semibold text-xs text-slate-600">Month</TableHead>
+                          <TableHead className="font-semibold text-xs text-slate-600">Cash Collection</TableHead>
+                          <TableHead className="font-semibold text-xs text-slate-600">Online Collection</TableHead>
+                          <TableHead className="font-semibold text-xs text-slate-600">Total Collection</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {monthWiseData.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-4 text-xs text-muted-foreground">No records</TableCell>
+                          </TableRow>
+                        ) : monthWiseData.map(m => (
+                          <TableRow key={m.monthId} className="hover:bg-muted/30">
+                            <TableCell className="font-medium text-xs">{m.label}</TableCell>
+                            <TableCell className="text-xs">₹{m.cash.toLocaleString()}</TableCell>
+                            <TableCell className="text-xs">₹{m.online.toLocaleString()}</TableCell>
+                            <TableCell className="font-bold text-xs text-emerald-600">₹{m.total.toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
           </Tabs>
 
           {/* Records Table */}
-          <div className="mt-6">
+          {activeTab !== "collection" && (
+            <div className="mt-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">{filterLabel()} Records</h3>
               {activeTab !== "report" && (
@@ -501,7 +844,8 @@ export function FinanceContent() {
                 </Table>
               </div>
             )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

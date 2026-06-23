@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import api from "@/lib/service";
 
 // --- Data Organization Logic (Unchanged) ---
-const organizeData = (rows) => {
-  const tree = {};
+const organizeData = (rows: any[]) => {
+  const tree: Record<string, any> = {};
   if (!rows || !Array.isArray(rows)) return tree;
   rows.forEach((row) => {
     const { branch_name, batch, board_name, standard_name, subject_name, teacher_name, chapter, notes } = row;
@@ -30,14 +30,14 @@ const organizeData = (rows) => {
     }
     if (chapter?.name) {
       const subject = tree[branch_name].batches[batchKey].boards[boardKey].subjects[subject_name];
-      if (!subject.chapters.some(c => c.name === chapter.name)) subject.chapters.push(chapter);
+      if (!subject.chapters.some((c: any) => c.name === chapter.name)) subject.chapters.push(chapter);
     }
   });
   return tree;
 };
 
 export function TeacherUpdatesContent() {
-  const [nestedData, setNestedData] = useState({});
+  const [nestedData, setNestedData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalItems: 0 });
   
@@ -52,7 +52,13 @@ export function TeacherUpdatesContent() {
     end_date: ""
   });
 
-  const [options, setOptions] = useState({ 
+  const [options, setOptions] = useState<{
+    teachers: any[];
+    branches: any[];
+    subjects: any[];
+    standards: any[];
+    boards: any[];
+  }>({ 
     teachers: [], 
     branches: [], 
     subjects: [],
@@ -194,7 +200,14 @@ export function TeacherUpdatesContent() {
 
 // --- Sub-Components (BranchNode, BatchNode, SubjectNode) stay the same as previous response ---
 
-function FilterDropdown({ label, value, options, onChange }) {
+interface FilterDropdownProps {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+}
+
+function FilterDropdown({ label, value, options, onChange }: FilterDropdownProps) {
   return (
     <select 
       value={value} 
@@ -210,7 +223,7 @@ function FilterDropdown({ label, value, options, onChange }) {
 // ... Include the BranchNode, BatchNode, and SubjectNode components from previous code ...
 // --- Sub-Components with Collapse Logic ---
 
-function BranchNode({ name, batches }) {
+function BranchNode({ name, batches }: { name: string; batches: any }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -239,47 +252,11 @@ function BranchNode({ name, batches }) {
   );
 }
 
-// function BatchNode({ name, batch }) {
-//   const [isExpanded, setIsExpanded] = useState(true);
-
-//   return (
-//     <div className="space-y-4">
-//       <button 
-//         onClick={() => setIsExpanded(!isExpanded)}
-//         className="flex items-center gap-3 group"
-//       >
-//         <Users size={18} className={`${isExpanded ? 'text-blue-500' : 'text-slate-300'} transition-colors`} />
-//         <span className="font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{name}</span>
-//         <span className="text-[10px] font-mono bg-slate-50 px-2 py-0.5 rounded text-slate-400 border border-slate-100">
-//           {batch.details?.start_time?.slice(0,5)} - {batch.details?.end_time?.slice(0,5)}
-//         </span>
-//         {isExpanded ? <ChevronDown size={14} className="text-slate-300" /> : <ChevronRight size={14} className="text-slate-300" />}
-//       </button>
-
-//       {isExpanded && (
-//         <div className="ml-2 border-l-2 border-slate-50 pl-6 space-y-6 pt-2">
-//           {Object.entries(batch.boards).map(([boardKey, board]: any) => (
-//             <div key={boardKey} className="space-y-4">
-//               <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">{boardKey}</div>
-//               <div className="space-y-4">
-//                 {Object.entries(board.subjects).map(([subName, sub]: any) => (
-//                   <SubjectNode key={subName} name={subName} sub={sub} />
-//                 ))}
-//               </div>
-//             </div>
-//           ))}
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
-
-function BatchNode({ name, batch }) {
+function BatchNode({ name, batch }: { name: string; batch: any }) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   // Helper to format dates cleanly
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toLocaleDateString('en-GB', { 
@@ -330,7 +307,7 @@ function BatchNode({ name, batch }) {
     </div>
   );
 }
-function SubjectNode({ name, sub }) {
+function SubjectNode({ name, sub }: { name: string; sub: any }) {
   const [isExpanded, setIsExpanded] = useState(false); // Sub-levels collapsed by default for cleanliness
 
   return (

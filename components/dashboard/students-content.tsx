@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { GraduationCap, Search, Eye, Trash2, Phone, User, MapPin, BookOpen, Loader2, IndianRupee, Pencil, FileSpreadsheet, Upload, Mail, SquarePen } from "lucide-react"
+import { GraduationCap, Search, Eye, Trash2, Phone, User, MapPin, BookOpen, Loader2, IndianRupee, Pencil, FileSpreadsheet, Upload, Mail, SquarePen, Building } from "lucide-react"
 import { studentsApi, studentsUniversalApi } from "@/lib/api"
 import * as XLSX from "xlsx"
 
@@ -20,6 +20,8 @@ interface Student {
   hostel: string; school_fee: number; academy_fee: number; hostel_fee: number;
   caste_religion: string; photo: string;
   scholarship_type?: string; scholarship_value?: number; scholarship_amount?: number;
+  mother_name?: string; school_name?: string; scholarship_applied_to?: string;
+  admission_type?: string; admission_date?: string; academic_year?: string;
 }
 
 const STANDARDS = [
@@ -48,7 +50,7 @@ const STANDARDS = [
 
 const BRANCHES = [
   "Main Branch",
-  "SOF (School of Foundation)"
+  "SOF Branch"
 ]
 
 const feeStatus = (s: Student) => {
@@ -71,6 +73,20 @@ const formatDob = (dob: string) => {
   }
 }
 
+const formatDateForInput = (dateStr?: string) => {
+  if (!dateStr) return ""
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return ""
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, "0")
+    const r = String(d.getDate()).padStart(2, "0")
+    return `${y}-${m}-${r}`
+  } catch {
+    return ""
+  }
+}
+
 export function StudentsContent() {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,6 +105,8 @@ export function StudentsContent() {
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState<Partial<Student>>({})
   const [editSaving, setEditSaving] = useState(false)
+  const [editAppliedTo, setEditAppliedTo] = useState<string[]>([])
+  const [editAdmissionType, setEditAdmissionType] = useState<string[]>([])
 
   const [feeStudent, setFeeStudent] = useState<Student | null>(null)
   const [feeModalOpen, setFeeModalOpen] = useState(false)
@@ -177,7 +195,25 @@ export function StudentsContent() {
   // ── Edit Handlers ─────────────────────────────────────────────────────────
   const openEditModal = (s: Student) => {
     setEditStudent(s)
-    setEditForm({ ...s })
+    let applied: string[] = [];
+    if (s.scholarship_applied_to) {
+      applied = s.scholarship_applied_to.split(",");
+    } else {
+      applied = ["school_fee", "academy_fee", "hostel_fee"];
+    }
+    setEditAppliedTo(applied);
+
+    let admType: string[] = [];
+    if (s.admission_type) {
+      admType = s.admission_type.split(",");
+    }
+    setEditAdmissionType(admType);
+
+    setEditForm({
+      ...s,
+      dob: formatDateForInput(s.dob),
+      admission_date: formatDateForInput(s.admission_date),
+    })
     setEditOpen(true)
   }
 
@@ -188,11 +224,43 @@ export function StudentsContent() {
   const handleSaveEdit = async () => {
     if (!editStudent) return
     if (!editForm.name?.trim()) { alert("Name is required"); return }
+
+    const schoolFee = Number(editForm.school_fee || 0);
+    const academyFee = Number(editForm.academy_fee || 0);
+    const hostelFee = Number(editForm.hostel_fee || 0);
+    const originalFee = schoolFee + academyFee + hostelFee;
+
+    let baseFeeForConcession = 0;
+    if (editAppliedTo.includes("school_fee")) baseFeeForConcession += schoolFee;
+    if (editAppliedTo.includes("academy_fee")) baseFeeForConcession += academyFee;
+    if (editAppliedTo.includes("hostel_fee")) baseFeeForConcession += hostelFee;
+
+    let calculatedAmount = 0;
+    const val = Number(editForm.scholarship_value || 0);
+    if (editForm.scholarship_type === "Percent") {
+      calculatedAmount = baseFeeForConcession * (val / 100);
+    } else if (editForm.scholarship_type === "Flat") {
+      calculatedAmount = val;
+    }
+    const finalPayable = Math.max(0, originalFee - calculatedAmount);
+
+    const payload = {
+      ...editForm,
+      school_fee: schoolFee,
+      academy_fee: academyFee,
+      hostel_fee: hostelFee,
+      fee: finalPayable,
+      scholarship_value: val,
+      scholarship_amount: calculatedAmount,
+      scholarship_applied_to: editAppliedTo.join(","),
+      admission_type: editAdmissionType.join(",")
+    };
+
     setEditSaving(true)
     try {
-      await studentsApi.update(editStudent.id, { ...editStudent, ...editForm })
+      await studentsApi.update(editStudent.id, payload)
       setStudents(prev =>
-        prev.map(s => s.id === editStudent.id ? { ...s, ...editForm } as Student : s)
+        prev.map(s => s.id === editStudent.id ? { ...s, ...payload } as any : s)
       )
       setEditOpen(false)
     } catch (err: any) { alert(err.message) }
@@ -289,7 +357,7 @@ export function StudentsContent() {
     if (!students.length) { alert("No students to export"); return }
 
     const headers = [
-      "ID", "Name", "Aadhar", "DOB",
+      "ID", "Name", "Mother Name", "School/College Name", "Aadhar", "DOB",
       "Contact no.1", "Contact no.2",
       "Email", "Address", "Caste / Religion",
       "Standard", "Course", "Branch", "Hostel",
@@ -302,7 +370,7 @@ export function StudentsContent() {
       const balance  = Math.max(totalFee - paidFee, 0)
       const status   = feeStatus(s).label
       return [
-        s.id, s.name || "", s.aadhar || "", s.dob ? formatDob(s.dob) : "",
+        s.id, s.name || "", s.mother_name || "", s.school_name || "", s.aadhar || "", s.dob ? formatDob(s.dob) : "",
         s.phone || "", s.father_phone || "",
         s.email || "", s.address || "", s.caste_religion || "",
         s.standard || "", s.course || "", s.branch || "", s.hostel || "",
@@ -609,6 +677,7 @@ export function StudentsContent() {
                 { icon: Phone,    label: "Contact no.1",     value: selected.phone },
                 { icon: Phone,    label: "Contact no.2",     value: selected.father_phone },
                 { icon: User,     label: "Father Name",      value: selected.father_name },
+                { icon: User,     label: "Mother Name",      value: selected.mother_name },
                 { icon: Mail,     label: "Email",            value: selected.email },
                 { icon: MapPin,   label: "Aadhar",           value: selected.aadhar },
                 { icon: MapPin,   label: "DOB",              value: formatDob(selected.dob) },
@@ -617,6 +686,10 @@ export function StudentsContent() {
                 { icon: MapPin,   label: "Hostel",           value: selected.hostel },
                 { icon: BookOpen, label: "Standard",         value: selected.standard },
                 { icon: BookOpen, label: "Course",           value: selected.course },
+                { icon: Building, label: "School/College Name", value: selected.school_name },
+                { icon: BookOpen, label: "Academic Year",    value: selected.academic_year },
+                { icon: BookOpen, label: "Admission In",     value: selected.admission_type },
+                { icon: BookOpen, label: "Date of Admission", value: selected.admission_date ? formatDob(selected.admission_date) : "" },
                 { icon: BookOpen, label: "Caste / Religion", value: selected.caste_religion },
               ].map(({ icon: Icon, label, value }) =>
                 value ? (
@@ -737,6 +810,14 @@ export function StudentsContent() {
                   <Input id="edit-father-name" value={editForm.father_name ?? ""} onChange={e => handleEditChange("father_name", e.target.value)} placeholder="Father's name" />
                 </div>
                 <div className="space-y-1">
+                  <Label htmlFor="edit-mother-name">Mother Name</Label>
+                  <Input id="edit-mother-name" value={editForm.mother_name ?? ""} onChange={e => handleEditChange("mother_name", e.target.value)} placeholder="Mother's name" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-school-name">School/College Name</Label>
+                  <Input id="edit-school-name" value={editForm.school_name ?? ""} onChange={e => handleEditChange("school_name", e.target.value)} placeholder="School or college name" />
+                </div>
+                <div className="space-y-1">
                   <Label htmlFor="edit-dob">Date of Birth</Label>
                   <Input id="edit-dob" type="date" value={editForm.dob ?? ""} onChange={e => handleEditChange("dob", e.target.value)} />
                 </div>
@@ -778,52 +859,183 @@ export function StudentsContent() {
                 </div>
               </div>
 
-           {/* Academic Info */}
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Academic Information</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label>Standard</Label>
-                <Select value={editForm.standard ?? ""} onValueChange={val => handleEditChange("standard", val)}>
-                  <SelectTrigger><SelectValue placeholder="Select Standard" /></SelectTrigger>
-                  <SelectContent>
-                    {STANDARDS.map(std => (
-                      <SelectItem key={std} value={std}>{std}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Academic Info */}
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Academic Information</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label>Standard</Label>
+                  <Select value={editForm.standard ?? ""} onValueChange={val => handleEditChange("standard", val)}>
+                    <SelectTrigger><SelectValue placeholder="Select Standard" /></SelectTrigger>
+                    <SelectContent>
+                      {STANDARDS.map(std => (
+                        <SelectItem key={std} value={std}>{std}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Course</Label>
+                  <Select value={editForm.course ?? ""} onValueChange={val => handleEditChange("course", val)}>
+                    <SelectTrigger><SelectValue placeholder="Select Course" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="JEE">JEE</SelectItem>
+                      <SelectItem value="NEET">NEET</SelectItem>
+                      <SelectItem value="Foundation">Foundation</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Branch</Label>
+                  <Select value={editForm.branch ?? ""} onValueChange={val => handleEditChange("branch", val)}>
+                    <SelectTrigger><SelectValue placeholder="Select Branch" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Main Branch">Main Branch</SelectItem>
+                      <SelectItem value="SOF Branch">SOF Branch</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Hostel</Label>
+                  <Select value={editForm.hostel ?? ""} onValueChange={val => handleEditChange("hostel", val)}>
+                    <SelectTrigger><SelectValue placeholder="Select Hostel" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Yes">Yes</SelectItem>
+                      <SelectItem value="No">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-academic-year">Academic Year</Label>
+                  <Input id="edit-academic-year" value={editForm.academic_year ?? ""} onChange={e => handleEditChange("academic_year", e.target.value)} placeholder="E.g. 2023-2024" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-admission-date">Date of Admission</Label>
+                  <Input id="edit-admission-date" type="date" value={editForm.admission_date ?? ""} onChange={e => handleEditChange("admission_date", e.target.value)} />
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label>Course</Label>
-                <Select value={editForm.course ?? ""} onValueChange={val => handleEditChange("course", val)}>
-                  <SelectTrigger><SelectValue placeholder="Select Course" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="JEE">JEE</SelectItem>
-                    <SelectItem value="NEET">NEET</SelectItem>
-                    <SelectItem value="Foundation">Foundation</SelectItem>
-                  </SelectContent>
-                </Select>
+
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Fees & Concession Details</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="edit-school-fee">School/College Fee (₹)</Label>
+                  <Input id="edit-school-fee" type="number" min="0" value={editForm.school_fee ?? "0"} onChange={e => handleEditChange("school_fee", e.target.value)} placeholder="0.00" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-academy-fee">Academy Fee (₹)</Label>
+                  <Input id="edit-academy-fee" type="number" min="0" value={editForm.academy_fee ?? "0"} onChange={e => handleEditChange("academy_fee", e.target.value)} placeholder="0.00" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-hostel-fee">Hostel Fee (₹)</Label>
+                  <Input id="edit-hostel-fee" type="number" min="0" value={editForm.hostel_fee ?? "0"} onChange={e => handleEditChange("hostel_fee", e.target.value)} placeholder="0.00" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Scholarship / Concession Type</Label>
+                  <Select value={editForm.scholarship_type ?? "None"} onValueChange={val => handleEditChange("scholarship_type", val)}>
+                    <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="None">None</SelectItem>
+                      <SelectItem value="Flat">Flat (₹)</SelectItem>
+                      <SelectItem value="Percent">Percent (%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Scholarship / Concession Value</Label>
+                  <Input type="number" min="0" value={editForm.scholarship_value ?? "0"} onChange={e => handleEditChange("scholarship_value", e.target.value)} placeholder="0.00" />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label>Concession Applied To</Label>
+                  <div className="flex flex-wrap gap-4 mt-1">
+                    {[
+                      { key: "school_fee", label: "School/College Fee" },
+                      { key: "academy_fee", label: "Academy Fee" },
+                      { key: "hostel_fee", label: "Hostel Fee" }
+                    ].map(opt => {
+                      return (
+                        <label key={opt.key} className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={editAppliedTo.includes(opt.key)}
+                            onChange={() => {
+                              const nextApplied = editAppliedTo.includes(opt.key)
+                                ? editAppliedTo.filter(v => v !== opt.key)
+                                : [...editAppliedTo, opt.key];
+                              setEditAppliedTo(nextApplied);
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                          />
+                          <span className="text-sm text-gray-700">{opt.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                {(() => {
+                  const sFee = Number(editForm.school_fee || 0);
+                  const aFee = Number(editForm.academy_fee || 0);
+                  const hFee = Number(editForm.hostel_fee || 0);
+                  const originalFee = sFee + aFee + hFee;
+
+                  let baseFeeForConcession = 0;
+                  if (editAppliedTo.includes("school_fee")) baseFeeForConcession += sFee;
+                  if (editAppliedTo.includes("academy_fee")) baseFeeForConcession += aFee;
+                  if (editAppliedTo.includes("hostel_fee")) baseFeeForConcession += hFee;
+
+                  let calculatedAmount = 0;
+                  const val = Number(editForm.scholarship_value || 0);
+                  if (editForm.scholarship_type === "Percent") {
+                    calculatedAmount = baseFeeForConcession * (val / 100);
+                  } else if (editForm.scholarship_type === "Flat") {
+                    calculatedAmount = val;
+                  }
+                  const finalPayable = Math.max(0, originalFee - calculatedAmount);
+
+                  return (
+                    <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 sm:col-span-2 space-y-2">
+                      <p className="font-semibold text-xs text-slate-700 uppercase tracking-wider">Recalculated Fee Preview</p>
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div className="bg-white rounded p-2 border">
+                          <p className="text-muted-foreground">Original Fee</p>
+                          <p className="font-bold text-slate-800">₹{originalFee.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-white rounded p-2 border">
+                          <p className="text-muted-foreground">Concession Amt</p>
+                          <p className="font-bold text-amber-600">₹{calculatedAmount.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-white rounded p-2 border">
+                          <p className="text-muted-foreground">Net Payable</p>
+                          <p className="font-bold text-emerald-600">₹{finalPayable.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="space-y-1 sm:col-span-2">
+                  <Label>Admission In (Admission Type)</Label>
+                  <div className="flex gap-4 mt-1">
+                    {["School/College", "Academy", "Hostel"].map(opt => {
+                      return (
+                        <label key={opt} className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={editAdmissionType.includes(opt)}
+                            onChange={() => {
+                              const nextAdmissionType = editAdmissionType.includes(opt)
+                                ? editAdmissionType.filter(v => v !== opt)
+                                : [...editAdmissionType, opt];
+                              setEditAdmissionType(nextAdmissionType);
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                          />
+                          <span className="text-sm text-gray-700">{opt}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label>Branch</Label>
-                <Select value={editForm.branch ?? ""} onValueChange={val => handleEditChange("branch", val)}>
-                  <SelectTrigger><SelectValue placeholder="Select Branch" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Main Branch">Main Branch</SelectItem>
-                    <SelectItem value="SOF (School of Foundation)">SOF (School of Foundation)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label>Hostel</Label>
-                <Select value={editForm.hostel ?? ""} onValueChange={val => handleEditChange("hostel", val)}>
-                  <SelectTrigger><SelectValue placeholder="Select Hostel" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Yes">Yes</SelectItem>
-                    <SelectItem value="No">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
             </div>
           )}

@@ -27,6 +27,8 @@ interface Student {
   scholarship_type?: string;
   scholarship_value?: number;
   scholarship_amount?: number;
+  mother_name?: string;
+  school_name?: string;
 }
 
 const STANDARDS = [
@@ -53,7 +55,7 @@ const STANDARDS = [
   "Basic Foundation 2 (7th to 9th)"
 ]
 
-const BRANCHES = ["Main Branch", "SOF (School of Foundation)"]
+const BRANCHES = ["Main Branch", "SOF Branch"]
 
 export function HostelStudentsContent() {
   const [students, setStudents] = useState<Student[]>([])
@@ -90,7 +92,7 @@ export function HostelStudentsContent() {
   // Summary stats restricted to hostel students
   const stats = students.reduce(
     (acc, curr) => {
-      const schoolAcademy = Number(curr.school_fee || 0) + Number(curr.academy_fee || 0)
+      const schoolAcademy = (Number(curr.school_fee || 0) + Number(curr.academy_fee || 0)) || (Number(curr.fee || 0) + Number(curr.scholarship_amount || 0) - Number(curr.hostel_fee || 0))
       const hostel = Number(curr.hostel_fee || 0)
       const scholarship = Number(curr.scholarship_amount || 0)
       const payable = Number(curr.fee || 0)
@@ -124,6 +126,8 @@ export function HostelStudentsContent() {
     const headers = [
       "Student ID",
       "Student Name",
+      "Mother Name",
+      "School/College Name",
       "Standard",
       "Course",
       "Branch",
@@ -137,12 +141,14 @@ export function HostelStudentsContent() {
     ]
 
     const rows = students.map((s) => {
-      const schoolAcademy = Number(s.school_fee || 0) + Number(s.academy_fee || 0)
-      const original = schoolAcademy + Number(s.hostel_fee || 0)
+      const schoolAcademy = (Number(s.school_fee || 0) + Number(s.academy_fee || 0)) || (Number(s.fee || 0) + Number(s.scholarship_amount || 0) - Number(s.hostel_fee || 0))
+      const original = schoolAcademy + Number(s.hostel_fee || 0) || (Number(s.fee || 0) + Number(s.scholarship_amount || 0))
       const outstanding = Math.max(0, Number(s.fee || 0) - Number(s.paid_fee || 0))
       return [
         s.id,
         s.name,
+        s.mother_name || "",
+        s.school_name || "",
         s.standard || "",
         s.course || "",
         s.branch || "",
@@ -174,12 +180,14 @@ export function HostelStudentsContent() {
     if (!w) return
 
     const tableRowsHtml = students.map((s) => {
-      const schoolAcademy = Number(s.school_fee || 0) + Number(s.academy_fee || 0)
-      const original = schoolAcademy + Number(s.hostel_fee || 0)
+      const schoolAcademy = (Number(s.school_fee || 0) + Number(s.academy_fee || 0)) || (Number(s.fee || 0) + Number(s.scholarship_amount || 0) - Number(s.hostel_fee || 0))
+      const original = schoolAcademy + Number(s.hostel_fee || 0) || (Number(s.fee || 0) + Number(s.scholarship_amount || 0))
       const outstanding = Math.max(0, Number(s.fee || 0) - Number(s.paid_fee || 0))
       return `
         <tr>
           <td>${s.name}</td>
+          <td>${s.mother_name || ""}</td>
+          <td>${s.school_name || ""}</td>
           <td>${s.standard}</td>
           <td style="text-align:right">₹ ${schoolAcademy.toLocaleString()}</td>
           <td style="text-align:right">₹ ${Number(s.hostel_fee || 0).toLocaleString()}</td>
@@ -237,6 +245,8 @@ export function HostelStudentsContent() {
           <thead>
             <tr>
               <th>Student Name</th>
+              <th>Mother Name</th>
+              <th>School/College</th>
               <th>Standard</th>
               <th style="text-align:right">School/College Fee</th>
               <th style="text-align:right">Hostel Fee</th>
@@ -367,15 +377,24 @@ export function HostelStudentsContent() {
                     </TableRow>
                   ) : (
                     students.map((s) => {
-                      const schoolAcademy = Number(s.school_fee || 0) + Number(s.academy_fee || 0)
-                      const originalFee = schoolAcademy + Number(s.hostel_fee || 0)
+                      const schoolAcademy = (Number(s.school_fee || 0) + Number(s.academy_fee || 0)) || (Number(s.fee || 0) + Number(s.scholarship_amount || 0) - Number(s.hostel_fee || 0))
+                      const originalFee = schoolAcademy + Number(s.hostel_fee || 0) || (Number(s.fee || 0) + Number(s.scholarship_amount || 0))
                       const scholarshipAmt = Number(s.scholarship_amount || 0)
                       const payable = Number(s.fee || 0)
                       const paid = Number(s.paid_fee || 0)
                       const outstanding = Math.max(0, payable - paid)
                       return (
                         <TableRow key={s.id} className="hover:bg-muted/50">
-                          <TableCell className="font-semibold">{s.name}</TableCell>
+                          <TableCell className="font-semibold">
+                            <div>{s.name}</div>
+                            {(s.mother_name || s.school_name) && (
+                              <div className="text-[10px] text-slate-500 font-normal mt-0.5">
+                                {s.mother_name && <span>M: {s.mother_name}</span>}
+                                {s.mother_name && s.school_name && <span className="mx-1">|</span>}
+                                {s.school_name && <span>S: {s.school_name}</span>}
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell>{s.standard}</TableCell>
                           <TableCell className="hidden md:table-cell">{s.branch}</TableCell>
                           <TableCell>₹{schoolAcademy.toLocaleString()}</TableCell>

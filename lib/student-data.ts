@@ -3,7 +3,7 @@ export const studentData = {
   phone: "9854785412",
   class: "9th Standard",
   board: "ICSE",
-  location: "SOF (School of Foundation)",
+  location: "SOF Branch",
   avatar: "/student-avatar.png",
   stats: {
     overallPercentage: 88.4,
