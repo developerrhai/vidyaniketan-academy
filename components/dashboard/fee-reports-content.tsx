@@ -54,7 +54,7 @@ const STANDARDS = [
   "Basic Foundation 2 (7th to 9th)"
 ]
 
-const BRANCHES = ["Main Branch", "SOF (School of Foundation)"]
+const BRANCHES = ["Main Branch", "SOF Branch"]
 
 export function FeeReportsContent() {
   const [students, setStudents] = useState<Student[]>([])
@@ -88,7 +88,7 @@ export function FeeReportsContent() {
   // Summary stats
   const stats = students.reduce(
     (acc, curr) => {
-      const school = Number(curr.school_fee || 0)
+      const school = (Number(curr.school_fee || 0) + Number(curr.academy_fee || 0)) || (Number(curr.fee || 0) + Number(curr.scholarship_amount || 0))
       const hostel = Number(curr.hostel_fee || 0)
       const scholarship = Number(curr.scholarship_amount || 0)
       const payable = Number(curr.fee || 0)
@@ -136,7 +136,7 @@ export function FeeReportsContent() {
     ]
 
     const rows = students.map((s) => {
-      const original = Number(s.school_fee || 0) + Number(s.academy_fee || 0) + Number(s.hostel_fee || 0)
+      const original = (Number(s.school_fee || 0) + Number(s.academy_fee || 0) + Number(s.hostel_fee || 0)) || (Number(s.fee || 0) + Number(s.scholarship_amount || 0))
       const outstanding = Math.max(0, Number(s.fee || 0) - Number(s.paid_fee || 0))
       return [
         s.id,
@@ -173,7 +173,7 @@ export function FeeReportsContent() {
     if (!w) return
 
     const tableRowsHtml = students.map((s) => {
-      const original = Number(s.school_fee || 0) + Number(s.academy_fee || 0) + Number(s.hostel_fee || 0)
+      const original = (Number(s.school_fee || 0) + Number(s.academy_fee || 0) + Number(s.hostel_fee || 0)) || (Number(s.fee || 0) + Number(s.scholarship_amount || 0))
       const outstanding = Math.max(0, Number(s.fee || 0) - Number(s.paid_fee || 0))
       return `
         <tr>
@@ -361,7 +361,7 @@ export function FeeReportsContent() {
                     </TableRow>
                   ) : (
                     students.map((s) => {
-                      const originalFee = Number(s.school_fee || 0) + Number(s.academy_fee || 0) + Number(s.hostel_fee || 0)
+                      const originalFee = (Number(s.school_fee || 0) + Number(s.academy_fee || 0) + Number(s.hostel_fee || 0)) || (Number(s.fee || 0) + Number(s.scholarship_amount || 0))
                       const scholarshipAmt = Number(s.scholarship_amount || 0)
                       const payable = Number(s.fee || 0)
                       const paid = Number(s.paid_fee || 0)

@@ -19,7 +19,9 @@ export function RegisterUserContent() {
     dob: "", address: "", aadhar: "", caste_religion: "", photo: "",
     admission_type: [] as string[], admission_date: "",
     school_fee: "0", academy_fee: "0", hostel_fee: "0",
-    scholarship_type: "None", scholarship_value: "0", scholarship_amount: "0"
+    scholarship_type: "None", scholarship_value: "0", scholarship_amount: "0",
+    mother_name: "", school_name: "",
+    scholarship_applied_to: ["school_fee", "academy_fee", "hostel_fee"] as string[]
   })
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -110,7 +112,10 @@ export function RegisterUserContent() {
           hostel_fee: Number(formData.hostel_fee) || 0,
           scholarship_type: formData.scholarship_type,
           scholarship_value: val,
-          scholarship_amount: calculatedAmount
+          scholarship_amount: calculatedAmount,
+          mother_name: formData.mother_name,
+          school_name: formData.school_name,
+          scholarship_applied_to: formData.scholarship_applied_to.join(",")
         })
 
         setMsg({
@@ -152,7 +157,9 @@ export function RegisterUserContent() {
         dob: "", address: "", aadhar: "", caste_religion: "", photo: "",
         admission_type: [], admission_date: "",
         school_fee: "0", academy_fee: "0", hostel_fee: "0",
-        scholarship_type: "None", scholarship_value: "0", scholarship_amount: "0"
+        scholarship_type: "None", scholarship_value: "0", scholarship_amount: "0",
+        mother_name: "", school_name: "",
+        scholarship_applied_to: ["school_fee", "academy_fee", "hostel_fee"]
       })
 
     } catch (err: any) {
@@ -201,6 +208,7 @@ export function RegisterUserContent() {
                 <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="student">Student</SelectItem>
+                  <SelectItem value="teacher">Teacher</SelectItem>
                   <SelectItem value="staff">Staff</SelectItem> 
                 </SelectContent>
               </Select>
@@ -246,6 +254,14 @@ export function RegisterUserContent() {
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2"><User className="h-4 w-4 text-emerald-500" /> Aadhar Number</Label>
                   <Input value={formData.aadhar} onChange={e => set("aadhar", e.target.value)} placeholder="Aadhar number" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><User className="h-4 w-4 text-emerald-500" /> Mother Name</Label>
+                  <Input value={formData.mother_name} onChange={e => set("mother_name", e.target.value)} placeholder="Mother's name" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Building className="h-4 w-4 text-emerald-500" /> School/College Name</Label>
+                  <Input value={formData.school_name} onChange={e => set("school_name", e.target.value)} placeholder="School or college name" />
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2"><User className="h-4 w-4 text-emerald-500" /> Caste / Religion</Label>
@@ -349,18 +365,50 @@ export function RegisterUserContent() {
                   <Input type="number" value={formData.scholarship_value} onChange={e => set("scholarship_value", e.target.value)} placeholder="0.00" />
                 </div>
                 {(() => {
+                  let baseFeeForConcession = 0;
+                  if (formData.scholarship_applied_to.includes("school_fee")) baseFeeForConcession += Number(formData.school_fee || 0);
+                  if (formData.scholarship_applied_to.includes("academy_fee")) baseFeeForConcession += Number(formData.academy_fee || 0);
+                  if (formData.scholarship_applied_to.includes("hostel_fee")) baseFeeForConcession += Number(formData.hostel_fee || 0);
+
                   const originalFee = Number(formData.school_fee || 0) + Number(formData.academy_fee || 0) + Number(formData.hostel_fee || 0);
                   let calculatedAmount = 0;
                   const val = Number(formData.scholarship_value || 0);
                   if (formData.scholarship_type === "Percent") {
-                    calculatedAmount = originalFee * (val / 100);
+                    calculatedAmount = baseFeeForConcession * (val / 100);
                   } else if (formData.scholarship_type === "Flat") {
                     calculatedAmount = val;
                   }
                   const finalPayable = Math.max(0, originalFee - calculatedAmount);
                   return (
-                    <div className="p-4 rounded-xl bg-slate-100 border border-slate-200 col-span-1 md:col-span-2 space-y-2">
-                      <p className="font-semibold text-sm text-slate-700">Fee Calculation Details</p>
+                    <div className="p-4 rounded-xl bg-slate-100 border border-slate-200 col-span-1 md:col-span-2 space-y-3">
+                      <div className="space-y-2">
+                        <Label>Concession Applied To</Label>
+                        <div className="flex flex-wrap gap-4 mt-1">
+                          {[
+                            { key: "school_fee", label: "School/College Fee" },
+                            { key: "academy_fee", label: "Academy Fee" },
+                            { key: "hostel_fee", label: "Hostel Fee" }
+                          ].map(opt => (
+                            <label key={opt.key} className="flex items-center gap-2 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={formData.scholarship_applied_to.includes(opt.key)}
+                                onChange={() => {
+                                  const current = formData.scholarship_applied_to;
+                                  const next = current.includes(opt.key)
+                                    ? current.filter(v => v !== opt.key)
+                                    : [...current, opt.key];
+                                  set("scholarship_applied_to", next);
+                                }}
+                                className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                              />
+                              <span className="text-sm text-gray-700">{opt.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <p className="font-semibold text-sm text-slate-700 border-t pt-2">Fee Calculation Details</p>
                       <div className="grid grid-cols-3 gap-4 text-center">
                         <div className="bg-white rounded-lg p-2 border">
                           <p className="text-xs text-muted-foreground">Original Fee</p>
@@ -434,8 +482,8 @@ export function RegisterUserContent() {
               <Select value={formData.branch} onValueChange={v => set("branch", v)}>
                 <SelectTrigger><SelectValue placeholder="Select Branch" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Main Branch">Main Branch</SelectItem>
-                  <SelectItem value="SOF (School of Foundation)">SOF (School of Foundation)</SelectItem>
+                <SelectItem value="Main Branch">Main Branch</SelectItem>
+                <SelectItem value="SOF Branch">SOF Branch</SelectItem>
                 </SelectContent>
               </Select>
             </div>

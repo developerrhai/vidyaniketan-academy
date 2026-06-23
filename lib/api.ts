@@ -82,7 +82,7 @@ export const profileApi = {
    STUDENTS
 ══════════════════════════════════════════════════════════ */
 export const studentsApi = {
-  getAll: (filters: { standard?: string; board?: string; location?: string; search?: string } = {}) =>
+  getAll: (filters: { standard?: string; board?: string; location?: string; search?: string; course?: string; branch?: string } = {}) =>
     get(`/students${qs(filters)}`),
 
   getOne: (id: string | number) => get(`/students/${id}`),
@@ -98,7 +98,7 @@ export const studentsApi = {
 };
 
 export const studentsUniversalApi = {
-  getAll: (filters: { standard?: string; board?: string; location?: string; search?: string } = {}) =>
+  getAll: (filters: { standard?: string; board?: string; location?: string; search?: string; course?: string; branch?: string } = {}) =>
     get(`/students-universal${qs(filters)}`),
 };
 
@@ -257,8 +257,8 @@ export const recycleBinApi = {
       updates: any[];
     };
   }>,
-  restore: (type: string, id: number) => post("/recycle-bin/restore", { type, id }),
-  deletePermanently: (type: string, id: number) => post("/recycle-bin/delete", { type, id }),
+  restore: (type: string, id: number) => post("/recycle-bin/restore", { type, id }) as Promise<any>,
+  deletePermanently: (type: string, id: number) => post("/recycle-bin/delete", { type, id }) as Promise<any>,
 };
 
 

@@ -17,6 +17,8 @@ export type SectionType =
   | "studentManagement"
   | "inquiryStudents"
   | "studentManagementContent"
+  | "hostelStudents"
+  | "feeReports"
   | "teachers"
   | "teacherManagement"
   | "teacherUpdates"
@@ -85,7 +87,9 @@ export function Sidebar({
             const isStudentActive =
               activeSection === "studentManagement" ||
               activeSection === "inquiryStudents"    ||
-              activeSection === "studentManagementContent"
+              activeSection === "studentManagementContent" ||
+              activeSection === "hostelStudents" ||
+              activeSection === "feeReports"
 
             return (
               <div key={item.id}>
@@ -136,6 +140,24 @@ export function Sidebar({
                       )}
                     >
                       Student Analysis
+                    </button>
+                    <button
+                      onClick={() => { onSectionChange("hostelStudents"); setMobileOpen(false) }}
+                      className={cn(
+                        "block w-full text-left px-3 py-2 text-sm hover:text-amber-400",
+                        activeSection === "hostelStudents" ? "text-amber-400" : "text-slate-300"
+                      )}
+                    >
+                      Hostel Students
+                    </button>
+                    <button
+                      onClick={() => { onSectionChange("feeReports"); setMobileOpen(false) }}
+                      className={cn(
+                        "block w-full text-left px-3 py-2 text-sm hover:text-amber-400",
+                        activeSection === "feeReports" ? "text-amber-400" : "text-slate-300"
+                      )}
+                    >
+                      Fee Reports
                     </button>
                   </div>
                 )}

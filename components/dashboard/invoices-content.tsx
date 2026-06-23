@@ -385,7 +385,7 @@ export function InvoicesContent() {
       "Paid Amount",
       "Balance",
       "Install Date",
-      "Due Date",
+      "Next Installment Date",
       "Transaction Type",
       "Status",
       "Description",
@@ -948,7 +948,7 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
       `Invoice: ${invoiceNo}`,
       `Student: ${inv.student_name || "-"}`,
       `Course: ${inv.course || "-"}`,
-      `Due Date: ${fmtDate(inv.due_date)}`,
+      `Next Installment Date: ${fmtDate(inv.due_date)}`,
       `Total Amount: Rs ${amount.toLocaleString()}`,
       `Paid Amount: Rs ${paid.toLocaleString()}`,
       `Balance: Rs ${balance.toLocaleString()}`,
@@ -1035,7 +1035,7 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
                     <TableHead className="text-white font-semibold hidden md:table-cell">Paid</TableHead>
                     {/* ── NEW column ── */}
                     <TableHead className="text-white font-semibold hidden lg:table-cell">Install Date</TableHead>
-                    <TableHead className="text-white font-semibold hidden lg:table-cell">Due Date</TableHead>
+                    <TableHead className="text-white font-semibold hidden lg:table-cell">Next Installment Date</TableHead>
                     <TableHead className="text-white font-semibold">Status</TableHead>
                     <TableHead className="text-white font-semibold text-center">Actions</TableHead>
                   </TableRow>
@@ -1282,7 +1282,7 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
 
             {/* Due Date */}
             <div className="space-y-2">
-              <Label>Due Date <span className="text-destructive">*</span></Label>
+              <Label>Next Installment Date <span className="text-destructive">*</span></Label>
               <Input type="date" value={form.due_date} onChange={e => f("due_date", e.target.value)} />
             </div>
 
@@ -1320,7 +1320,7 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
                   ["Description",      selected.description],
                   ["Transaction Type", selected.transaction_type],
                   ["Install Date",     fmtDate(selected.install_date)],
-                  ["Due Date",         fmtDate(selected.due_date)],
+                  ["Next Installment Date", fmtDate(selected.due_date)],
                   ...(Number(selected.student_school_fee || 0) + Number(selected.student_academy_fee || 0) + Number(selected.student_hostel_fee || 0) > 0 ? [
                     ["Original Fee", `₹${(Number(selected.student_school_fee || 0) + Number(selected.student_academy_fee || 0) + Number(selected.student_hostel_fee || 0)).toLocaleString()}`]
                   ] : []),

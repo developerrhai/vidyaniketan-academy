@@ -23,7 +23,7 @@ const SUBJECTS = [
   "Computer Science", "Accountancy", "Business Studies",
 ]
 
-const BRANCHES = ["Main Branch", "SOF (School of Foundation)"]
+const BRANCHES = ["Main Branch", "SOF Branch"]
 
 interface FormData {
   teacher_name: string

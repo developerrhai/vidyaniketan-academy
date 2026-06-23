@@ -44,7 +44,7 @@ const STANDARDS = [
 
 const BRANCHES = [
   "Main Branch",
-  "SOF (School of Foundation)"
+  "SOF Branch"
 ]
 
 const statusColors: Record<string, string> = {

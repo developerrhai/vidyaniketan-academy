@@ -74,7 +74,7 @@ const STANDARDS = [
 
 const BRANCHES = [
   "Main Branch",
-  "SOF (School of Foundation)"
+  "SOF Branch"
 ];
 
 type Student = {

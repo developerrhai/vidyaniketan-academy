@@ -27,7 +27,7 @@ const STANDARDS = [
   "Basic Foundation 2 (7th to 9th)"
 ]
 
-const BRANCHES = ["Main Branch", "SOF (School of Foundation)"]
+const BRANCHES = ["Main Branch", "SOF Branch"]
 const COURSES  = ["IIT-JEE", "MHT-CET", "NEET"]
 
 const RULES = [
@@ -53,6 +53,7 @@ interface FormData {
   studentPhone: string
   fatherName: string
   fatherPhone: string
+  motherName: string
   email: string
   standard: string
   branch: string
@@ -69,7 +70,7 @@ interface FormData {
 
 const initial: FormData = {
   firstName: "", middleName: "", lastName: "",
-  studentPhone: "", fatherName: "", fatherPhone: "",
+  studentPhone: "", fatherName: "", fatherPhone: "", motherName: "",
   studentDOB: "", aadharNumber: "", address: "",
   email: "", standard: "", branch: "", course: "",
   casteReligion: "", photo: "",
@@ -136,6 +137,7 @@ export default function AdmissionFormPage() {
           name:           fullName,
           phone:          form.studentPhone,
           father_name:    form.fatherName,
+          mother_name:    form.motherName,
           email:          form.email,
           father_phone:   form.fatherPhone,
           gender:         form.gender,
@@ -235,6 +237,7 @@ export default function AdmissionFormPage() {
                   <ReviewRow label="Phone" value={form.studentPhone} />
                   {form.fatherPhone   && <ReviewRow label="Contact 2" value={form.fatherPhone} />}
                   {form.fatherName    && <ReviewRow label="Father" value={form.fatherName} />}
+                  {form.motherName    && <ReviewRow label="Mother" value={form.motherName} />}
                   {form.email         && <ReviewRow label="Email" value={form.email} />}
                   {form.studentDOB    && <ReviewRow label="Date of Birth" value={form.studentDOB} />}
                   {form.admissionDate && <ReviewRow label="Admission Date" value={form.admissionDate} />}
@@ -512,6 +515,15 @@ export default function AdmissionFormPage() {
             <Section label="Personal Details" color="indigo">
               <InputField placeholder="Father's Name" value={form.fatherName}
                 onChange={v => set("fatherName", v)} error={fieldError("fatherName")}
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                }
+              />
+              <InputField placeholder="Mother's Name" value={form.motherName}
+                onChange={v => set("motherName", v)} error={fieldError("motherName")}
                 icon={
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
