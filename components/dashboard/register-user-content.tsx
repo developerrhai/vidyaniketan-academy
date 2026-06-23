@@ -18,7 +18,8 @@ export function RegisterUserContent() {
     fees: "10000", hostel: "", academic_year: "",
     dob: "", address: "", aadhar: "", caste_religion: "", photo: "",
     admission_type: [] as string[], admission_date: "",
-    school_fee: "0", academy_fee: "0", hostel_fee: "0"
+    school_fee: "0", academy_fee: "0", hostel_fee: "0",
+    scholarship_type: "None", scholarship_value: "0", scholarship_amount: "0"
   })
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -71,6 +72,16 @@ export function RegisterUserContent() {
       if (formData.role === "student") {
         const studentId = generateStudentId(formData.standard) // generate ID
 
+        const originalFee = Number(formData.school_fee || 0) + Number(formData.academy_fee || 0) + Number(formData.hostel_fee || 0);
+        let calculatedAmount = 0;
+        const val = Number(formData.scholarship_value || 0);
+        if (formData.scholarship_type === "Percent") {
+          calculatedAmount = originalFee * (val / 100);
+        } else if (formData.scholarship_type === "Flat") {
+          calculatedAmount = val;
+        }
+        const finalPayable = Math.max(0, originalFee - calculatedAmount);
+
         await studentsApi.create({
           admin_id: admin_id,
           name: formData.name,
@@ -85,7 +96,7 @@ export function RegisterUserContent() {
           branch: formData.branch,
           institute: formData.institute,
           hostel: formData.hostel,
-          fee: Number(formData.fees) || 0,
+          fee: finalPayable,
           student_id: studentId,
           dob: formData.dob || null,
           address: formData.address || "",
@@ -97,6 +108,9 @@ export function RegisterUserContent() {
           school_fee: Number(formData.school_fee) || 0,
           academy_fee: Number(formData.academy_fee) || 0,
           hostel_fee: Number(formData.hostel_fee) || 0,
+          scholarship_type: formData.scholarship_type,
+          scholarship_value: val,
+          scholarship_amount: calculatedAmount
         })
 
         setMsg({
@@ -137,7 +151,8 @@ export function RegisterUserContent() {
         fees: "10000", hostel: "", academic_year: "",
         dob: "", address: "", aadhar: "", caste_religion: "", photo: "",
         admission_type: [], admission_date: "",
-        school_fee: "0", academy_fee: "0", hostel_fee: "0"
+        school_fee: "0", academy_fee: "0", hostel_fee: "0",
+        scholarship_type: "None", scholarship_value: "0", scholarship_amount: "0"
       })
 
     } catch (err: any) {
@@ -318,6 +333,51 @@ export function RegisterUserContent() {
                   <Label className="flex items-center gap-2">Hostel Fee</Label>
                   <Input type="number" value={formData.hostel_fee} onChange={e => set("hostel_fee", e.target.value)} placeholder="0.00" />
                 </div>
+                <div className="space-y-2">
+                  <Label>Scholarship / Concession Type</Label>
+                  <Select value={formData.scholarship_type} onValueChange={v => set("scholarship_type", v)}>
+                    <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="None">None</SelectItem>
+                      <SelectItem value="Flat">Flat (₹)</SelectItem>
+                      <SelectItem value="Percent">Percent (%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Scholarship / Concession Value</Label>
+                  <Input type="number" value={formData.scholarship_value} onChange={e => set("scholarship_value", e.target.value)} placeholder="0.00" />
+                </div>
+                {(() => {
+                  const originalFee = Number(formData.school_fee || 0) + Number(formData.academy_fee || 0) + Number(formData.hostel_fee || 0);
+                  let calculatedAmount = 0;
+                  const val = Number(formData.scholarship_value || 0);
+                  if (formData.scholarship_type === "Percent") {
+                    calculatedAmount = originalFee * (val / 100);
+                  } else if (formData.scholarship_type === "Flat") {
+                    calculatedAmount = val;
+                  }
+                  const finalPayable = Math.max(0, originalFee - calculatedAmount);
+                  return (
+                    <div className="p-4 rounded-xl bg-slate-100 border border-slate-200 col-span-1 md:col-span-2 space-y-2">
+                      <p className="font-semibold text-sm text-slate-700">Fee Calculation Details</p>
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                        <div className="bg-white rounded-lg p-2 border">
+                          <p className="text-xs text-muted-foreground">Original Fee</p>
+                          <p className="font-bold text-sm">₹{originalFee.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-white rounded-lg p-2 border">
+                          <p className="text-xs text-muted-foreground">Scholarship Given</p>
+                          <p className="font-bold text-sm text-amber-600">₹{calculatedAmount.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-white rounded-lg p-2 border">
+                          <p className="text-xs text-muted-foreground">Final Payable Fee</p>
+                          <p className="font-bold text-sm text-emerald-600">₹{finalPayable.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="space-y-2 col-span-1 md:col-span-2">
                   <Label className="flex items-center gap-2">I Confirm My Admission In</Label>
                   <div className="flex gap-4 mt-2">
