@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Receipt, Plus, Eye, Printer, Trash2, CheckCircle, Clock, AlertCircle, Loader2, Search, X, Edit2, FileSpreadsheet, MessageCircle } from "lucide-react"
+import { Receipt, Plus, Eye, Printer, Trash2, CheckCircle, Clock, AlertCircle, Loader2, Search, X, Edit2, FileSpreadsheet, MessageCircle, Download } from "lucide-react"
 import { invoicesApi, studentsApi } from "@/lib/api"
 import logo from "../../public/logo.jpeg";
 
@@ -25,7 +25,15 @@ interface Invoice {
   install_date?: string
   description?: string
   transaction_type?: string
-  student_phone?: number
+  student_phone?: string | number
+  student_fee?: number
+  student_paid_fee?: number
+  student_school_fee?: number
+  student_academy_fee?: number
+  student_hostel_fee?: number
+  student_scholarship_type?: string
+  student_scholarship_value?: number
+  student_scholarship_amount?: number
 }
 
 interface Student {
@@ -38,6 +46,12 @@ interface Student {
   fee: number
   paid_fee: number
   father_name: string
+  scholarship_type?: string
+  scholarship_value?: number
+  scholarship_amount?: number
+  school_fee?: number
+  academy_fee?: number
+  hostel_fee?: number
 }
 
 interface Summary { total_invoiced: number; total_paid: number; total_pending: number }
@@ -96,6 +110,9 @@ export function InvoicesContent() {
     transaction_type: "Cash",
     description:      "",
     student_id:       "",
+    scholarship_type: "None",
+    scholarship_value: "0",
+    scholarship_amount: "0",
   })
 
   const load = useCallback(async () => {
@@ -146,6 +163,9 @@ export function InvoicesContent() {
     amount:       remaining > 0 ? String(remaining) : String(s.fee),
     paid_amount:  String(s.paid_fee),   // ← was "0", now uses student's paid_fee
     description:  `Tuition Fee – ${s.course || s.standard + "th Std"}`,
+    scholarship_type: s.scholarship_type || "None",
+    scholarship_value: String(s.scholarship_value || 0),
+    scholarship_amount: String(s.scholarship_amount || 0),
   }))
 }
 
@@ -158,6 +178,9 @@ export function InvoicesContent() {
       ...prev,
       student_name: "", student_id: "", amount: "",
       paid_amount: "", description: "",
+      scholarship_type: "None",
+      scholarship_value: "0",
+      scholarship_amount: "0",
     }))
   }
 
@@ -168,90 +191,167 @@ export function InvoicesContent() {
       student_name: "", amount: "", paid_amount: "",
       due_date: "", install_date: "", transaction_type: "Cash",
       description: "", student_id: "",
+      scholarship_type: "None",
+      scholarship_value: "0",
+      scholarship_amount: "0",
     })
     setModalOpen(true)
   }
 
-  const handleSave = async () => {
-  if (!form.student_name || !form.amount || !form.due_date) {
-    alert("Fill required fields"); return
+  const handleScholarshipChange = (key: string, val: string) => {
+    setForm(prev => {
+      const next = { ...prev, [key]: val }
+      if (!selectedStudent) return next
+
+      const originalFee = (Number(selectedStudent.school_fee || 0) + Number(selectedStudent.academy_fee || 0) + Number(selectedStudent.hostel_fee || 0)) || (Number(selectedStudent.fee || 0) + Number(selectedStudent.scholarship_amount || 0))
+      if (originalFee === 0) return next
+
+      const sType = next.scholarship_type
+      const sVal = Number(next.scholarship_value || 0)
+
+      let calcAmt = 0
+      if (sType === "Percent") {
+        calcAmt = originalFee * (sVal / 100)
+      } else if (sType === "Flat") {
+        calcAmt = sVal
+      }
+
+      const finalPayable = Math.max(0, originalFee - calcAmt)
+      const newRemaining = Math.max(0, finalPayable - Number(selectedStudent.paid_fee || 0))
+
+      setSelectedStudent(curr => {
+        if (!curr) return null
+        return {
+          ...curr,
+          scholarship_type: sType,
+          scholarship_value: sVal,
+          scholarship_amount: calcAmt,
+          fee: finalPayable,
+        }
+      })
+
+      return {
+        ...next,
+        scholarship_amount: String(calcAmt),
+        amount: String(newRemaining > 0 ? newRemaining : finalPayable),
+      }
+    })
   }
-  setSaving(true)
-  try {
-    const payload = {
-      student_name:     form.student_name,
-      student_id:       form.student_id || undefined,
-      amount:           parseFloat(form.amount),
-      paid_amount:      parseFloat(form.paid_amount) || 0,
-      due_date:         form.due_date,
-      install_date:     form.install_date || undefined,
-      transaction_type: form.transaction_type,
-      description:      form.description,
+
+  const handleSave = async () => {
+    if (!form.student_name || !form.amount || !form.due_date) {
+      alert("Fill required fields"); return
     }
+    setSaving(true)
+    try {
+      const payload = {
+        student_name:     form.student_name,
+        student_id:       form.student_id || undefined,
+        amount:           parseFloat(form.amount),
+        paid_amount:      parseFloat(form.paid_amount) || 0,
+        due_date:         form.due_date,
+        install_date:     form.install_date || undefined,
+        transaction_type: form.transaction_type,
+        description:      form.description,
+      }
 
-    if (editing) {
-      // ── EDIT: calculate diff and patch student ──────────
-      const oldPaid = Number(editing.paid_amount) || 0
-      const newPaid = parseFloat(form.paid_amount) || 0
-      const diff    = newPaid - oldPaid
+      if (editing) {
+        await invoicesApi.update(editing.id, payload)
 
-      await invoicesApi.update(editing.id, payload)
+        if (form.student_id) {
+          const oldPaid = Number(editing.paid_amount) || 0
+          const newPaid = parseFloat(form.paid_amount) || 0
+          const diff    = newPaid - oldPaid
 
-      if (form.student_id && diff !== 0) {
-        // fetch fresh student data to get current paid_fee
-        const stuRes: any = await studentsApi.getAll({ search: form.student_name })
-        const stu: Student = (stuRes.data || []).find(
-          (s: Student) => String(s.id) === String(form.student_id)
-        )
-        if (stu) {
-          const updatedPaidFee = Math.max(0, Number(stu.paid_fee) + diff)
-          await studentsApi.update(Number(form.student_id), {
-            ...stu,
-            paid_fee: updatedPaidFee,
-          })
+          const stuRes: any = await studentsApi.getOne(form.student_id)
+          const stu: Student = stuRes.data
+          if (stu) {
+            const updatedPaidFee = Math.max(0, Number(stu.paid_fee) + diff)
+            
+            // Calculate new fee and scholarship
+            const sType = form.scholarship_type
+            const sVal = Number(form.scholarship_value || 0)
+            const originalFee = (Number(stu.school_fee || 0) + Number(stu.academy_fee || 0) + Number(stu.hostel_fee || 0)) || (Number(stu.fee || 0) + Number(stu.scholarship_amount || 0))
+            
+            let calcAmt = 0
+            if (sType === "Percent") {
+              calcAmt = originalFee * (sVal / 100)
+            } else if (sType === "Flat") {
+              calcAmt = sVal
+            }
+            const finalPayable = Math.max(0, originalFee - calcAmt)
+
+            await studentsApi.update(Number(form.student_id), {
+              ...stu,
+              paid_fee: updatedPaidFee,
+              fee: finalPayable,
+              scholarship_type: sType,
+              scholarship_value: sVal,
+              scholarship_amount: calcAmt,
+            })
+          }
+        }
+
+      } else {
+        await invoicesApi.create(payload)
+
+        if (form.student_id) {
+          const paidNow = parseFloat(form.paid_amount) || 0
+          const stuRes: any = await studentsApi.getOne(form.student_id)
+          const stu: Student = stuRes.data
+          if (stu) {
+            const updatedPaidFee = Number(stu.paid_fee) + paidNow
+            
+            // Calculate new fee and scholarship
+            const sType = form.scholarship_type
+            const sVal = Number(form.scholarship_value || 0)
+            const originalFee = (Number(stu.school_fee || 0) + Number(stu.academy_fee || 0) + Number(stu.hostel_fee || 0)) || (Number(stu.fee || 0) + Number(stu.scholarship_amount || 0))
+            
+            let calcAmt = 0
+            if (sType === "Percent") {
+              calcAmt = originalFee * (sVal / 100)
+            } else if (sType === "Flat") {
+              calcAmt = sVal
+            }
+            const finalPayable = Math.max(0, originalFee - calcAmt)
+
+            await studentsApi.update(Number(form.student_id), {
+              ...stu,
+              paid_fee: updatedPaidFee,
+              fee: finalPayable,
+              scholarship_type: sType,
+              scholarship_value: sVal,
+              scholarship_amount: calcAmt,
+            })
+          }
         }
       }
 
-    } else {
-      // ── CREATE: add paid_amount to student's paid_fee ───
-      await invoicesApi.create(payload)
-
-      const paidNow = parseFloat(form.paid_amount) || 0
-      if (form.student_id && paidNow > 0) {
-        const stuRes: any = await studentsApi.getAll({ search: form.student_name })
-        const stu: Student = (stuRes.data || []).find(
-          (s: Student) => String(s.id) === String(form.student_id)
-        )
-        if (stu) {
-          const updatedPaidFee = Number(stu.paid_fee) + paidNow
-          await studentsApi.update(Number(form.student_id), {
-            ...stu,
-            paid_fee: updatedPaidFee,
-          })
-        }
-      }
-    }
-
-    setModalOpen(false)
-    setEditing(null)
-    load()
-  } catch (err: any) { alert(err.message) }
-  finally { setSaving(false) }
-}
-
+      setModalOpen(false)
+      setEditing(null)
+      load()
+    } catch (err: any) { alert(err.message) }
+    finally { setSaving(false) }
+  }
 
   const openEdit = (inv: Invoice) => {
     setEditing(inv)
     setSelectedStudent({
       id: Number(inv.student_id || 0),
       name: inv.student_name || "",
-      phone: "",
+      phone: String(inv.student_phone || ""),
       standard: inv.standard || "",
       course: inv.course || "",
       location: "",
-      fee: Number(inv.amount || 0),
-      paid_fee: Number(inv.paid_amount || 0),
+      fee: inv.student_fee !== undefined ? Number(inv.student_fee) : Number(inv.amount || 0),
+      paid_fee: inv.student_paid_fee !== undefined ? Number(inv.student_paid_fee) : Number(inv.paid_amount || 0),
       father_name: "",
+      scholarship_type: inv.student_scholarship_type,
+      scholarship_value: inv.student_scholarship_value !== undefined ? Number(inv.student_scholarship_value) : undefined,
+      scholarship_amount: inv.student_scholarship_amount !== undefined ? Number(inv.student_scholarship_amount) : undefined,
+      school_fee: inv.student_school_fee !== undefined ? Number(inv.student_school_fee) : undefined,
+      academy_fee: inv.student_academy_fee !== undefined ? Number(inv.student_academy_fee) : undefined,
+      hostel_fee: inv.student_hostel_fee !== undefined ? Number(inv.student_hostel_fee) : undefined,
     })
     setStudentSearch(inv.student_name || "")
     setShowDropdown(false)
@@ -264,6 +364,9 @@ export function InvoicesContent() {
       install_date: inv.install_date ? new Date(inv.install_date).toISOString().split("T")[0] : "",
       transaction_type: inv.transaction_type || "Cash",
       description: inv.description || "",
+      scholarship_type: inv.student_scholarship_type || "None",
+      scholarship_value: String(inv.student_scholarship_value || 0),
+      scholarship_amount: String(inv.student_scholarship_amount || 0),
     })
     setModalOpen(true)
   }
@@ -499,24 +602,38 @@ body{
 
 <table class="table">
 
+${(Number(inv.student_school_fee || 0) + Number(inv.student_academy_fee || 0) + Number(inv.student_hostel_fee || 0)) > 0 ? `
+<tr>
+<td>Original Fee</td>
+<td>₹ ${(Number(inv.student_school_fee || 0) + Number(inv.student_academy_fee || 0) + Number(inv.student_hostel_fee || 0)).toLocaleString()}</td>
+</tr>
+` : ''}
+
+${Number(inv.student_scholarship_amount || 0) > 0 ? `
+<tr>
+<td>Scholarship / Concession</td>
+<td>-₹ ${Number(inv.student_scholarship_amount).toLocaleString()}</td>
+</tr>
+` : ''}
+
+<tr>
+<td>Total Payable</td>
+<td>₹ ${Number(inv.amount).toLocaleString()}</td>
+</tr>
+
 <tr>
 <td>Received</td>
 <td>₹ ${Number(inv.paid_amount).toLocaleString()}</td>
 </tr>
 
 <tr>
-<td>Payment mode</td>
+<td>Payment Mode</td>
 <td>${inv.transaction_type || "Online"}</td>
 </tr>
 
-<tr>
-<td>Previous Balance</td>
-<td>₹ ${Number(inv.amount).toLocaleString()}</td>
-</tr>
-
 <tr class="balance">
-<td>Current Balance</td>
-<td>₹ ${balance}</td>
+<td>Outstanding Balance</td>
+<td>₹ ${balance.toLocaleString()}</td>
 </tr>
 
 </table>
@@ -543,6 +660,281 @@ body{
     )
     w.document.close()
     w.print()
+  }
+
+  const handleDownloadInvoice = (inv: Invoice) => {
+    const balance = Number(inv.amount) - Number(inv.paid_amount)
+    const invoiceNo = `INV${String(inv.id).padStart(3, "0")}`
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receipt - ${invoiceNo}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #1e293b;
+      margin: 0;
+      background: #f8fafc;
+      padding: 40px 20px;
+    }
+    .no-print-bar {
+      max-width: 800px;
+      margin: 0 auto 20px auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #ffffff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
+    }
+    .btn-download {
+      background: #0d9488;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .btn-download:hover {
+      background: #0f766e;
+    }
+    .receipt-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
+      position: relative;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 20px;
+    }
+    .institute h2 {
+      margin: 0;
+      font-size: 24px;
+      color: #0f172a;
+      font-weight: 800;
+    }
+    .institute p {
+      margin: 4px 0;
+      font-size: 14px;
+      color: #475569;
+    }
+    .logo {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .title {
+      text-align: center;
+      font-size: 22px;
+      color: #0d9488;
+      font-weight: 800;
+      margin: 30px 0;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+    .content {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 25px;
+      gap: 40px;
+    }
+    .left, .right {
+      width: 50%;
+    }
+    .label {
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-top: 20px;
+      letter-spacing: 0.5px;
+    }
+    .text {
+      margin-top: 4px;
+      font-size: 15px;
+      color: #0f172a;
+    }
+    .receipt-details {
+      text-align: right;
+      font-size: 14px;
+      margin-bottom: 20px;
+      color: #334155;
+      line-height: 1.6;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .table td {
+      padding: 10px 0;
+      font-size: 15px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #334155;
+    }
+    .table tr:last-child td {
+      border-bottom: none;
+    }
+    .table td:last-child {
+      text-align: right;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .balance-row td {
+      border-top: 2px solid #e2e8f0;
+      padding-top: 12px;
+      font-weight: 700;
+    }
+    .balance-row td:last-child {
+      color: #0d9488;
+      font-size: 18px;
+    }
+    .signature {
+      margin-top: 80px;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    .signature-title {
+      font-size: 14px;
+      color: #475569;
+      margin-bottom: 40px;
+    }
+    .auth {
+      font-weight: 700;
+      font-size: 14px;
+      color: #0f172a;
+      border-top: 1px solid #cbd5e1;
+      padding-top: 6px;
+      width: 200px;
+      text-align: center;
+    }
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      .no-print-bar {
+        display: none;
+      }
+      .receipt-container {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print-bar">
+    <div style="font-size: 14px; color: #475569; font-weight: 500;">Invoice loaded successfully. Press the button to print or save as PDF.</div>
+    <button class="btn-download" onclick="window.print()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+      Print / Save PDF
+    </button>
+  </div>
+  <div class="receipt-container">
+    <div class="header">
+      <div class="institute">
+        <h2>Vidyaaniketan Professional Academy</h2>
+        <p>Arun Galaxy, Shreeram Chouk, Indapur, Maharashtra 413106</p>
+        <p>Phone no : 8180802049</p>
+        <p>State: Maharashtra</p>
+      </div>
+      <img class="logo" src="${window.location.origin}/logo.jpeg" alt="Logo"/>
+    </div>
+    <div class="title">Payment Receipt</div>
+    <div class="content">
+      <div class="left">
+        <div class="label">Received From</div>
+        <div class="text" style="font-weight: 600;">${inv.student_name}</div>
+        <div class="text" style="font-size: 14px; color: #475569; margin-top: 2px;">Contact No : ${inv.student_phone || "-"}</div>
+        
+        <div class="label">Amount in words</div>
+        <div class="text" style="font-style: italic; font-size: 14px; color: #475569;">${Number(inv.paid_amount).toLocaleString()} Rupees only</div>
+      </div>
+      <div class="right">
+        <div class="receipt-details">
+          <div><strong>Receipt Details</strong></div>
+          <div>Receipt No : ${invoiceNo}</div>
+          <div><strong>Date :</strong> ${fmtDate(inv.install_date)}</div>
+        </div>
+        <table class="table">
+          ${(Number(inv.student_school_fee || 0) + Number(inv.student_academy_fee || 0) + Number(inv.student_hostel_fee || 0)) > 0 ? `
+          <tr>
+            <td>Original Fee</td>
+            <td>₹ ${(Number(inv.student_school_fee || 0) + Number(inv.student_academy_fee || 0) + Number(inv.student_hostel_fee || 0)).toLocaleString()}</td>
+          </tr>
+          ` : ''}
+
+          ${Number(inv.student_scholarship_amount || 0) > 0 ? `
+          <tr>
+            <td>Scholarship / Concession</td>
+            <td>-₹ ${Number(inv.student_scholarship_amount).toLocaleString()}</td>
+          </tr>
+          ` : ''}
+
+          <tr>
+            <td>Total Payable</td>
+            <td>₹ ${Number(inv.amount).toLocaleString()}</td>
+          </tr>
+          <tr>
+            <td>Received</td>
+            <td>₹ ${Number(inv.paid_amount).toLocaleString()}</td>
+          </tr>
+          <tr>
+            <td>Payment Mode</td>
+            <td>${inv.transaction_type || "Online"}</td>
+          </tr>
+          <tr class="balance-row">
+            <td>Outstanding Balance</td>
+            <td>₹ ${balance.toLocaleString()}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <div class="signature">
+      <div class="signature-title">For : Vidyaaniketan Professional Academy</div>
+      <div class="auth">Authorized Signatory</div>
+    </div>
+  </div>
+</body>
+</html>
+    `
+    const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `Invoice_${invoiceNo}.html`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const handleWhatsAppShare = (inv: Invoice) => {
@@ -687,6 +1079,11 @@ body{
                               onClick={() => handlePrint(inv)}>
                               <Printer className="h-4 w-4" />
                             </Button>
+                            <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-teal-600 hover:text-teal-700 hover:border-teal-300"
+                              title="Download Invoice"
+                              onClick={() => handleDownloadInvoice(inv)}>
+                              <Download className="h-4 w-4" />
+                            </Button>
                             <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:border-green-300"
                               onClick={() => handleWhatsAppShare(inv)}>
                               <MessageCircle className="h-4 w-4" />
@@ -721,29 +1118,55 @@ body{
               <Label>Student <span className="text-destructive">*</span></Label>
               {selectedStudent ? (
                 <div className="flex items-start justify-between p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                  <div className="space-y-0.5">
-                    <p className="font-semibold text-sm text-emerald-800">{selectedStudent.name}</p>
+                  <div className="space-y-1 w-full">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold text-sm text-emerald-800">{selectedStudent.name}</p>
+                      <button onClick={clearStudent} className="text-emerald-500 hover:text-red-500 transition-colors ml-2 shrink-0" title="Change student">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
                     <p className="text-xs text-emerald-600">
-                      {selectedStudent.standard && `Std ${selectedStudent.standard}`}
-                      {selectedStudent.course && ` · ${selectedStudent.course}`}
-                      {selectedStudent.location && ` · ${selectedStudent.location}`}
+                      {[
+                        selectedStudent.standard && `Std ${selectedStudent.standard}`,
+                        selectedStudent.course,
+                        selectedStudent.location,
+                        selectedStudent.phone && `📞 ${selectedStudent.phone}`
+                      ].filter(Boolean).join(" · ")}
                     </p>
-                    <p className="text-xs text-emerald-600">
-                      📞 {selectedStudent.phone}
-                      {selectedStudent.fee > 0 && (
-                        <span className="ml-2">
-                          · Fee: ₹{Number(selectedStudent.fee).toLocaleString()}
-                          · Paid: ₹{Number(selectedStudent.paid_fee).toLocaleString()}
-                          · <span className="font-medium">
-                            Balance: ₹{(Number(selectedStudent.fee) - Number(selectedStudent.paid_fee)).toLocaleString()}
-                          </span>
-                        </span>
+                    
+                    <div className="mt-2 pt-2 border-t border-emerald-200/50 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-emerald-700">
+                      {selectedStudent.scholarship_amount !== undefined && Number(selectedStudent.scholarship_amount) > 0 ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span>Original Fee:</span>
+                            <span className="font-medium">₹{((Number(selectedStudent.school_fee || 0) + Number(selectedStudent.academy_fee || 0) + Number(selectedStudent.hostel_fee || 0)) || (Number(selectedStudent.fee) + Number(selectedStudent.scholarship_amount || 0))).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-amber-700">
+                            <span>Concession ({selectedStudent.scholarship_type === "Percent" ? `${selectedStudent.scholarship_value}%` : "Flat"}):</span>
+                            <span className="font-medium">-₹{Number(selectedStudent.scholarship_amount).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between font-semibold text-emerald-800 border-t border-dashed border-emerald-200 pt-1 col-span-2">
+                            <span>Net Payable:</span>
+                            <span>₹{Number(selectedStudent.fee).toLocaleString()}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex justify-between col-span-2">
+                          <span>Total Fee:</span>
+                          <span className="font-semibold">₹{Number(selectedStudent.fee).toLocaleString()}</span>
+                        </div>
                       )}
-                    </p>
+                      
+                      <div className="flex justify-between col-span-2 mt-1 pt-1 border-t border-emerald-200/50">
+                        <span>Paid so far:</span>
+                        <span className="font-medium">₹{Number(selectedStudent.paid_fee).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between col-span-2 font-semibold text-emerald-900">
+                        <span>Remaining Balance:</span>
+                        <span>₹{Math.max(0, Number(selectedStudent.fee) - Number(selectedStudent.paid_fee)).toLocaleString()}</span>
+                      </div>
+                    </div>
                   </div>
-                  <button onClick={clearStudent} className="text-emerald-500 hover:text-red-500 transition-colors ml-2 mt-0.5 shrink-0" title="Change student">
-                    <X className="h-4 w-4" />
-                  </button>
                 </div>
               ) : (
                 <div className="relative">
@@ -796,6 +1219,35 @@ body{
                 </div>
               )}
             </div>
+
+            {/* Scholarship / Concession Type & Value */}
+            {selectedStudent && (
+              <div className="grid grid-cols-2 gap-4 border-t border-b py-3 my-1 bg-slate-50/50 p-3 rounded-lg border">
+                <div className="space-y-1">
+                  <Label>Concession Type</Label>
+                  <Select value={form.scholarship_type} onValueChange={val => handleScholarshipChange("scholarship_type", val)}>
+                    <SelectTrigger className="bg-white"><SelectValue placeholder="None" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="None">None</SelectItem>
+                      <SelectItem value="Flat">Flat (₹)</SelectItem>
+                      <SelectItem value="Percent">Percent (%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Concession Value</Label>
+                  <Input 
+                    type="number" 
+                    min="0"
+                    value={form.scholarship_value} 
+                    onChange={e => handleScholarshipChange("scholarship_value", e.target.value)} 
+                    className="bg-white"
+                    placeholder="0.00"
+                    disabled={form.scholarship_type === "None"}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Amount fields */}
             <div className="grid grid-cols-2 gap-4">
@@ -869,9 +1321,15 @@ body{
                   ["Transaction Type", selected.transaction_type],
                   ["Install Date",     fmtDate(selected.install_date)],
                   ["Due Date",         fmtDate(selected.due_date)],
-                  ["Total",            `₹${Number(selected.amount).toLocaleString()}`],
-                  ["Paid",             `₹${Number(selected.paid_amount).toLocaleString()}`],
-                  ["Balance",          `₹${(Number(selected.amount) - Number(selected.paid_amount)).toLocaleString()}`],
+                  ...(Number(selected.student_school_fee || 0) + Number(selected.student_academy_fee || 0) + Number(selected.student_hostel_fee || 0) > 0 ? [
+                    ["Original Fee", `₹${(Number(selected.student_school_fee || 0) + Number(selected.student_academy_fee || 0) + Number(selected.student_hostel_fee || 0)).toLocaleString()}`]
+                  ] : []),
+                  ...(Number(selected.student_scholarship_amount || 0) > 0 ? [
+                    ["Scholarship / Concession", `-₹${Number(selected.student_scholarship_amount).toLocaleString()} (${selected.student_scholarship_type === "Percent" ? `${selected.student_scholarship_value}%` : "Flat"})`]
+                  ] : []),
+                  ["Total Payable",    `₹${Number(selected.amount).toLocaleString()}`],
+                  ["Paid Amount",      `₹${Number(selected.paid_amount).toLocaleString()}`],
+                  ["Outstanding Balance", `₹${(Number(selected.amount) - Number(selected.paid_amount)).toLocaleString()}`],
                 ] as [string, string | undefined][]).map(([l, v]) => (
                   <div key={l} className="flex justify-between">
                     <span className="text-muted-foreground">{l}:</span>
@@ -881,6 +1339,14 @@ body{
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Status:</span>
                   <Badge className={statusColor(status)}>{status}</Badge>
+                </div>
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" size="sm" onClick={() => handlePrint(selected)}>
+                    <Printer className="h-4 w-4 mr-2" /> Print
+                  </Button>
+                  <Button className="bg-teal-600 hover:bg-teal-700 text-white" size="sm" onClick={() => handleDownloadInvoice(selected)}>
+                    <Download className="h-4 w-4 mr-2" /> Download
+                  </Button>
                 </div>
               </div>
             )

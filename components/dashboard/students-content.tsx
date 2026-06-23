@@ -19,6 +19,7 @@ interface Student {
   standard: string; course: string; branch: string; fee: number; paid_fee: number;
   hostel: string; school_fee: number; academy_fee: number; hostel_fee: number;
   caste_religion: string; photo: string;
+  scholarship_type?: string; scholarship_value?: number; scholarship_amount?: number;
 }
 
 const STANDARDS = [
@@ -95,7 +96,10 @@ export function StudentsContent() {
     academy_fee: 0,
     hostel_fee: 0,
     school_fee: 0,
-    total_fee: 0
+    total_fee: 0,
+    scholarship_type: "None",
+    scholarship_value: 0,
+    scholarship_amount: 0
   })
   const [feeSaving, setFeeSaving] = useState(false)
 
@@ -202,13 +206,25 @@ export function StudentsContent() {
       hostel_fee:  Number(s?.hostel_fee)  || 0,
       school_fee:  Number(s?.school_fee)  || 0,
       total_fee:   Number(s?.fee)         || 0,
+      scholarship_type: s?.scholarship_type || "None",
+      scholarship_value: Number(s?.scholarship_value) || 0,
+      scholarship_amount: Number(s?.scholarship_amount) || 0
     })
     setFeeModalOpen(true)
   }
 
   const handleUpdateFee = async () => {
     if (!feeStudent) return
-    if (isNaN(newFee.total_fee) || newFee.total_fee < 0) { alert("Enter a valid fee amount"); return }
+    const originalFee = Number(newFee.school_fee) + Number(newFee.academy_fee) + Number(newFee.hostel_fee);
+    let calculatedAmount = 0;
+    const val = Number(newFee.scholarship_value || 0);
+    if (newFee.scholarship_type === "Percent") {
+      calculatedAmount = originalFee * (val / 100);
+    } else if (newFee.scholarship_type === "Flat") {
+      calculatedAmount = val;
+    }
+    const finalPayable = Math.max(0, originalFee - calculatedAmount);
+
     setFeeSaving(true)
     try {
       await studentsApi.update(feeStudent.id, {
@@ -216,10 +232,22 @@ export function StudentsContent() {
         school_fee:  newFee.school_fee,
         academy_fee: newFee.academy_fee,
         hostel_fee:  newFee.hostel_fee,
-        fee:         newFee.total_fee,
+        fee:         finalPayable,
+        scholarship_type: newFee.scholarship_type,
+        scholarship_value: val,
+        scholarship_amount: calculatedAmount
       })
       setStudents(prev => prev.map(s =>
-        s.id === feeStudent.id ? { ...s, fee: newFee.total_fee } : s
+        s.id === feeStudent.id ? { 
+          ...s, 
+          school_fee: newFee.school_fee,
+          academy_fee: newFee.academy_fee,
+          hostel_fee: newFee.hostel_fee,
+          fee: finalPayable,
+          scholarship_type: newFee.scholarship_type,
+          scholarship_value: val,
+          scholarship_amount: calculatedAmount
+        } : s
       ))
       setFeeModalOpen(false)
     } catch (err: any) { alert(err.message) }
@@ -465,7 +493,7 @@ export function StudentsContent() {
                     <TableHead className="text-white font-semibold">Name</TableHead>
                     <TableHead className="text-white font-semibold hidden sm:table-cell">Contact no.1</TableHead>
                     <TableHead className="text-white font-semibold hidden sm:table-cell">Contact no.2</TableHead>
-                    <TableHead className="text-white font-semibold hidden sm:table-cell">Aadhar</TableHead>
+                    <TableHead className="text-white font-semibold hidden sm:table-cell">Concession</TableHead>
                     <TableHead className="text-white font-semibold hidden sm:table-cell">DOB</TableHead>
                     <TableHead className="text-white font-semibold">Std</TableHead>
                     <TableHead className="text-white font-semibold hidden md:table-cell">Branch</TableHead>
@@ -490,7 +518,15 @@ export function StudentsContent() {
                         <TableCell className="font-medium">{s.name}</TableCell>
                         <TableCell className="hidden sm:table-cell">{s.phone}</TableCell>
                         <TableCell className="hidden sm:table-cell">{s.father_phone}</TableCell>
-                        <TableCell className="hidden md:table-cell">{s.aadhar}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {s.scholarship_amount && Number(s.scholarship_amount) > 0 ? (
+                            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 text-xs px-2.5 py-0.5 rounded-full font-medium shadow-sm">
+                              {s.scholarship_type === "Percent" ? `${Number(s.scholarship_value)}%` : "Flat"} (-₹{Number(s.scholarship_amount).toLocaleString()})
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="hidden md:table-cell">{formatDob(s.dob)}</TableCell>
                         <TableCell>{s.standard}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.branch}</TableCell>
@@ -596,33 +632,68 @@ export function StudentsContent() {
 
               <div className="p-3 bg-muted rounded-lg space-y-2">
                 <p className="text-sm text-muted-foreground font-medium">Fee Summary</p>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-background rounded-lg p-2">
-                    <p className="text-xs text-muted-foreground">Total Fee</p>
-                    <p className="font-bold text-sm">₹{Number(selected.fee).toLocaleString()}</p>
-                  </div>
-                  <div className="bg-background rounded-lg p-2">
-                    <p className="text-xs text-muted-foreground">Paid</p>
-                    <p className="font-bold text-sm text-emerald-600">₹{Number(selected.paid_fee).toLocaleString()}</p>
-                  </div>
-                  <div className="bg-background rounded-lg p-2">
-                    <p className="text-xs text-muted-foreground">Balance</p>
-                    <p className="font-bold text-sm text-red-500">
-                      ₹{(Number(selected.fee) - Number(selected.paid_fee)).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="w-full bg-muted-foreground/20 rounded-full h-2 mt-1">
-                  <div
-                    className="bg-emerald-500 h-2 rounded-full transition-all"
-                    style={{ width: `${Math.min((Number(selected.paid_fee) / (Number(selected.fee) || 1)) * 100, 100)}%` }}
-                  />
-                </div>
-                <p className="text-xs text-right text-muted-foreground">
-                  {Number(selected.fee) > 0
-                    ? `${Math.round((Number(selected.paid_fee) / Number(selected.fee)) * 100)}% paid`
-                    : "No fee set"}
-                </p>
+                {(() => {
+                  const originalFee = Number(selected.school_fee || 0) + Number(selected.academy_fee || 0) + Number(selected.hostel_fee || 0);
+                  const scholarshipAmt = Number(selected.scholarship_amount || 0);
+                  const payable = Number(selected.fee || 0);
+                  return (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2 text-xs bg-background rounded-lg p-3">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">School Fee:</span>
+                          <span className="font-medium">₹{Number(selected.school_fee || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Academy Fee:</span>
+                          <span className="font-medium">₹{Number(selected.academy_fee || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Hostel Fee:</span>
+                          <span className="font-medium">₹{Number(selected.hostel_fee || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between border-t pt-1 mt-1 col-span-2">
+                          <span className="text-muted-foreground font-semibold">Original Fee:</span>
+                          <span className="font-bold">₹{originalFee.toLocaleString()}</span>
+                        </div>
+                        {scholarshipAmt > 0 && (
+                          <div className="flex justify-between text-amber-600 col-span-2">
+                            <span>Scholarship / Concession ({selected.scholarship_type === "Percent" ? `${selected.scholarship_value}%` : "Flat"}):</span>
+                            <span>-₹{scholarshipAmt.toLocaleString()}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-background rounded-lg p-2">
+                          <p className="text-xs text-muted-foreground">Net Payable</p>
+                          <p className="font-bold text-sm">₹{payable.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-background rounded-lg p-2">
+                          <p className="text-xs text-muted-foreground">Paid</p>
+                          <p className="font-bold text-sm text-emerald-600">₹{Number(selected.paid_fee).toLocaleString()}</p>
+                        </div>
+                        <div className="bg-background rounded-lg p-2">
+                          <p className="text-xs text-muted-foreground">Balance</p>
+                          <p className="font-bold text-sm text-red-500">
+                            ₹{Math.max(0, payable - Number(selected.paid_fee)).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="w-full bg-muted-foreground/20 rounded-full h-2 mt-1">
+                        <div
+                          className="bg-emerald-500 h-2 rounded-full transition-all"
+                          style={{ width: `${Math.min((Number(selected.paid_fee) / (payable || 1)) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-right text-muted-foreground">
+                        {payable > 0
+                          ? `${Math.round((Number(selected.paid_fee) / payable) * 100)}% paid`
+                          : "No fee set"}
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
 
             </div>
@@ -791,65 +862,103 @@ export function StudentsContent() {
                 </div>
               </div>
 
-              <div className="flex flex-row gap-4">
-                <div className="flex flex-col gap-4">
-                  <div className="space-y-2 flex flex-row gap-4">
-                    <Label htmlFor="school-fee">School/College fee (₹)</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
-                      <Input
-                        id="school-fee"
-                        type="number"
-                        min="0"
-                        value={newFee.school_fee}
-                        onChange={e => setNewFee({ ...newFee, total_fee: Number(newFee.academy_fee) + Number(newFee.hostel_fee) + Number(e.target.value), school_fee: Number(e.target.value) })}
-                        placeholder="Enter school fee"
-                        className="pl-7"
-                        autoFocus
-                      />
-                    </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="school-fee">School/College Fee (₹)</Label>
+                    <Input
+                      id="school-fee"
+                      type="number"
+                      min="0"
+                      value={newFee.school_fee}
+                      onChange={e => setNewFee({ ...newFee, school_fee: Number(e.target.value) })}
+                      placeholder="0.00"
+                    />
                   </div>
 
-                  <div className="space-y-2 flex flex-row gap-4 justify-between">
-                    <Label htmlFor="academy-fee">Academy fee (₹)</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
-                      <Input
-                        id="academy-fee"
-                        type="number"
-                        min="0"
-                        value={newFee.academy_fee}
-                        onChange={e => setNewFee({ ...newFee, total_fee: Number(newFee.school_fee) + Number(newFee.hostel_fee) + Number(e.target.value), academy_fee: Number(e.target.value) })}
-                        placeholder="Enter academy fee"
-                        className="pl-7"
-                      />
-                    </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="academy-fee">Academy Fee (₹)</Label>
+                    <Input
+                      id="academy-fee"
+                      type="number"
+                      min="0"
+                      value={newFee.academy_fee}
+                      onChange={e => setNewFee({ ...newFee, academy_fee: Number(e.target.value) })}
+                      placeholder="0.00"
+                    />
                   </div>
 
-                  <div className="space-y-2 flex flex-row gap-4 justify-between">
+                  <div className="space-y-1">
                     <Label htmlFor="hostel-fee">Hostel Fee (₹)</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
-                      <Input
-                        id="hostel-fee"
-                        type="number"
-                        min="0"
-                        value={newFee.hostel_fee}
-                        onChange={e => setNewFee({ ...newFee, total_fee: Number(newFee.school_fee) + Number(newFee.academy_fee) + Number(e.target.value), hostel_fee: Number(e.target.value) })}
-                        placeholder="Enter hostel fee"
-                        className="pl-7"
-                      />
-                    </div>
+                    <Input
+                      id="hostel-fee"
+                      type="number"
+                      min="0"
+                      value={newFee.hostel_fee}
+                      onChange={e => setNewFee({ ...newFee, hostel_fee: Number(e.target.value) })}
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label>Scholarship / Concession Type</Label>
+                    <Select value={newFee.scholarship_type} onValueChange={v => setNewFee({ ...newFee, scholarship_type: v })}>
+                      <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="None">None</SelectItem>
+                        <SelectItem value="Flat">Flat (₹)</SelectItem>
+                        <SelectItem value="Percent">Percent (%)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label>Scholarship / Concession Value</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={newFee.scholarship_value}
+                      onChange={e => setNewFee({ ...newFee, scholarship_value: Number(e.target.value) })}
+                      placeholder="0.00"
+                    />
                   </div>
                 </div>
-              </div>
 
-              <p className="text-xl text-muted-foreground px-1">
-                Total Fee:{" "}
-                <span className="font-medium text-foreground">
-                  ₹{`  `}{Math.max(0, Number(newFee.total_fee) - Number(feeStudent.paid_fee)).toLocaleString()}
-                </span>
-              </p>
+                {(() => {
+                  const originalFee = Number(newFee.school_fee) + Number(newFee.academy_fee) + Number(newFee.hostel_fee);
+                  let calculatedAmount = 0;
+                  const val = Number(newFee.scholarship_value || 0);
+                  if (newFee.scholarship_type === "Percent") {
+                    calculatedAmount = originalFee * (val / 100);
+                  } else if (newFee.scholarship_type === "Flat") {
+                    calculatedAmount = val;
+                  }
+                  const finalPayable = Math.max(0, originalFee - calculatedAmount);
+                  return (
+                    <div className="p-4 rounded-xl bg-slate-100 border border-slate-200 space-y-2">
+                      <p className="font-semibold text-xs text-slate-700 uppercase tracking-wider">Fee breakdown</p>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="flex justify-between col-span-2">
+                          <span className="text-muted-foreground">Original Fee:</span>
+                          <span className="font-medium">₹{originalFee.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between col-span-2">
+                          <span className="text-muted-foreground">Concession:</span>
+                          <span className="font-medium text-amber-600">-₹{calculatedAmount.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between col-span-2 pt-2 border-t font-semibold">
+                          <span className="text-slate-700">Net Payable:</span>
+                          <span className="text-emerald-600">₹{finalPayable.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between col-span-2 text-xs text-muted-foreground pt-1 border-t border-dashed">
+                          <span>Paid: ₹{Number(feeStudent.paid_fee).toLocaleString()}</span>
+                          <span>Remaining Balance: ₹{Math.max(0, finalPayable - Number(feeStudent.paid_fee)).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
           )}
 

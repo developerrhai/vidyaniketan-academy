@@ -15,6 +15,9 @@ import { AppointmentsContent }            from "@/components/dashboard/appointme
 import { FinanceContent }                 from "@/components/dashboard/finance-content"
 import { TeacherUpdatesContent }          from "@/components/dashboard/teacher-updates"
 import { StudentManagementContent } from "@/components/dashboard/StudentManagementContent"
+import { RecycleBinContent }              from "@/components/dashboard/recycle-bin-content"
+import { FeeReportsContent }              from "@/components/dashboard/fee-reports-content"
+import { HostelStudentsContent }          from "@/components/dashboard/hostel-students-content"
 import { getToken }                       from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -63,12 +66,15 @@ export default function DashboardPage() {
       case "studentManagement": return <StudentsContent />
       case "inquiryStudents":   return <InquiryStudentsContent />
       case "studentManagementContent": return <StudentManagementContent />   // ← add this
+      case "hostelStudents":    return <HostelStudentsContent />
+      case "feeReports":        return <FeeReportsContent />
       case "teacherManagement": return <TeachersContent />
       case "teacherUpdates":    return <TeacherUpdatesContent />
       case "invoices":          return <InvoicesContent />
       case "inquiry":           return <InquiryContent />
       case "appointments":      return <AppointmentsContent />
       case "finance":           return <FinanceContent />
+      case "recycleBin":        return <RecycleBinContent />
       default:                  return <DashboardContent />
     }
   }

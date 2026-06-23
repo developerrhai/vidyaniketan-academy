@@ -244,6 +244,23 @@ export const dashboardApi = {
   financeOverview:     () => get("/dashboard/finance-overview"),
 };
 
+export const recycleBinApi = {
+  getAll: () => get("/recycle-bin") as Promise<{
+    success: boolean;
+    data: {
+      students: any[];
+      teachers: any[];
+      inquiries: any[];
+      appointments: any[];
+      invoices: any[];
+      finance: any[];
+      updates: any[];
+    };
+  }>,
+  restore: (type: string, id: number) => post("/recycle-bin/restore", { type, id }),
+  deletePermanently: (type: string, id: number) => post("/recycle-bin/delete", { type, id }),
+};
+
 
 export const teacherStudentAssessmentsApi = {
   getLatestAll: () => get("/teacher-student-assessments"),
