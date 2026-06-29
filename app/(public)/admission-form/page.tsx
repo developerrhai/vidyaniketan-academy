@@ -4,31 +4,28 @@ import { Header } from "@/components/ui/header"
 import { useState } from "react"
 
 const STANDARDS = [
-  "4th Standard",
-  "4th Scholarship",
-  "5th Standard",
-  "5th Scholarship(नवोदय / सैनिक)",
-  "6th Standard",
-  "6th Foundation",
-  "7th Standard",
-  "7th Scholarship",
-  "7th Foundation",
-  "6th–7th Foundation",
-  "8th Standard",
-  "8th Foundation",
-  "8th Regular",
-  "9th Standard",
-  "9th Photon",
-  "9th Foundation",
-  "10th Standard",
-  "11th Standard",
-  "12th Standard",
-  "Basic Foundation 1 (4th to 6th)",
-  "Basic Foundation 2 (7th to 9th)"
+  "1st Standard", "2nd Standard", "3rd Standard", "4th Standard", "5th Standard",
+  "6th Standard", "7th Standard", "8th Standard", "9th Standard", "10th Standard",
+  "11th Standard", "12th Standard"
 ]
 
 const BRANCHES = ["Main Branch", "SOF Branch"]
-const COURSES  = ["IIT-JEE", "MHT-CET", "NEET"]
+const JUNIOR_BATCHES = [
+  "1st Standard", "2nd Standard", "3rd Standard",
+  "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
+  "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
+  "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
+  "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
+]
+const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"]
+
+const getBatchOptions = (std: string) => {
+  if (std === "11th Standard" || std === "12th Standard") {
+    return SENIOR_BATCHES;
+  }
+  return JUNIOR_BATCHES;
+}
 
 const RULES = [
   "माझ्या पाल्याची अकॅडमीमधील उपस्थिती किमान 85% ठेवणे बंधनकारक राहील.",
@@ -142,8 +139,9 @@ export default function AdmissionFormPage() {
           father_phone:   form.fatherPhone,
           gender:         form.gender,
           standard:       form.standard,
+          batch:          form.course,
           branch:         form.branch,
-          course:         isSenior ? form.course : "",
+          course:         form.course,
           caste_religion: form.casteReligion,
           photo:          form.photo,
           admission_type: form.admissionType.join(","),
@@ -229,7 +227,7 @@ export default function AdmissionFormPage() {
                   )}
                   <div>
                     <p className="font-bold text-gray-800 text-base leading-tight">{fullName}</p>
-                    <p className="text-xs text-gray-500">{form.standard}{isSenior && form.course ? ` · ${form.course}` : ""} · {form.branch}</p>
+                    <p className="text-xs text-gray-500">{form.standard}{form.course ? ` · ${form.course}` : ""} · {form.branch}</p>
                   </div>
                 </div>
 
@@ -547,7 +545,13 @@ export default function AdmissionFormPage() {
             {/* Academic Details */}
             <Section label="Academic Details" color="cyan">
               <SelectField placeholder="Select Standard" value={form.standard}
-                onChange={v => { set("standard", v); set("course", "") }}
+                onChange={v => {
+                  set("standard", v);
+                  const allowed = getBatchOptions(v);
+                  if (!allowed.includes(form.course)) {
+                    set("course", "");
+                  }
+                }}
                 options={STANDARDS} error={fieldError("standard")}
                 icon={
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -556,13 +560,13 @@ export default function AdmissionFormPage() {
                   </svg>
                 }
               />
-              {isSenior && (
-                <SelectField placeholder="Select Course" value={form.course}
-                  onChange={v => set("course", v)} options={COURSES} error={fieldError("course")}
+              {form.standard && (
+                <SelectField placeholder="Select Batch" value={form.course}
+                  onChange={v => set("course", v)} options={getBatchOptions(form.standard)} error={fieldError("course")}
                   icon={
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   }
                 />

@@ -82,7 +82,7 @@ export const profileApi = {
    STUDENTS
 ══════════════════════════════════════════════════════════ */
 export const studentsApi = {
-  getAll: (filters: { standard?: string; board?: string; location?: string; search?: string; course?: string; branch?: string } = {}) =>
+  getAll: (filters: { standard?: string; board?: string; location?: string; search?: string; course?: string; batch?: string; branch?: string } = {}) =>
     get(`/students${qs(filters)}`),
 
   getOne: (id: string | number) => get(`/students/${id}`),
@@ -98,7 +98,7 @@ export const studentsApi = {
 };
 
 export const studentsUniversalApi = {
-  getAll: (filters: { standard?: string; board?: string; location?: string; search?: string; course?: string; branch?: string } = {}) =>
+  getAll: (filters: { standard?: string; board?: string; location?: string; search?: string; course?: string; batch?: string; branch?: string } = {}) =>
     get(`/students-universal${qs(filters)}`),
 };
 
@@ -138,7 +138,7 @@ export const teacherUpdatesApi = {
    INQUIRIES
 ══════════════════════════════════════════════════════════ */
 export const inquiriesApi = {
-  getAll: (filters: { date_filter?: string; location?: string; standard?: string } = {}) =>
+  getAll: (filters: { date_filter?: string; location?: string; standard?: string; batch?: string; search?: string } = {}) =>
     get(`/inquiries${qs(filters)}`),
 
   getOne: (id: string | number) => get(`/inquiries/${id}`),
@@ -169,7 +169,7 @@ export const inquiryExtraApi = {
    APPOINTMENTS
 ══════════════════════════════════════════════════════════ */
 export const appointmentsApi = {
-  getAll: (filters: { date_filter?: string; location?: string } = {}) =>
+  getAll: (filters: { date_filter?: string; location?: string; standard?: string; batch?: string; search?: string } = {}) =>
     get(`/appointments${qs(filters)}`),
 
   getOne: (id: string | number) => get(`/appointments/${id}`),

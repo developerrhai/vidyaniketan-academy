@@ -49,33 +49,26 @@ import { Label } from "@/components/teacher/ui/label";
 import { studentsApi, studentsUniversalApi, teacherStudentAssessmentsApi } from "@/lib/api";
 
 const STANDARDS = [
-  "4th Standard",
-  "4th Scholarship",
-  "5th Standard",
-  "5th Scholarship(नवोदय / सैनिक)",
-  "6th Standard",
-  "6th Foundation",
-  "7th Standard",
-  "7th Scholarship",
-  "7th Foundation",
-  "6th–7th Foundation",
-  "8th Standard",
-  "8th Foundation",
-  "8th Regular",
-  "9th Standard",
-  "9th Photon",
-  "9th Foundation",
-  "10th Standard",
-  "11th Standard",
-  "12th Standard",
-  "Basic Foundation 1 (4th to 6th)",
-  "Basic Foundation 2 (7th to 9th)"
+  "1st Standard", "2nd Standard", "3rd Standard", "4th Standard", "5th Standard",
+  "6th Standard", "7th Standard", "8th Standard", "9th Standard", "10th Standard",
+  "11th Standard", "12th Standard"
 ];
 
 const BRANCHES = [
   "Main Branch",
   "SOF Branch"
 ];
+
+const JUNIOR_BATCHES = [
+  "1st Standard", "2nd Standard", "3rd Standard",
+  "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
+  "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
+  "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
+  "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
+];
+const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"];
+const ALL_BATCHES = Array.from(new Set([...JUNIOR_BATCHES, ...SENIOR_BATCHES]));
 
 type Student = {
   id: number;
@@ -87,8 +80,9 @@ type Student = {
   examination?: string;
   exam_date?: string;
   standard: string;
+  batch?: string;
   board: string;
-  location: string;
+  branch: string;
 };
 
 type AssessmentRow = {
@@ -106,7 +100,7 @@ type AssessmentRow = {
 function studentsToCSV(students: Student[]): string {
   const headers = [
     "id", "name", "phone", "father_phone", "subject", "marks",
-    "examination", "exam_date", "standard", "board", "location",
+    "examination", "exam_date", "standard", "batch", "board", "branch",
   ];
   const escape = (v: unknown) => {
     const s = v === undefined || v === null ? "" : String(v);
@@ -264,8 +258,9 @@ export default function StudentManagementContent() {
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [standardFilter, setStandardFilter] = useState("all");
+  const [batchFilter, setBatchFilter] = useState("all");
   const [boardFilter, setBoardFilter] = useState("all");
-  const [locationFilter, setLocationFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -333,8 +328,9 @@ export default function StudentManagementContent() {
             examination: latest?.examination || "",
             exam_date: latest?.exam_date || "",
             standard: s.standard || "",
+            batch: s.batch || "",
             board: s.board || "",
-            location: s.location || "",
+            branch: s.branch || s.location || "",
           };
         });
         setStudents(merged);
@@ -358,13 +354,14 @@ export default function StudentManagementContent() {
         student.phone.toLowerCase().includes(query) ||
         String(student.father_phone || "").toLowerCase().includes(query);
       const matchesStandard = standardFilter === "all" || student.standard === standardFilter;
+      const matchesBatch = batchFilter === "all" || student.batch === batchFilter;
       const matchesBoard = boardFilter === "all" || student.board === boardFilter;
-      const matchesLocation = locationFilter === "all" || student.location === locationFilter;
-      return matchesQuery && matchesStandard && matchesBoard && matchesLocation;
+      const matchesBranch = branchFilter === "all" || student.branch === branchFilter;
+      return matchesQuery && matchesStandard && matchesBatch && matchesBoard && matchesBranch;
     });
-  }, [students, searchTerm, standardFilter, boardFilter, locationFilter]);
+  }, [students, searchTerm, standardFilter, batchFilter, boardFilter, branchFilter]);
 
-  useEffect(() => { setPage(1); }, [searchTerm, standardFilter, boardFilter, locationFilter]);
+  useEffect(() => { setPage(1); }, [searchTerm, standardFilter, batchFilter, boardFilter, branchFilter]);
 
   const paginatedStudents = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -382,7 +379,9 @@ export default function StudentManagementContent() {
       student_id: s.id,
       name: s.name,
       standard: s.standard,
+      batch: s.batch || "",
       board: s.board,
+      branch: s.branch || "",
       subject: bulkCommon.subject || "",
       examination: bulkCommon.examination || "",
       exam_date: bulkCommon.exam_date || new Date().toISOString().split("T")[0],
@@ -496,7 +495,7 @@ export default function StudentManagementContent() {
             father_phone: r.father_phone || "", subject: r.subject || "",
             marks: r.marks !== undefined ? Number(r.marks) : undefined,
             examination: r.examination || "", exam_date: r.exam_date || "",
-            standard: r.standard || "", board: r.board || "", location: r.location || "",
+            standard: r.standard || "", batch: r.batch || "", board: r.board || "", branch: r.branch || r.location || "",
           }));
         } else {
           const rows = parseCSV(text);
@@ -505,7 +504,7 @@ export default function StudentManagementContent() {
             father_phone: r.father_phone || "", subject: r.subject || "",
             marks: r.marks !== "" && r.marks !== undefined ? Number(r.marks) : undefined,
             examination: r.examination || "", exam_date: r.exam_date || "",
-            standard: r.standard || "", board: r.board || "", location: r.location || "",
+            standard: r.standard || "", batch: r.batch || "", board: r.board || "", branch: r.branch || r.location || "",
           }));
         }
         if (parsed.length === 0) throw new Error("No valid rows found in file.");
@@ -773,7 +772,7 @@ export default function StudentManagementContent() {
       </div>
 
       {/* Filters */}
-      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-4">
+      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-5">
         <div className="relative md:col-span-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by name or phone..." className="h-10 rounded-full pl-10" />
@@ -785,6 +784,13 @@ export default function StudentManagementContent() {
             {STANDARDS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={batchFilter} onValueChange={setBatchFilter}>
+          <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Batches" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Batches</SelectItem>
+            {ALL_BATCHES.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Select value={boardFilter} onValueChange={setBoardFilter}>
           <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Boards" /></SelectTrigger>
           <SelectContent>
@@ -792,7 +798,7 @@ export default function StudentManagementContent() {
             {boards.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={locationFilter} onValueChange={setLocationFilter}>
+        <Select value={branchFilter} onValueChange={setBranchFilter}>
           <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Branches" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Branches</SelectItem>
@@ -813,14 +819,15 @@ export default function StudentManagementContent() {
                 <TableHead className="text-white">Phone</TableHead>
                 <TableHead className="text-white">Marks</TableHead>
                 <TableHead className="text-white">Std</TableHead>
+                <TableHead className="text-white">Batch</TableHead>
                 <TableHead className="text-white">Board</TableHead>
-                <TableHead className="text-white">Location</TableHead>
+                <TableHead className="text-white">Branch</TableHead>
                 <TableHead className="text-right text-white">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedStudents.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">No students found for selected filters.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">No students found for selected filters.</TableCell></TableRow>
               ) : (
                 paginatedStudents.map((student) => (
                   <TableRow key={student.id}>
@@ -832,8 +839,9 @@ export default function StudentManagementContent() {
                         : "—"}
                     </TableCell>
                     <TableCell>{student.standard}</TableCell>
+                    <TableCell>{student.batch || "—"}</TableCell>
                     <TableCell>{student.board}</TableCell>
-                    <TableCell>{student.location}</TableCell>
+                    <TableCell>{student.branch}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Button type="button" size="icon" className="h-9 w-9 rounded-full bg-cyan-500 text-white hover:bg-cyan-600" title="View" onClick={() => openView(student)}><Eye className="h-4 w-4" /></Button>
@@ -866,8 +874,9 @@ export default function StudentManagementContent() {
                 <div><span className="text-muted-foreground">Name:</span> {selectedStudent.name}</div>
                 <div><span className="text-muted-foreground">Phone:</span> {selectedStudent.phone}</div>
                 <div><span className="text-muted-foreground">Standard:</span> {selectedStudent.standard}</div>
+                <div><span className="text-muted-foreground">Batch:</span> {selectedStudent.batch || "—"}</div>
                 <div><span className="text-muted-foreground">Board:</span> {selectedStudent.board}</div>
-                <div><span className="text-muted-foreground">Location:</span> {selectedStudent.location}</div>
+                <div><span className="text-muted-foreground">Branch:</span> {selectedStudent.branch}</div>
               </div>
               <div className="rounded-xl border border-border overflow-hidden">
                 <Table>
@@ -1047,7 +1056,7 @@ export default function StudentManagementContent() {
                         <TableRow key={i}>
                           <TableCell>{s.name || "—"}</TableCell><TableCell>{s.phone || "—"}</TableCell>
                           <TableCell>{s.standard || "—"}</TableCell><TableCell>{s.board || "—"}</TableCell>
-                          <TableCell>{s.location || "—"}</TableCell><TableCell>{s.marks !== undefined ? s.marks : "—"}</TableCell>
+                          <TableCell>{s.branch || "—"}</TableCell><TableCell>{s.marks !== undefined ? s.marks : "—"}</TableCell>
                         </TableRow>
                       ))}
                       {importPreview.length > 10 && (

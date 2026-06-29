@@ -16,7 +16,7 @@ import * as XLSX from "xlsx"
 interface Student {
   id: number; name: string; phone: string; father_name: string; father_phone: string;
   aadhar: string; dob: string; address: string; email: string;
-  standard: string; course: string; branch: string; fee: number; paid_fee: number;
+  standard: string; batch?: string; course: string; branch: string; fee: number; paid_fee: number;
   hostel: string; school_fee: number; academy_fee: number; hostel_fee: number;
   caste_religion: string; photo: string;
   scholarship_type?: string; scholarship_value?: number; scholarship_amount?: number;
@@ -25,33 +25,34 @@ interface Student {
 }
 
 const STANDARDS = [
-  "4th Standard",
-  "4th Scholarship",
-  "5th Standard",
-  "5th Scholarship(नवोदय / सैनिक)",
-  "6th Standard",
-  "6th Foundation",
-  "7th Standard",
-  "7th Scholarship",
-  "7th Foundation",
-  "6th–7th Foundation",
-  "8th Standard",
-  "8th Foundation",
-  "8th Regular",
-  "9th Standard",
-  "9th Photon",
-  "9th Foundation",
-  "10th Standard",
-  "11th Standard",
-  "12th Standard",
-  "Basic Foundation 1 (4th to 6th)",
-  "Basic Foundation 2 (7th to 9th)"
+  "1st Standard", "2nd Standard", "3rd Standard", "4th Standard", "5th Standard",
+  "6th Standard", "7th Standard", "8th Standard", "9th Standard", "10th Standard",
+  "11th Standard", "12th Standard"
 ]
 
 const BRANCHES = [
   "Main Branch",
   "SOF Branch"
 ]
+
+const JUNIOR_BATCHES = [
+  "1st Standard", "2nd Standard", "3rd Standard",
+  "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
+  "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
+  "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
+  "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
+]
+const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"]
+
+const ALL_BATCHES = Array.from(new Set([...JUNIOR_BATCHES, ...SENIOR_BATCHES]))
+
+const getBatchOptions = (std: string) => {
+  if (std === "11th Standard" || std === "12th Standard") {
+    return SENIOR_BATCHES;
+  }
+  return JUNIOR_BATCHES;
+}
 
 const feeStatus = (s: Student) => {
   const fee = Number(s.fee)
@@ -93,7 +94,7 @@ export function StudentsContent() {
   const [importing, setImporting] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStandard, setFilterStandard] = useState("all")
-  const [filterCourse, setFilterCourse] = useState("all")
+  const [filterBatch, setFilterBatch] = useState("all")
   const [filterBranch, setFilterBranch] = useState("all")
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -132,7 +133,7 @@ export function StudentsContent() {
     try {
       const filters = {
         standard: filterStandard !== "all" ? filterStandard : undefined,
-        course:   filterCourse   !== "all" ? filterCourse   : undefined,
+        batch:    filterBatch    !== "all" ? filterBatch    : undefined,
         branch:   filterBranch   !== "all" ? filterBranch   : undefined,
         search:   searchTerm     || undefined,
       }
@@ -153,9 +154,9 @@ export function StudentsContent() {
         })
       }
 
-      if (filterCourse !== "all") {
+      if (filterBatch !== "all") {
         result = result.filter((s) =>
-          s.course?.toLowerCase().trim() === filterCourse.toLowerCase().trim()
+          s.batch?.toLowerCase().trim() === filterBatch.toLowerCase().trim()
         )
       }
 
@@ -180,7 +181,7 @@ export function StudentsContent() {
     } finally {
       setLoading(false)
     }
-  }, [filterStandard, filterCourse, filterBranch, searchTerm])
+  }, [filterStandard, filterBatch, filterBranch, searchTerm])
 
   useEffect(() => { load() }, [load])
 
@@ -373,7 +374,7 @@ export function StudentsContent() {
         s.id, s.name || "", s.mother_name || "", s.school_name || "", s.aadhar || "", s.dob ? formatDob(s.dob) : "",
         s.phone || "", s.father_phone || "",
         s.email || "", s.address || "", s.caste_religion || "",
-        s.standard || "", s.course || "", s.branch || "", s.hostel || "",
+        s.standard || "", s.batch || "", s.branch || "", s.hostel || "",
         totalFee, paidFee, balance, status,
       ]
     })
@@ -504,16 +505,16 @@ export function StudentsContent() {
             </Select>
 
             <Select
-              key={`course-${filterCourse}`}
-              value={filterCourse}
-              onValueChange={setFilterCourse}
+              key={`batch-${filterBatch}`}
+              value={filterBatch}
+              onValueChange={setFilterBatch}
             >
-              <SelectTrigger><SelectValue placeholder="All Courses" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="All Batches" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Courses</SelectItem>
-                <SelectItem value="JEE">JEE</SelectItem>
-                <SelectItem value="NEET">NEET</SelectItem>
-                <SelectItem value="Foundation">Foundation</SelectItem>
+                <SelectItem value="all">All Batches</SelectItem>
+                {ALL_BATCHES.map(b => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -564,6 +565,7 @@ export function StudentsContent() {
                     <TableHead className="text-white font-semibold hidden sm:table-cell">Concession</TableHead>
                     <TableHead className="text-white font-semibold hidden sm:table-cell">DOB</TableHead>
                     <TableHead className="text-white font-semibold">Std</TableHead>
+                    <TableHead className="text-white font-semibold">Batch</TableHead>
                     <TableHead className="text-white font-semibold hidden md:table-cell">Branch</TableHead>
                     <TableHead className="text-white font-semibold hidden md:table-cell">Hostel</TableHead>
                     <TableHead className="text-white font-semibold hidden lg:table-cell">Total Fee</TableHead>
@@ -597,6 +599,7 @@ export function StudentsContent() {
                         </TableCell>
                         <TableCell className="hidden md:table-cell">{formatDob(s.dob)}</TableCell>
                         <TableCell>{s.standard}</TableCell>
+                        <TableCell>{s.batch}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.branch}</TableCell>
                         <TableCell className="hidden md:table-cell">{s.hostel}</TableCell>
                         <TableCell className="hidden lg:table-cell font-medium">
@@ -685,7 +688,7 @@ export function StudentsContent() {
                 { icon: MapPin,   label: "Branch",           value: selected.branch },
                 { icon: MapPin,   label: "Hostel",           value: selected.hostel },
                 { icon: BookOpen, label: "Standard",         value: selected.standard },
-                { icon: BookOpen, label: "Course",           value: selected.course },
+                { icon: BookOpen, label: "Batch",            value: selected.batch },
                 { icon: Building, label: "School/College Name", value: selected.school_name },
                 { icon: BookOpen, label: "Academic Year",    value: selected.academic_year },
                 { icon: BookOpen, label: "Admission In",     value: selected.admission_type },
@@ -864,7 +867,14 @@ export function StudentsContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label>Standard</Label>
-                  <Select value={editForm.standard ?? ""} onValueChange={val => handleEditChange("standard", val)}>
+                  <Select value={editForm.standard ?? ""} onValueChange={val => {
+                    handleEditChange("standard", val);
+                    const allowed = getBatchOptions(val);
+                    if (!allowed.includes(editForm.batch ?? "")) {
+                      handleEditChange("batch", "");
+                      handleEditChange("course", "");
+                    }
+                  }}>
                     <SelectTrigger><SelectValue placeholder="Select Standard" /></SelectTrigger>
                     <SelectContent>
                       {STANDARDS.map(std => (
@@ -874,13 +884,16 @@ export function StudentsContent() {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>Course</Label>
-                  <Select value={editForm.course ?? ""} onValueChange={val => handleEditChange("course", val)}>
-                    <SelectTrigger><SelectValue placeholder="Select Course" /></SelectTrigger>
+                  <Label>Batch</Label>
+                  <Select value={editForm.batch ?? ""} onValueChange={val => {
+                    handleEditChange("batch", val);
+                    handleEditChange("course", val); // Compatibility
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Select Batch" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="JEE">JEE</SelectItem>
-                      <SelectItem value="NEET">NEET</SelectItem>
-                      <SelectItem value="Foundation">Foundation</SelectItem>
+                      {getBatchOptions(editForm.standard ?? "").map(b => (
+                        <SelectItem key={b} value={b}>{b}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

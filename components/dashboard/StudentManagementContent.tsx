@@ -51,33 +51,26 @@ import { Label } from "@/components/teacher/ui/label";
 import { studentsApi, studentsUniversalApi, teacherStudentAssessmentsApi } from "@/lib/api";
 
 const STANDARDS = [
-  "4th Standard",
-  "4th Scholarship",
-  "5th Standard",
-  "5th Scholarship(नवोदय / सैनिक)",
-  "6th Standard",
-  "6th Foundation",
-  "7th Standard",
-  "7th Scholarship",
-  "7th Foundation",
-  "6th–7th Foundation",
-  "8th Standard",
-  "8th Foundation",
-  "8th Regular",
-  "9th Standard",
-  "9th Photon",
-  "9th Foundation",
-  "10th Standard",
-  "11th Standard",
-  "12th Standard",
-  "Basic Foundation 1 (4th to 6th)",
-  "Basic Foundation 2 (7th to 9th)"
+  "1st Standard", "2nd Standard", "3rd Standard", "4th Standard", "5th Standard",
+  "6th Standard", "7th Standard", "8th Standard", "9th Standard", "10th Standard",
+  "11th Standard", "12th Standard"
 ];
 
 const BRANCHES = [
   "Main Branch",
   "SOF Branch"
 ];
+
+const JUNIOR_BATCHES = [
+  "1st Standard", "2nd Standard", "3rd Standard",
+  "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
+  "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
+  "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
+  "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
+];
+const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"];
+const ALL_BATCHES = Array.from(new Set([...JUNIOR_BATCHES, ...SENIOR_BATCHES]));
 
 type Student = {
   id: number;
@@ -89,6 +82,7 @@ type Student = {
   examination?: string;
   exam_date?: string;
   standard: string;
+  batch?: string;
   board: string;
   branch: string;
 };
@@ -110,7 +104,7 @@ type SubjectCol = { id: string; subject: string; total_marks: string };
 function studentsToCSV(students: Student[]): string {
   const headers = [
     "id", "name", "phone", "father_phone", "subject", "marks",
-    "examination", "exam_date", "standard", "board", "branch",
+    "examination", "exam_date", "standard", "batch", "board", "branch",
   ];
   const escape = (v: unknown) => {
     const s = v === undefined || v === null ? "" : String(v);
@@ -298,6 +292,7 @@ export function StudentManagementContent() {
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [standardFilter, setStandardFilter] = useState("all");
+  const [batchFilter, setBatchFilter] = useState("all");
   const [boardFilter, setBoardFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -387,6 +382,7 @@ export function StudentManagementContent() {
             examination: latest?.examination || "",
             exam_date: latest?.exam_date || "",
             standard: s.standard || "",
+            batch: s.batch || "",
             board: s.board || "",
             branch: s.branch || s.location || "",
           };
@@ -416,15 +412,16 @@ export function StudentManagementContent() {
         student.phone.toLowerCase().includes(query) ||
         String(student.father_phone || "").toLowerCase().includes(query);
       const matchesStandard = standardFilter === "all" || student.standard === standardFilter;
+      const matchesBatch = batchFilter === "all" || student.batch === batchFilter;
       const matchesBoard = boardFilter === "all" || student.board === boardFilter;
       const matchesBranch = branchFilter === "all" || student.branch === branchFilter;
-      return matchesQuery && matchesStandard && matchesBoard && matchesBranch;
+      return matchesQuery && matchesStandard && matchesBatch && matchesBoard && matchesBranch;
     });
-  }, [students, searchTerm, standardFilter, boardFilter, branchFilter]);
+  }, [students, searchTerm, standardFilter, batchFilter, boardFilter, branchFilter]);
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, standardFilter, boardFilter, branchFilter]);
+  }, [searchTerm, standardFilter, batchFilter, boardFilter, branchFilter]);
 
   const paginatedStudents = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -996,7 +993,7 @@ export function StudentManagementContent() {
       </div>
 
       {/* Filters */}
-      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-4">
+      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-5">
         <div className="relative md:col-span-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -1015,6 +1012,18 @@ export function StudentManagementContent() {
             <SelectItem value="all">All Standards</SelectItem>
             {STANDARDS.map((s) => (
               <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={batchFilter} onValueChange={setBatchFilter}>
+          <SelectTrigger className="h-10 rounded-full">
+            <SelectValue placeholder="All Batches" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Batches</SelectItem>
+            {ALL_BATCHES.map((b) => (
+              <SelectItem key={b} value={b}>{b}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -1058,6 +1067,7 @@ export function StudentManagementContent() {
                 <TableHead className="text-white">Phone</TableHead>
                 <TableHead className="text-white">Marks</TableHead>
                 <TableHead className="text-white">Std</TableHead>
+                <TableHead className="text-white">Batch</TableHead>
                 <TableHead className="text-white">Board</TableHead>
                 <TableHead className="text-white">Branch</TableHead>
                 <TableHead className="text-right text-white">Actions</TableHead>
@@ -1066,7 +1076,7 @@ export function StudentManagementContent() {
             <TableBody>
               {paginatedStudents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                     No students found for selected filters.
                   </TableCell>
                 </TableRow>
@@ -1083,6 +1093,7 @@ export function StudentManagementContent() {
                       ) : "—"}
                     </TableCell>
                     <TableCell>{student.standard}</TableCell>
+                    <TableCell>{student.batch || "—"}</TableCell>
                     <TableCell>{student.board}</TableCell>
                     <TableCell>{student.branch}</TableCell>
                     <TableCell>
@@ -1132,6 +1143,7 @@ export function StudentManagementContent() {
                 <div><span className="text-muted-foreground">Name:</span> {selectedStudent.name}</div>
                 <div><span className="text-muted-foreground">Phone:</span> {selectedStudent.phone}</div>
                 <div><span className="text-muted-foreground">Standard:</span> {selectedStudent.standard}</div>
+                <div><span className="text-muted-foreground">Batch:</span> {selectedStudent.batch || "—"}</div>
                 <div><span className="text-muted-foreground">Board:</span> {selectedStudent.board}</div>
                 <div><span className="text-muted-foreground">Branch:</span> {selectedStudent.branch}</div>
               </div>

@@ -6,34 +6,28 @@ import { Header } from "@/components/ui/header"
 
 const STEPS = ["Basic Details", "Academic", "Family & Contact", "Other Info"]
 
-const BATCHES = [
-  "Offline",
-  "Online",
+const STANDARDS = [
+  "1st Standard", "2nd Standard", "3rd Standard", "4th Standard", "5th Standard",
+  "6th Standard", "7th Standard", "8th Standard", "9th Standard", "10th Standard",
+  "11th Standard", "12th Standard"
 ]
 
-const STANDARDS = [
-  "4th Standard",
-  "4th Scholarship",
-  "5th Standard",
-  "5th Scholarship(नवोदय / सैनिक)",
-  "6th Standard",
-  "6th Foundation",
-  "7th Standard",
-  "7th Scholarship",
-  "7th Foundation",
-  "6th–7th Foundation",
-  "8th Standard",
-  "8th Foundation",
-  "8th Regular",
-  "9th Standard",
-  "9th Photon",
-  "9th Foundation",
-  "10th Standard",
-  "11th Standard",
-  "12th Standard",
-  "Basic Foundation 1 (4th to 6th)",
-  "Basic Foundation 2 (7th to 9th)"
+const JUNIOR_BATCHES = [
+  "1st Standard", "2nd Standard", "3rd Standard",
+  "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
+  "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
+  "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
+  "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
 ]
+const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"]
+
+const getBatchOptions = (std: string) => {
+  if (std === "11th Standard" || std === "12th Standard") {
+    return SENIOR_BATCHES;
+  }
+  return JUNIOR_BATCHES;
+}
 
 const REFERENCES = [
   "Social Media (Instagram/Facebook)",
@@ -148,6 +142,7 @@ export default function InquiryFormPage() {
   father_name: "",                    // add a field for parent's name if needed
   father_phone: form.parentContact,   // maps to 'father_phone'
   course: form.batch,                 // you can use 'batch' or 'course'
+  batch: form.batch,                  // maps to 'batch'
   location: "",                        // add location field if needed
   board: "",                            // optional
   standard: form.standard,
@@ -337,16 +332,27 @@ export default function InquiryFormPage() {
               {/* STEP 1 — Academic */}
               {step === 1 && (
                 <>
+                  <Field label="Select Standard" required>
+                    <select
+                      value={form.standard}
+                      onChange={e => {
+                        const std = e.target.value;
+                        set("standard", std);
+                        const allowed = getBatchOptions(std);
+                        if (!allowed.includes(form.batch)) {
+                          set("batch", "");
+                        }
+                      }}
+                      className={selectCls}
+                    >
+                      <option value="">-- Select Standard --</option>
+                      {STANDARDS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </Field>
                   <Field label="Select Batch" required>
                     <select value={form.batch} onChange={e => set("batch", e.target.value)} className={selectCls}>
                       <option value="">-- Select Batch --</option>
-                      {BATCHES.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Select Standard" required>
-                    <select value={form.standard} onChange={e => set("standard", e.target.value)} className={selectCls}>
-                      <option value="">-- Select Standard --</option>
-                      {STANDARDS.map(s => <option key={s} value={s}>{s}</option>)}
+                      {form.standard ? getBatchOptions(form.standard).map(b => <option key={b} value={b}>{b}</option>) : null}
                     </select>
                   </Field>
                   <Field label="Last Exam Marks / Grade %">

@@ -12,7 +12,7 @@ import { studentsApi, teachersApi, staffApi } from "@/lib/api"
 export function RegisterUserContent() {
   const [formData, setFormData] = useState({
     name:"", email:"", phone:"", role:"",
-    standard:"", gender:"", institute:"", branch:"",
+    standard:"", batch:"", gender:"", institute:"", branch:"",
     father_name:"", father_phone:"", course:"", subjects:"",
     department:"", designation:"",
     fees: "10000", hostel: "", academic_year: "",
@@ -94,7 +94,8 @@ export function RegisterUserContent() {
           father_phone: formData.father_phone,
           gender: formData.gender,
           standard: formData.standard,
-          course: formData.course,
+          batch: formData.batch,
+          course: formData.batch, // Compatibility
           branch: formData.branch,
           institute: formData.institute,
           hostel: formData.hostel,
@@ -150,7 +151,7 @@ export function RegisterUserContent() {
       // Reset form
       setFormData({
         name:"", email:"", phone:"", role:"",
-        standard:"", gender:"", institute:"", branch:"",
+        standard:"", batch:"", gender:"", institute:"", branch:"",
         father_name:"", father_phone:"", course:"", subjects:"",
         department:"", designation:"",
         fees: "10000", hostel: "", academic_year: "",
@@ -269,31 +270,30 @@ export function RegisterUserContent() {
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2"><GraduationCap className="h-4 w-4 text-emerald-500" /> Standard</Label>
-                  <Select value={formData.standard} onValueChange={v => set("standard", v)}>
+                  <Select
+                    value={formData.standard}
+                    onValueChange={v => {
+                      set("standard", v);
+                      const isSenior = v === "11th Standard" || v === "12th Standard";
+                      const allowed = isSenior ? ["JEE", "NEET", "Foundation", "CET"] : [
+                        "1st Standard", "2nd Standard", "3rd Standard",
+                        "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
+                        "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
+                        "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
+                        "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
+                        "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
+                      ];
+                      if (!allowed.includes(formData.batch)) {
+                        set("batch", "");
+                      }
+                    }}
+                  >
                     <SelectTrigger><SelectValue placeholder="Select Standard" /></SelectTrigger>
                     <SelectContent>
                       {[
-                        "4th Standard",
-                        "4th Scholarship",
-                        "5th Standard",
-                        "5th Scholarship(नवोदय / सैनिक)",
-                        "6th Standard",
-                        "6th Foundation",
-                        "7th Standard",
-                        "7th Scholarship",
-                        "7th Foundation",
-                        "6th–7th Foundation",
-                        "8th Standard",
-                        "8th Foundation",
-                        "8th Regular",
-                        "9th Standard",
-                        "9th Photon",
-                        "9th Foundation",
-                        "10th Standard",
-                        "11th Standard",
-                        "12th Standard",
-                        "Basic Foundation 1 (4th to 6th)",
-                        "Basic Foundation 2 (7th to 9th)"
+                        "1st Standard", "2nd Standard", "3rd Standard", "4th Standard", "5th Standard",
+                        "6th Standard", "7th Standard", "8th Standard", "9th Standard", "10th Standard",
+                        "11th Standard", "12th Standard"
                       ].map(std => (
                         <SelectItem key={std} value={std}>{std}</SelectItem>
                       ))}
@@ -313,13 +313,23 @@ export function RegisterUserContent() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-emerald-500" /> Course</Label>
-                  <Select value={formData.course} onValueChange={v => set("course", v)}>
-                    <SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger>
+                  <Label className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-emerald-500" /> Batch</Label>
+                  <Select value={formData.batch} onValueChange={v => set("batch", v)}>
+                    <SelectTrigger><SelectValue placeholder="Select Batch" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="JEE">JEE</SelectItem>
-                      <SelectItem value="NEET">NEET</SelectItem>
-                      <SelectItem value="Foundation">Foundation</SelectItem>
+                      {(formData.standard === "11th Standard" || formData.standard === "12th Standard"
+                        ? ["JEE", "NEET", "Foundation", "CET"]
+                        : [
+                            "1st Standard", "2nd Standard", "3rd Standard",
+                            "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
+                            "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
+                            "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
+                            "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
+                            "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
+                          ]
+                      ).map(b => (
+                        <SelectItem key={b} value={b}>{b}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
