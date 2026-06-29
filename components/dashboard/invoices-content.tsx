@@ -34,6 +34,9 @@ interface Invoice {
   student_scholarship_type?: string
   student_scholarship_value?: number
   student_scholarship_amount?: number
+  student_standard?: string
+  student_batch?: string
+  student_branch?: string
 }
 
 interface Student {
@@ -83,6 +86,25 @@ const statusIcon = (s: string) => ({
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString() : "—"
 
+const STANDARDS = [
+  "1st Standard", "2nd Standard", "3rd Standard", "4th Standard", "5th Standard",
+  "6th Standard", "7th Standard", "8th Standard", "9th Standard", "10th Standard",
+  "11th Standard", "12th Standard"
+]
+
+const BRANCHES = ["Main Branch", "SOF Branch"]
+
+const JUNIOR_BATCHES = [
+  "1st Standard", "2nd Standard", "3rd Standard",
+  "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
+  "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
+  "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
+  "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
+]
+const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"]
+const ALL_BATCHES = Array.from(new Set([...JUNIOR_BATCHES, ...SENIOR_BATCHES]))
+
 export function InvoicesContent() {
   const [invoices,     setInvoices]     = useState<Invoice[]>([])
   const [summary,      setSummary]      = useState<Summary>({ total_invoiced: 0, total_paid: 0, total_pending: 0 })
@@ -90,6 +112,9 @@ export function InvoicesContent() {
   const [saving,       setSaving]       = useState(false)
   const [filterStatus, setFilterStatus] = useState("all")
   const [studentFilter, setStudentFilter] = useState("")
+  const [filterStandard, setFilterStandard] = useState("all")
+  const [filterBatch,    setFilterBatch]    = useState("all")
+  const [filterBranch,   setFilterBranch]   = useState("all")
   const [modalOpen,    setModalOpen]    = useState(false)
   const [viewOpen,     setViewOpen]     = useState(false)
   const [selected,     setSelected]     = useState<Invoice | null>(null)
@@ -372,7 +397,7 @@ export function InvoicesContent() {
   }
 
   const handleExportExcel = () => {
-    if (!invoices.length) {
+    if (!filteredInvoices.length) {
       alert("No invoices to export")
       return
     }
@@ -381,6 +406,9 @@ export function InvoicesContent() {
       "Invoice ID",
       "Student Name",
       "Student ID",
+      "Standard",
+      "Batch",
+      "Branch",
       "Amount",
       "Paid Amount",
       "Balance",
@@ -391,7 +419,7 @@ export function InvoicesContent() {
       "Description",
     ]
 
-    const rows = invoices.map((inv) => {
+    const rows = filteredInvoices.map((inv) => {
       const amount = Number(inv.amount || 0)
       const paid = Number(inv.paid_amount || 0)
       const balance = amount - paid
@@ -399,6 +427,9 @@ export function InvoicesContent() {
         `INV${String(inv.id).padStart(3, "0")}`,
         inv.student_name || "",
         inv.student_id || "",
+        inv.student_standard || inv.standard || "",
+        inv.student_batch || inv.course || "",
+        inv.student_branch || "",
         amount,
         paid,
         balance,
@@ -585,6 +616,9 @@ body{
 <div class="text">${inv.student_name}</div>
 
 <div class="text">Contact No : ${inv.student_phone || "-"}</div>
+<div class="text">Standard : ${inv.student_standard || inv.standard || "-"}</div>
+<div class="text">Batch : ${inv.student_batch || inv.course || "-"}</div>
+<div class="text">Branch : ${inv.student_branch || "-"}</div>
 
 <div class="label">Amount in words</div>
 <div class="text">${Number(inv.paid_amount).toLocaleString()} Rupees only</div>
@@ -874,6 +908,9 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
         <div class="label">Received From</div>
         <div class="text" style="font-weight: 600;">${inv.student_name}</div>
         <div class="text" style="font-size: 14px; color: #475569; margin-top: 2px;">Contact No : ${inv.student_phone || "-"}</div>
+        <div class="text" style="font-size: 14px; color: #475569; margin-top: 2px;">Standard : ${inv.student_standard || inv.standard || "-"}</div>
+        <div class="text" style="font-size: 14px; color: #475569; margin-top: 2px;">Batch : ${inv.student_batch || inv.course || "-"}</div>
+        <div class="text" style="font-size: 14px; color: #475569; margin-top: 2px;">Branch : ${inv.student_branch || "-"}</div>
         
         <div class="label">Amount in words</div>
         <div class="text" style="font-style: italic; font-size: 14px; color: #475569;">${Number(inv.paid_amount).toLocaleString()} Rupees only</div>
@@ -947,7 +984,9 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
       "",
       `Invoice: ${invoiceNo}`,
       `Student: ${inv.student_name || "-"}`,
-      `Course: ${inv.course || "-"}`,
+      `Standard: ${inv.student_standard || inv.standard || "-"}`,
+      `Batch: ${inv.student_batch || inv.course || "-"}`,
+      `Branch: ${inv.student_branch || "-"}`,
       `Next Installment Date: ${fmtDate(inv.due_date)}`,
       `Total Amount: Rs ${amount.toLocaleString()}`,
       `Paid Amount: Rs ${paid.toLocaleString()}`,
@@ -962,9 +1001,19 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
   }
 
   const f = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
-  const filteredInvoices = invoices.filter((inv) =>
-    inv.student_name?.toLowerCase().includes(studentFilter.trim().toLowerCase())
-  )
+  const filteredInvoices = invoices.filter((inv) => {
+    const matchesSearch = inv.student_name?.toLowerCase().includes(studentFilter.trim().toLowerCase())
+    
+    const std = inv.student_standard || inv.standard || ""
+    const bch = inv.student_batch || inv.course || ""
+    const brn = inv.student_branch || ""
+
+    const matchesStandard = filterStandard === "all" || std === filterStandard
+    const matchesBatch = filterBatch === "all" || bch === filterBatch
+    const matchesBranch = filterBranch === "all" || brn === filterBranch
+
+    return matchesSearch && matchesStandard && matchesBatch && matchesBranch
+  })
 
   return (
     <div className="space-y-6 pt-12 lg:pt-0">
@@ -1020,6 +1069,53 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
         </CardHeader>
 
         <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="space-y-1.5">
+              <Label htmlFor="standard-filter" className="text-xs font-semibold text-muted-foreground">Filter Standard</Label>
+              <Select value={filterStandard} onValueChange={setFilterStandard}>
+                <SelectTrigger id="standard-filter">
+                  <SelectValue placeholder="All Standards" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Standards</SelectItem>
+                  {STANDARDS.map((std) => (
+                    <SelectItem key={std} value={std}>{std}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="batch-filter" className="text-xs font-semibold text-muted-foreground">Filter Batch</Label>
+              <Select value={filterBatch} onValueChange={setFilterBatch}>
+                <SelectTrigger id="batch-filter">
+                  <SelectValue placeholder="All Batches" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Batches</SelectItem>
+                  {ALL_BATCHES.map((b) => (
+                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="branch-filter" className="text-xs font-semibold text-muted-foreground">Filter Branch</Label>
+              <Select value={filterBranch} onValueChange={setFilterBranch}>
+                <SelectTrigger id="branch-filter">
+                  <SelectValue placeholder="All Branches" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Branches</SelectItem>
+                  {BRANCHES.map((br) => (
+                    <SelectItem key={br} value={br}>{br}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           {loading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -1052,7 +1148,16 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
                     return (
                       <TableRow key={inv.id} className="hover:bg-muted/50">
                         <TableCell className="font-medium">INV{String(inv.id).padStart(3, "0")}</TableCell>
-                        <TableCell>{inv.student_name}</TableCell>
+                        <TableCell>
+                          <div className="font-semibold text-slate-800">{inv.student_name}</div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">
+                            {[
+                              inv.student_standard || inv.standard,
+                              inv.student_batch || inv.course,
+                              inv.student_branch
+                            ].filter(Boolean).join(" · ")}
+                          </div>
+                        </TableCell>
                         <TableCell className="hidden sm:table-cell">₹{Number(inv.amount).toLocaleString()}</TableCell>
                         <TableCell className="hidden md:table-cell">₹{Number(inv.paid_amount).toLocaleString()}</TableCell>
                         {/* ── NEW cell ── */}
@@ -1317,6 +1422,9 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
                 </div>
                 {([
                   ["Student",          selected.student_name],
+                  ["Standard",         selected.student_standard || selected.standard],
+                  ["Batch",            selected.student_batch || selected.course],
+                  ["Branch",           selected.student_branch],
                   ["Description",      selected.description],
                   ["Transaction Type", selected.transaction_type],
                   ["Install Date",     fmtDate(selected.install_date)],

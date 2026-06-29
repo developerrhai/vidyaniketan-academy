@@ -13,33 +13,15 @@ import { Calendar, Plus, Edit2, Trash2, MessageCircle, Loader2 } from "lucide-re
 import { appointmentsApi } from "@/lib/api"
 
 interface Appointment {
-  id: number; name: string; standard: string; board: string; course: string
+  id: number; name: string; standard: string; board: string; course: string; batch?: string
   appointment_date: string; appointment_time: string; location: string
   whatsapp: string; status: "Pending"|"Confirmed"|"Done"|"Cancelled"
 }
 
 const STANDARDS = [
-  "4th Standard",
-  "4th Scholarship",
-  "5th Standard",
-  "5th Scholarship(नवोदय / सैनिक)",
-  "6th Standard",
-  "6th Foundation",
-  "7th Standard",
-  "7th Scholarship",
-  "7th Foundation",
-  "6th–7th Foundation",
-  "8th Standard",
-  "8th Foundation",
-  "8th Regular",
-  "9th Standard",
-  "9th Photon",
-  "9th Foundation",
-  "10th Standard",
-  "11th Standard",
-  "12th Standard",
-  "Basic Foundation 1 (4th to 6th)",
-  "Basic Foundation 2 (7th to 9th)"
+  "1st Standard", "2nd Standard", "3rd Standard", "4th Standard", "5th Standard",
+  "6th Standard", "7th Standard", "8th Standard", "9th Standard", "10th Standard",
+  "11th Standard", "12th Standard"
 ]
 
 const BRANCHES = [
@@ -47,12 +29,31 @@ const BRANCHES = [
   "SOF Branch"
 ]
 
+const JUNIOR_BATCHES = [
+  "1st Standard", "2nd Standard", "3rd Standard",
+  "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
+  "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
+  "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
+  "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
+]
+const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"]
+const ALL_BATCHES = Array.from(new Set([...JUNIOR_BATCHES, ...SENIOR_BATCHES]))
+
+const getBatchOptions = (std: string) => {
+  if (std === "11th Standard" || std === "12th Standard") {
+    return SENIOR_BATCHES;
+  }
+  return JUNIOR_BATCHES;
+}
+
+
 const statusColor = (s: string) => ({
   Pending:"bg-yellow-100 text-yellow-700",Confirmed:"bg-blue-100 text-blue-700",
   Done:"bg-emerald-100 text-emerald-700",Cancelled:"bg-red-100 text-red-700",
 }[s] || "bg-gray-100 text-gray-700")
 
-const blank = { name:"", standard:"10th Standard", board:"", course:"", date:"", time:"", location:"Main Branch", whatsapp:"", status:"Pending" }
+const blank = { name:"", standard:"10th Standard", board:"", course:"", batch:"", date:"", time:"", location:"Main Branch", whatsapp:"", status:"Pending" }
 
 export function AppointmentsContent() {
   const [apts,           setApts]           = useState<Appointment[]>([])
@@ -60,6 +61,8 @@ export function AppointmentsContent() {
   const [saving,         setSaving]         = useState(false)
   const [filterLoc,      setFilterLoc]      = useState("all")
   const [filterDate,     setFilterDate]     = useState("all")
+  const [filterStandard, setFilterStandard] = useState("all")
+  const [filterBatch,    setFilterBatch]    = useState("all")
   const [modalOpen,      setModalOpen]      = useState(false)
   const [editing,        setEditing]        = useState<Appointment | null>(null)
   const [form,           setForm]           = useState<Record<string,string>>(blank)
@@ -70,18 +73,20 @@ export function AppointmentsContent() {
       const res: any = await appointmentsApi.getAll({
         date_filter: filterDate !== "all" ? filterDate : undefined,
         location:    filterLoc  !== "all" ? filterLoc  : undefined,
+        standard:    filterStandard !== "all" ? filterStandard : undefined,
+        batch:       filterBatch    !== "all" ? filterBatch    : undefined,
       })
       setApts(res.data)
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
-  }, [filterDate, filterLoc])
+  }, [filterDate, filterLoc, filterStandard, filterBatch])
 
   useEffect(() => { load() }, [load])
 
   const openAdd  = () => { setEditing(null); setForm(blank); setModalOpen(true) }
   const openEdit = (a: Appointment) => {
     setEditing(a)
-    setForm({ name:a.name, standard:a.standard, board:a.board, course:a.course,
+    setForm({ name:a.name, standard:a.standard, board:a.board, course:a.course, batch:a.batch || "",
       date:a.appointment_date?.split("T")[0]||"", time:a.appointment_time?.slice(0,5)||"",
       location:a.location, whatsapp:a.whatsapp, status:a.status })
     setModalOpen(true)
@@ -124,7 +129,7 @@ export function AppointmentsContent() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <Select value={filterLoc} onValueChange={setFilterLoc}>
               <SelectTrigger><SelectValue placeholder="All Branches" /></SelectTrigger>
               <SelectContent>
@@ -144,6 +149,24 @@ export function AppointmentsContent() {
                 <SelectItem value="lastWeek">Last Week</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={filterStandard} onValueChange={setFilterStandard}>
+              <SelectTrigger><SelectValue placeholder="All Standards" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Standards</SelectItem>
+                {STANDARDS.map(s => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterBatch} onValueChange={setFilterBatch}>
+              <SelectTrigger><SelectValue placeholder="All Batches" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Batches</SelectItem>
+                {ALL_BATCHES.map(b => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {loading ? (
@@ -153,8 +176,8 @@ export function AppointmentsContent() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-900">
-                    {["Name","Std","Board","Course","Date","Time","Location","Status","Actions"].map((h,i) => (
-                      <TableHead key={h} className={`text-white font-semibold ${i>0&&i<7?"hidden "+(i<3?"sm":"md")+":table-cell":""} ${h==="Actions"?"text-center":""}`}>{h}</TableHead>
+                    {["Name","Std","Batch","Board","Date","Time","Branch","Status","Actions"].map((h,i) => (
+                      <TableHead key={h} className={`text-white font-semibold ${i>0&&i<8?"hidden "+(i<3?"sm":"md")+":table-cell":""} ${h==="Actions"?"text-center":""}`}>{h}</TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
@@ -165,8 +188,8 @@ export function AppointmentsContent() {
                     <TableRow key={a.id} className="hover:bg-muted/50">
                       <TableCell className="font-medium">{a.name}</TableCell>
                       <TableCell className="hidden sm:table-cell">{a.standard}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{a.batch || a.course || "—"}</TableCell>
                       <TableCell className="hidden md:table-cell">{a.board}</TableCell>
-                      <TableCell className="hidden lg:table-cell">{a.course}</TableCell>
                       <TableCell>{a.appointment_date?.split("T")[0]}</TableCell>
                       <TableCell className="hidden sm:table-cell">{a.appointment_time?.slice(0,5)}</TableCell>
                       <TableCell className="hidden md:table-cell">{a.location}</TableCell>
@@ -193,11 +216,31 @@ export function AppointmentsContent() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
             <div className="space-y-2"><Label>Student Name *</Label><Input value={form.name} onChange={e=>f("name",e.target.value)} placeholder="Name" /></div>
             <div className="space-y-2"><Label>Standard</Label>
-              <Select value={form.standard} onValueChange={v=>f("standard",v)}>
+              <Select value={form.standard} onValueChange={v=>{
+                f("standard",v);
+                const allowed = getBatchOptions(v);
+                if (!allowed.includes(form.batch)) {
+                  f("batch", "");
+                  f("course", "");
+                }
+              }}>
                 <SelectTrigger><SelectValue placeholder="Standard" /></SelectTrigger>
                 <SelectContent>
                   {STANDARDS.map(s => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2"><Label>Batch</Label>
+              <Select value={form.batch} onValueChange={v=>{
+                f("batch", v);
+                f("course", v); // Compatibility
+              }}>
+                <SelectTrigger><SelectValue placeholder="Select Batch" /></SelectTrigger>
+                <SelectContent>
+                  {getBatchOptions(form.standard || "").map(b => (
+                    <SelectItem key={b} value={b}>{b}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -208,7 +251,6 @@ export function AppointmentsContent() {
                 <SelectContent><SelectItem value="CBSE">CBSE</SelectItem><SelectItem value="ICSE">ICSE</SelectItem><SelectItem value="State">State</SelectItem></SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label>Course</Label><Input value={form.course} onChange={e=>f("course",e.target.value)} placeholder="Course" /></div>
             <div className="space-y-2"><Label>Date *</Label><Input type="date" value={form.date} onChange={e=>f("date",e.target.value)} /></div>
             <div className="space-y-2"><Label>Time *</Label><Input type="time" value={form.time} onChange={e=>f("time",e.target.value)} /></div>
             <div className="space-y-2"><Label>Branch</Label>

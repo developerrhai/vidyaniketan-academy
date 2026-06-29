@@ -16,6 +16,7 @@ interface Student {
   father_name: string;
   father_phone: string;
   standard: string;
+  batch?: string;
   course: string;
   branch: string;
   fee: number;
@@ -32,37 +33,30 @@ interface Student {
 }
 
 const STANDARDS = [
-  "4th Standard",
-  "4th Scholarship",
-  "5th Standard",
-  "5th Scholarship(नवोदय / सैनिक)",
-  "6th Standard",
-  "6th Foundation",
-  "7th Standard",
-  "7th Scholarship",
-  "7th Foundation",
-  "6th–7th Foundation",
-  "8th Standard",
-  "8th Foundation",
-  "8th Regular",
-  "9th Standard",
-  "9th Photon",
-  "9th Foundation",
-  "10th Standard",
-  "11th Standard",
-  "12th Standard",
-  "Basic Foundation 1 (4th to 6th)",
-  "Basic Foundation 2 (7th to 9th)"
+  "1st Standard", "2nd Standard", "3rd Standard", "4th Standard", "5th Standard",
+  "6th Standard", "7th Standard", "8th Standard", "9th Standard", "10th Standard",
+  "11th Standard", "12th Standard"
 ]
 
 const BRANCHES = ["Main Branch", "SOF Branch"]
+
+const JUNIOR_BATCHES = [
+  "1st Standard", "2nd Standard", "3rd Standard",
+  "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
+  "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
+  "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
+  "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
+]
+const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"]
+const ALL_BATCHES = Array.from(new Set([...JUNIOR_BATCHES, ...SENIOR_BATCHES]))
 
 export function HostelStudentsContent() {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStandard, setFilterStandard] = useState("all")
-  const [filterCourse, setFilterCourse] = useState("all")
+  const [filterBatch, setFilterBatch] = useState("all")
   const [filterBranch, setFilterBranch] = useState("all")
 
   const load = useCallback(async () => {
@@ -70,7 +64,7 @@ export function HostelStudentsContent() {
     try {
       const res: any = await studentsApi.getAll({
         standard: filterStandard !== "all" ? filterStandard : undefined,
-        course: filterCourse !== "all" ? filterCourse : undefined,
+        batch: filterBatch !== "all" ? filterBatch : undefined,
         branch: filterBranch !== "all" ? filterBranch : undefined,
         search: searchTerm.trim() || undefined
       })
@@ -83,7 +77,7 @@ export function HostelStudentsContent() {
     } finally {
       setLoading(false)
     }
-  }, [filterStandard, filterCourse, filterBranch, searchTerm])
+  }, [filterStandard, filterBatch, filterBranch, searchTerm])
 
   useEffect(() => {
     load()
@@ -129,7 +123,7 @@ export function HostelStudentsContent() {
       "Mother Name",
       "School/College Name",
       "Standard",
-      "Course",
+      "Batch",
       "Branch",
       "School/Academy Fee (₹)",
       "Hostel Fee (₹)",
@@ -150,7 +144,7 @@ export function HostelStudentsContent() {
         s.mother_name || "",
         s.school_name || "",
         s.standard || "",
-        s.course || "",
+        s.batch || s.course || "",
         s.branch || "",
         schoolAcademy,
         Number(s.hostel_fee || 0),
@@ -189,6 +183,7 @@ export function HostelStudentsContent() {
           <td>${s.mother_name || ""}</td>
           <td>${s.school_name || ""}</td>
           <td>${s.standard}</td>
+          <td>${s.batch || s.course || ""}</td>
           <td style="text-align:right">₹ ${schoolAcademy.toLocaleString()}</td>
           <td style="text-align:right">₹ ${Number(s.hostel_fee || 0).toLocaleString()}</td>
           <td style="text-align:right">₹ ${original.toLocaleString()}</td>
@@ -248,6 +243,7 @@ export function HostelStudentsContent() {
               <th>Mother Name</th>
               <th>School/College</th>
               <th>Standard</th>
+              <th>Batch</th>
               <th style="text-align:right">School/College Fee</th>
               <th style="text-align:right">Hostel Fee</th>
               <th style="text-align:right">Original Fee</th>
@@ -317,13 +313,13 @@ export function HostelStudentsContent() {
               </SelectContent>
             </Select>
 
-            <Select value={filterCourse} onValueChange={setFilterCourse}>
-              <SelectTrigger><SelectValue placeholder="All Courses" /></SelectTrigger>
+            <Select value={filterBatch} onValueChange={setFilterBatch}>
+              <SelectTrigger><SelectValue placeholder="All Batches" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Courses</SelectItem>
-                <SelectItem value="JEE">JEE</SelectItem>
-                <SelectItem value="NEET">NEET</SelectItem>
-                <SelectItem value="Foundation">Foundation</SelectItem>
+                <SelectItem value="all">All Batches</SelectItem>
+                {ALL_BATCHES.map((b) => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -358,6 +354,7 @@ export function HostelStudentsContent() {
                   <TableRow className="bg-slate-900 hover:bg-slate-900">
                     <TableHead className="text-white font-semibold">Student Name</TableHead>
                     <TableHead className="text-white font-semibold">Std</TableHead>
+                    <TableHead className="text-white font-semibold">Batch</TableHead>
                     <TableHead className="text-white font-semibold hidden md:table-cell">Branch</TableHead>
                     <TableHead className="text-white font-semibold">School/Coll Fee</TableHead>
                     <TableHead className="text-white font-semibold">Hostel Fee</TableHead>
@@ -371,7 +368,7 @@ export function HostelStudentsContent() {
                 <TableBody>
                   {students.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                         No hostel students found
                       </TableCell>
                     </TableRow>
@@ -396,6 +393,7 @@ export function HostelStudentsContent() {
                             )}
                           </TableCell>
                           <TableCell>{s.standard}</TableCell>
+                          <TableCell>{s.batch || s.course || "—"}</TableCell>
                           <TableCell className="hidden md:table-cell">{s.branch}</TableCell>
                           <TableCell>₹{schoolAcademy.toLocaleString()}</TableCell>
                           <TableCell className="font-medium text-indigo-600">₹{Number(s.hostel_fee || 0).toLocaleString()}</TableCell>

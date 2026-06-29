@@ -17,6 +17,7 @@ interface Student {
   father_name: string;
   father_phone: string;
   standard: string;
+  batch?: string;
   course: string;
   branch: string;
   fee: number;
@@ -31,37 +32,30 @@ interface Student {
 }
 
 const STANDARDS = [
-  "4th Standard",
-  "4th Scholarship",
-  "5th Standard",
-  "5th Scholarship(नवोदय / सैनिक)",
-  "6th Standard",
-  "6th Foundation",
-  "7th Standard",
-  "7th Scholarship",
-  "7th Foundation",
-  "6th–7th Foundation",
-  "8th Standard",
-  "8th Foundation",
-  "8th Regular",
-  "9th Standard",
-  "9th Photon",
-  "9th Foundation",
-  "10th Standard",
-  "11th Standard",
-  "12th Standard",
-  "Basic Foundation 1 (4th to 6th)",
-  "Basic Foundation 2 (7th to 9th)"
+  "1st Standard", "2nd Standard", "3rd Standard", "4th Standard", "5th Standard",
+  "6th Standard", "7th Standard", "8th Standard", "9th Standard", "10th Standard",
+  "11th Standard", "12th Standard"
 ]
 
 const BRANCHES = ["Main Branch", "SOF Branch"]
+
+const JUNIOR_BATCHES = [
+  "1st Standard", "2nd Standard", "3rd Standard",
+  "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
+  "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
+  "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
+  "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
+  "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
+]
+const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"]
+const ALL_BATCHES = Array.from(new Set([...JUNIOR_BATCHES, ...SENIOR_BATCHES]))
 
 export function FeeReportsContent() {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStandard, setFilterStandard] = useState("all")
-  const [filterCourse, setFilterCourse] = useState("all")
+  const [filterBatch, setFilterBatch] = useState("all")
   const [filterBranch, setFilterBranch] = useState("all")
 
   const load = useCallback(async () => {
@@ -69,7 +63,7 @@ export function FeeReportsContent() {
     try {
       const res: any = await studentsApi.getAll({
         standard: filterStandard !== "all" ? filterStandard : undefined,
-        course: filterCourse !== "all" ? filterCourse : undefined,
+        batch: filterBatch !== "all" ? filterBatch : undefined,
         branch: filterBranch !== "all" ? filterBranch : undefined,
         search: searchTerm.trim() || undefined
       })
@@ -79,7 +73,7 @@ export function FeeReportsContent() {
     } finally {
       setLoading(false)
     }
-  }, [filterStandard, filterCourse, filterBranch, searchTerm])
+  }, [filterStandard, filterBatch, filterBranch, searchTerm])
 
   useEffect(() => {
     load()
@@ -123,7 +117,7 @@ export function FeeReportsContent() {
       "Student ID",
       "Student Name",
       "Standard",
-      "Course",
+      "Batch",
       "Branch",
       "Hostel",
       "School Fee (₹)",
@@ -142,7 +136,7 @@ export function FeeReportsContent() {
         s.id,
         s.name,
         s.standard || "",
-        s.course || "",
+        s.batch || s.course || "",
         s.branch || "",
         s.hostel || "",
         Number(s.school_fee || 0),
@@ -179,6 +173,7 @@ export function FeeReportsContent() {
         <tr>
           <td>${s.name}</td>
           <td>${s.standard}</td>
+          <td>${s.batch || s.course || ""}</td>
           <td style="text-align:right">₹ ${original.toLocaleString()}</td>
           <td style="text-align:right">-₹ ${Number(s.scholarship_amount || 0).toLocaleString()}</td>
           <td style="text-align:right">₹ ${Number(s.fee || 0).toLocaleString()}</td>
@@ -235,6 +230,7 @@ export function FeeReportsContent() {
             <tr>
               <th>Student Name</th>
               <th>Standard</th>
+              <th>Batch</th>
               <th style="text-align:right">Original Fee</th>
               <th style="text-align:right">Scholarship/Concession</th>
               <th style="text-align:right">Net Payable</th>
@@ -303,13 +299,13 @@ export function FeeReportsContent() {
               </SelectContent>
             </Select>
 
-            <Select value={filterCourse} onValueChange={setFilterCourse}>
-              <SelectTrigger><SelectValue placeholder="All Courses" /></SelectTrigger>
+            <Select value={filterBatch} onValueChange={setFilterBatch}>
+              <SelectTrigger><SelectValue placeholder="All Batches" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Courses</SelectItem>
-                <SelectItem value="JEE">JEE</SelectItem>
-                <SelectItem value="NEET">NEET</SelectItem>
-                <SelectItem value="Foundation">Foundation</SelectItem>
+                <SelectItem value="all">All Batches</SelectItem>
+                {ALL_BATCHES.map((b) => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -344,6 +340,7 @@ export function FeeReportsContent() {
                   <TableRow className="bg-slate-900 hover:bg-slate-900">
                     <TableHead className="text-white font-semibold">Student Name</TableHead>
                     <TableHead className="text-white font-semibold">Std</TableHead>
+                    <TableHead className="text-white font-semibold">Batch</TableHead>
                     <TableHead className="text-white font-semibold hidden md:table-cell">Branch</TableHead>
                     <TableHead className="text-white font-semibold">Original Fee</TableHead>
                     <TableHead className="text-white font-semibold text-amber-500">Scholarship / Concession</TableHead>
@@ -355,7 +352,7 @@ export function FeeReportsContent() {
                 <TableBody>
                   {students.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                         No report records found
                       </TableCell>
                     </TableRow>
@@ -370,6 +367,7 @@ export function FeeReportsContent() {
                         <TableRow key={s.id} className="hover:bg-muted/50">
                           <TableCell className="font-semibold">{s.name}</TableCell>
                           <TableCell>{s.standard}</TableCell>
+                          <TableCell>{s.batch || s.course || "—"}</TableCell>
                           <TableCell className="hidden md:table-cell">{s.branch}</TableCell>
                           <TableCell className="font-medium">₹{originalFee.toLocaleString()}</TableCell>
                           <TableCell className="text-amber-600 font-medium">
