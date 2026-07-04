@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Receipt, Plus, Eye, Printer, Trash2, CheckCircle, Clock, AlertCircle, Loader2, Search, X, Edit2, FileSpreadsheet, MessageCircle, Download } from "lucide-react"
 import { invoicesApi, studentsApi } from "@/lib/api"
-import logo from "../../public/logo.jpeg";
+import { printReceipt, downloadReceipt, type ReceiptData, type PrintLayout } from "./receipt-print"
 
 interface Invoice {
   id: number
@@ -37,6 +37,13 @@ interface Invoice {
   student_standard?: string
   student_batch?: string
   student_branch?: string
+  // New receipt fields
+  receipt_number?: string
+  offline_receipt_number?: string
+  transaction_ref?: string
+  remarks?: string
+  generated_by?: string
+  scholarship_reason?: string
 }
 
 interface Student {
@@ -105,6 +112,8 @@ const JUNIOR_BATCHES = [
 const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"]
 const ALL_BATCHES = Array.from(new Set([...JUNIOR_BATCHES, ...SENIOR_BATCHES]))
 
+const PAYMENT_MODES = ["Cash", "UPI", "Card", "Bank Transfer", "Cheque"]
+
 export function InvoicesContent() {
   const [invoices,     setInvoices]     = useState<Invoice[]>([])
   const [summary,      setSummary]      = useState<Summary>({ total_invoiced: 0, total_paid: 0, total_pending: 0 })
@@ -119,6 +128,11 @@ export function InvoicesContent() {
   const [viewOpen,     setViewOpen]     = useState(false)
   const [selected,     setSelected]     = useState<Invoice | null>(null)
   const [editing,      setEditing]      = useState<Invoice | null>(null)
+
+  // Print preview dialog state
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
+  const [printInvoice,    setPrintInvoice]    = useState<Invoice | null>(null)
+  const [printLayout,     setPrintLayout]     = useState<PrintLayout>("full")
 
   const [students,        setStudents]        = useState<Student[]>([])
   const [studentSearch,   setStudentSearch]   = useState("")
@@ -138,7 +152,26 @@ export function InvoicesContent() {
     scholarship_type: "None",
     scholarship_value: "0",
     scholarship_amount: "0",
+    // New fields
+    offline_receipt_number: "",
+    transaction_ref: "",
+    remarks: "",
+    generated_by: "",
+    scholarship_reason: "",
   })
+
+  // Auto-populate generated_by from logged-in user
+  useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem("userInfo")
+      if (storedUser) {
+        const user = JSON.parse(storedUser)
+        if (user?.name) {
+          setForm(prev => ({ ...prev, generated_by: prev.generated_by || user.name }))
+        }
+      }
+    } catch { /* ignore */ }
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -186,7 +219,7 @@ export function InvoicesContent() {
     student_name: s.name,
     student_id:   String(s.id),
     amount:       remaining > 0 ? String(remaining) : String(s.fee),
-    paid_amount:  String(s.paid_fee),   // ← was "0", now uses student's paid_fee
+    paid_amount:  String(s.paid_fee),
     description:  `Tuition Fee – ${s.course || s.standard + "th Std"}`,
     scholarship_type: s.scholarship_type || "None",
     scholarship_value: String(s.scholarship_value || 0),
@@ -212,6 +245,12 @@ export function InvoicesContent() {
   const openModal = () => {
     setEditing(null)
     clearStudent()
+    // Get logged in user name for generated_by
+    let userName = ""
+    try {
+      const storedUser = localStorage.getItem("userInfo")
+      if (storedUser) { userName = JSON.parse(storedUser)?.name || "" }
+    } catch { /* ignore */ }
     setForm({
       student_name: "", amount: "", paid_amount: "",
       due_date: "", install_date: "", transaction_type: "Cash",
@@ -219,6 +258,11 @@ export function InvoicesContent() {
       scholarship_type: "None",
       scholarship_value: "0",
       scholarship_amount: "0",
+      offline_receipt_number: "",
+      transaction_ref: "",
+      remarks: "",
+      generated_by: userName,
+      scholarship_reason: "",
     })
     setModalOpen(true)
   }
@@ -278,6 +322,12 @@ export function InvoicesContent() {
         install_date:     form.install_date || undefined,
         transaction_type: form.transaction_type,
         description:      form.description,
+        // New fields
+        offline_receipt_number: form.offline_receipt_number || undefined,
+        transaction_ref:  form.transaction_ref || undefined,
+        remarks:          form.remarks || undefined,
+        generated_by:     form.generated_by || undefined,
+        scholarship_reason: form.scholarship_reason || undefined,
       }
 
       if (editing) {
@@ -293,7 +343,6 @@ export function InvoicesContent() {
           if (stu) {
             const updatedPaidFee = Math.max(0, Number(stu.paid_fee) + diff)
             
-            // Calculate new fee and scholarship
             const sType = form.scholarship_type
             const sVal = Number(form.scholarship_value || 0)
             const originalFee = (Number(stu.school_fee || 0) + Number(stu.academy_fee || 0) + Number(stu.hostel_fee || 0)) || (Number(stu.fee || 0) + Number(stu.scholarship_amount || 0))
@@ -327,7 +376,6 @@ export function InvoicesContent() {
           if (stu) {
             const updatedPaidFee = Number(stu.paid_fee) + paidNow
             
-            // Calculate new fee and scholarship
             const sType = form.scholarship_type
             const sVal = Number(form.scholarship_value || 0)
             const originalFee = (Number(stu.school_fee || 0) + Number(stu.academy_fee || 0) + Number(stu.hostel_fee || 0)) || (Number(stu.fee || 0) + Number(stu.scholarship_amount || 0))
@@ -380,6 +428,14 @@ export function InvoicesContent() {
     })
     setStudentSearch(inv.student_name || "")
     setShowDropdown(false)
+
+    // Get logged in user name for generated_by fallback
+    let userName = ""
+    try {
+      const storedUser = localStorage.getItem("userInfo")
+      if (storedUser) { userName = JSON.parse(storedUser)?.name || "" }
+    } catch { /* ignore */ }
+
     setForm({
       student_name: inv.student_name || "",
       student_id: inv.student_id || "",
@@ -392,6 +448,12 @@ export function InvoicesContent() {
       scholarship_type: inv.student_scholarship_type || "None",
       scholarship_value: String(inv.student_scholarship_value || 0),
       scholarship_amount: String(inv.student_scholarship_amount || 0),
+      // New fields
+      offline_receipt_number: inv.offline_receipt_number || "",
+      transaction_ref: inv.transaction_ref || "",
+      remarks: inv.remarks || "",
+      generated_by: inv.generated_by || userName,
+      scholarship_reason: inv.scholarship_reason || "",
     })
     setModalOpen(true)
   }
@@ -404,6 +466,7 @@ export function InvoicesContent() {
 
     const headers = [
       "Invoice ID",
+      "Receipt No",
       "Student Name",
       "Student ID",
       "Standard",
@@ -415,7 +478,9 @@ export function InvoicesContent() {
       "Install Date",
       "Next Installment Date",
       "Transaction Type",
+      "Transaction Ref",
       "Status",
+      "Remarks",
       "Description",
     ]
 
@@ -425,6 +490,7 @@ export function InvoicesContent() {
       const balance = amount - paid
       return [
         `INV${String(inv.id).padStart(3, "0")}`,
+        inv.receipt_number ? `RCP-${String(inv.receipt_number).padStart(4, "0")}` : (inv.offline_receipt_number || ""),
         inv.student_name || "",
         inv.student_id || "",
         inv.student_standard || inv.standard || "",
@@ -436,7 +502,9 @@ export function InvoicesContent() {
         inv.install_date ? new Date(inv.install_date).toLocaleDateString("en-CA") : "",
         inv.due_date ? new Date(inv.due_date).toLocaleDateString("en-CA") : "",
         inv.transaction_type || "",
+        inv.transaction_ref || "",
         getStatus(inv),
+        inv.remarks || "",
         inv.description || "",
       ]
     })
@@ -459,530 +527,35 @@ export function InvoicesContent() {
     try { await invoicesApi.remove(id); load() } catch (err: any) { alert(err.message) }
   }
 
-  const handlePrint = (inv: Invoice) => {
-    const w = window.open("", "_blank")
-    if (!w) return
-    const balance = Number(inv.amount) - Number(inv.paid_amount)
-    w.document.write(
-      `
-      <html>
-<head>
-<title>Receipt #${inv.id}</title>
-
-<style>
-
-@page{
-  size:A4;
-  margin:25mm;
-}
-
-body{
-  font-family: Arial, Helvetica, sans-serif;
-  color:#333;
-  margin:0;
-}
-
-.container{
-  width:100%;
-}
-
-.header{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-}
-
-.institute{
-  line-height:1.4;
-}
-
-.institute h2{
-  margin:0;
-  font-size:20px;
-  letter-spacing:0.5px;
-}
-
-.institute p{
-  margin:2px 0;
-  font-size:13px;
-}
-
-.logo{
-  width:70px;
-}
-
-.title{
-  text-align:center;
-  font-size:22px;
-  color:#1f7fa6;
-  font-weight:bold;
-  margin-top:15px;
-  padding-top:10px;
-  border-top:2px solid #1f7fa6;
-}
-
-.content{
-  display:flex;
-  justify-content:space-between;
-  margin-top:25px;
-}
-
-.left{
-  width:48%;
-}
-
-.right{
-  width:48%;
-}
-
-.label{
-  font-weight:bold;
-  margin-top:10px;
-}
-
-.text{
-  margin-top:4px;
-}
-
-.receipt-details{
-  text-align:right;
-  font-size:14px;
-  margin-bottom:15px;
-}
-
-.table{
-  width:100%;
-  border-collapse:collapse;
-}
-
-.table td{
-  padding:6px 0;
-  font-size:14px;
-}
-
-.table td:last-child{
-  text-align:right;
-  font-weight:bold;
-}
-
-.balance{
-  border-top:1px solid #999;
-  padding-top:6px;
-}
-
-.signature{
-  margin-top:70px;
-  text-align:right;
-}
-
-.signature img{
-  height:40px;
-}
-
-.auth{
-  font-weight:bold;
-  margin-top:6px;
-}
-
-</style>
-
-</head>
-
-<body>
-
-<div class="container">
-
-<div class="header">
-
-<div class="institute">
-<h2>Vidyaaniketan Professional Academy</h2>
-<p>Arun Galaxy, Shreeram Chouk, Indapur, Maharashtra 413106</p>
-<p>Phone no : 8180802049</p>
-
-<p>State: Maharashtra</p>
-</div>
-
-<img class="logo" src="${window.location.origin}/logo.jpeg"/>
-
-</div>
-
-<div class="title">Payment Receipt</div>
-
-<div class="content">
-
-<div class="left">
-
-<div class="label">Received From</div>
-<div class="text">${inv.student_name}</div>
-
-<div class="text">Contact No : ${inv.student_phone || "-"}</div>
-<div class="text">Standard : ${inv.student_standard || inv.standard || "-"}</div>
-<div class="text">Batch : ${inv.student_batch || inv.course || "-"}</div>
-<div class="text">Branch : ${inv.student_branch || "-"}</div>
-
-<div class="label">Amount in words</div>
-<div class="text">${Number(inv.paid_amount).toLocaleString()} Rupees only</div>
-
-</div>
-
-<div class="right">
-
-<div class="receipt-details">
-<div><b>Receipt Details</b></div>
-
-<div>Receipt No : ${inv.id}</div>
-<div><b>Date :</b> ${fmtDate(inv.install_date)}</div>
-</div>
-
-<table class="table">
-
-${(Number(inv.student_school_fee || 0) + Number(inv.student_academy_fee || 0) + Number(inv.student_hostel_fee || 0)) > 0 ? `
-<tr>
-<td>Original Fee</td>
-<td>₹ ${(Number(inv.student_school_fee || 0) + Number(inv.student_academy_fee || 0) + Number(inv.student_hostel_fee || 0)).toLocaleString()}</td>
-</tr>
-` : ''}
-
-${Number(inv.student_scholarship_amount || 0) > 0 ? `
-<tr>
-<td>Scholarship / Concession</td>
-<td>-₹ ${Number(inv.student_scholarship_amount).toLocaleString()}</td>
-</tr>
-` : ''}
-
-<tr>
-<td>Total Payable</td>
-<td>₹ ${Number(inv.amount).toLocaleString()}</td>
-</tr>
-
-<tr>
-<td>Received</td>
-<td>₹ ${Number(inv.paid_amount).toLocaleString()}</td>
-</tr>
-
-<tr>
-<td>Payment Mode</td>
-<td>${inv.transaction_type || "Online"}</td>
-</tr>
-
-<tr class="balance">
-<td>Outstanding Balance</td>
-<td>₹ ${balance.toLocaleString()}</td>
-</tr>
-
-</table>
-
-</div>
-
-</div>
-
-<div class="signature">
-
-<div>For : Vidyaaniketan Professional Academy</div>
-
-<img src="SIGNATURE_IMAGE_URL"/>
-
-<div class="auth">Authorized Signatory</div>
-
-</div>
-
-</div>
-
-</body>
-</html>
-`
-    )
-    w.document.close()
-    w.print()
+  /* ── Print: open print preview dialog ──────────────────── */
+  const openPrintDialog = (inv: Invoice) => {
+    setPrintInvoice(inv)
+    setPrintLayout("full")
+    setPrintDialogOpen(true)
   }
 
-  const handleDownloadInvoice = (inv: Invoice) => {
-    const balance = Number(inv.amount) - Number(inv.paid_amount)
-    const invoiceNo = `INV${String(inv.id).padStart(3, "0")}`
-    const htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Receipt - ${invoiceNo}</title>
-  <style>
-    @page {
-      size: A4;
-      margin: 20mm;
+  const executePrint = () => {
+    if (!printInvoice) return
+    const receiptData: ReceiptData = {
+      ...printInvoice,
+      amount: Number(printInvoice.amount),
+      paid_amount: Number(printInvoice.paid_amount),
     }
-    body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      color: #1e293b;
-      margin: 0;
-      background: #f8fafc;
-      padding: 40px 20px;
-    }
-    .no-print-bar {
-      max-width: 800px;
-      margin: 0 auto 20px auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #ffffff;
-      padding: 12px 24px;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-      border: 1px solid #e2e8f0;
-    }
-    .btn-download {
-      background: #0d9488;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      transition: background 0.2s;
-    }
-    .btn-download:hover {
-      background: #0f766e;
-    }
-    .receipt-container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: white;
-      padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-      border: 1px solid #e2e8f0;
-      position: relative;
-    }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      border-bottom: 2px solid #e2e8f0;
-      padding-bottom: 20px;
-    }
-    .institute h2 {
-      margin: 0;
-      font-size: 24px;
-      color: #0f172a;
-      font-weight: 800;
-    }
-    .institute p {
-      margin: 4px 0;
-      font-size: 14px;
-      color: #475569;
-    }
-    .logo {
-      width: 80px;
-      height: 80px;
-      object-fit: cover;
-      border-radius: 8px;
-    }
-    .title {
-      text-align: center;
-      font-size: 22px;
-      color: #0d9488;
-      font-weight: 800;
-      margin: 30px 0;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-    }
-    .content {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 25px;
-      gap: 40px;
-    }
-    .left, .right {
-      width: 50%;
-    }
-    .label {
-      font-weight: 700;
-      font-size: 11px;
-      text-transform: uppercase;
-      color: #64748b;
-      margin-top: 20px;
-      letter-spacing: 0.5px;
-    }
-    .text {
-      margin-top: 4px;
-      font-size: 15px;
-      color: #0f172a;
-    }
-    .receipt-details {
-      text-align: right;
-      font-size: 14px;
-      margin-bottom: 20px;
-      color: #334155;
-      line-height: 1.6;
-    }
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-    .table td {
-      padding: 10px 0;
-      font-size: 15px;
-      border-bottom: 1px solid #f1f5f9;
-      color: #334155;
-    }
-    .table tr:last-child td {
-      border-bottom: none;
-    }
-    .table td:last-child {
-      text-align: right;
-      font-weight: 700;
-      color: #0f172a;
-    }
-    .balance-row td {
-      border-top: 2px solid #e2e8f0;
-      padding-top: 12px;
-      font-weight: 700;
-    }
-    .balance-row td:last-child {
-      color: #0d9488;
-      font-size: 18px;
-    }
-    .signature {
-      margin-top: 80px;
-      text-align: right;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-    }
-    .signature-title {
-      font-size: 14px;
-      color: #475569;
-      margin-bottom: 40px;
-    }
-    .auth {
-      font-weight: 700;
-      font-size: 14px;
-      color: #0f172a;
-      border-top: 1px solid #cbd5e1;
-      padding-top: 6px;
-      width: 200px;
-      text-align: center;
-    }
-    @media print {
-      body {
-        background: white;
-        padding: 0;
-      }
-      .no-print-bar {
-        display: none;
-      }
-      .receipt-container {
-        border: none;
-        box-shadow: none;
-        padding: 0;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="no-print-bar">
-    <div style="font-size: 14px; color: #475569; font-weight: 500;">Invoice loaded successfully. Press the button to print or save as PDF.</div>
-    <button class="btn-download" onclick="window.print()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-      Print / Save PDF
-    </button>
-  </div>
-  <div class="receipt-container">
-    <div class="header">
-      <div class="institute">
-        <h2>Vidyaaniketan Professional Academy</h2>
-        <p>Arun Galaxy, Shreeram Chouk, Indapur, Maharashtra 413106</p>
-        <p>Phone no : 8180802049</p>
-        <p>State: Maharashtra</p>
-      </div>
-      <img class="logo" src="${window.location.origin}/logo.jpeg" alt="Logo"/>
-    </div>
-    <div class="title">Payment Receipt</div>
-    <div class="content">
-      <div class="left">
-        <div class="label">Received From</div>
-        <div class="text" style="font-weight: 600;">${inv.student_name}</div>
-        <div class="text" style="font-size: 14px; color: #475569; margin-top: 2px;">Contact No : ${inv.student_phone || "-"}</div>
-        <div class="text" style="font-size: 14px; color: #475569; margin-top: 2px;">Standard : ${inv.student_standard || inv.standard || "-"}</div>
-        <div class="text" style="font-size: 14px; color: #475569; margin-top: 2px;">Batch : ${inv.student_batch || inv.course || "-"}</div>
-        <div class="text" style="font-size: 14px; color: #475569; margin-top: 2px;">Branch : ${inv.student_branch || "-"}</div>
-        
-        <div class="label">Amount in words</div>
-        <div class="text" style="font-style: italic; font-size: 14px; color: #475569;">${Number(inv.paid_amount).toLocaleString()} Rupees only</div>
-      </div>
-      <div class="right">
-        <div class="receipt-details">
-          <div><strong>Receipt Details</strong></div>
-          <div>Receipt No : ${invoiceNo}</div>
-          <div><strong>Date :</strong> ${fmtDate(inv.install_date)}</div>
-        </div>
-        <table class="table">
-          ${(Number(inv.student_school_fee || 0) + Number(inv.student_academy_fee || 0) + Number(inv.student_hostel_fee || 0)) > 0 ? `
-          <tr>
-            <td>Original Fee</td>
-            <td>₹ ${(Number(inv.student_school_fee || 0) + Number(inv.student_academy_fee || 0) + Number(inv.student_hostel_fee || 0)).toLocaleString()}</td>
-          </tr>
-          ` : ''}
-
-          ${Number(inv.student_scholarship_amount || 0) > 0 ? `
-          <tr>
-            <td>Scholarship / Concession</td>
-            <td>-₹ ${Number(inv.student_scholarship_amount).toLocaleString()}</td>
-          </tr>
-          ` : ''}
-
-          <tr>
-            <td>Total Payable</td>
-            <td>₹ ${Number(inv.amount).toLocaleString()}</td>
-          </tr>
-          <tr>
-            <td>Received</td>
-            <td>₹ ${Number(inv.paid_amount).toLocaleString()}</td>
-          </tr>
-          <tr>
-            <td>Payment Mode</td>
-            <td>${inv.transaction_type || "Online"}</td>
-          </tr>
-          <tr class="balance-row">
-            <td>Outstanding Balance</td>
-            <td>₹ ${balance.toLocaleString()}</td>
-          </tr>
-        </table>
-      </div>
-    </div>
-    <div class="signature">
-      <div class="signature-title">For : Vidyaaniketan Professional Academy</div>
-      <div class="auth">Authorized Signatory</div>
-    </div>
-  </div>
-</body>
-</html>
-    `
-    const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `Invoice_${invoiceNo}.html`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    printReceipt(receiptData, printLayout)
+    setPrintDialogOpen(false)
   }
 
   const handleWhatsAppShare = (inv: Invoice) => {
-    const invoiceNo = `INV${String(inv.id).padStart(3, "0")}`
+    const invoiceNo = inv.receipt_number
+      ? `RCP-${String(inv.receipt_number).padStart(4, "0")}`
+      : `INV${String(inv.id).padStart(3, "0")}`
     const amount = Number(inv.amount || 0)
     const paid = Number(inv.paid_amount || 0)
     const balance = amount - paid
     const message = [
       "Hello,",
       "",
-      `Invoice: ${invoiceNo}`,
+      `Receipt: ${invoiceNo}`,
       `Student: ${inv.student_name || "-"}`,
       `Standard: ${inv.student_standard || inv.standard || "-"}`,
       `Batch: ${inv.student_batch || inv.course || "-"}`,
@@ -992,7 +565,7 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
       `Paid Amount: Rs ${paid.toLocaleString()}`,
       `Balance: Rs ${balance.toLocaleString()}`,
       "",
-      "Please find your invoice details above.",
+      "Please find your receipt details above.",
     ].join("\n")
 
     const phone = ""
@@ -1145,9 +718,17 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
                     </TableRow>
                   ) : filteredInvoices.map(inv => {
                     const status = getStatus(inv)
+                    const rcpNo = inv.receipt_number
+                      ? `RCP-${String(inv.receipt_number).padStart(4, "0")}`
+                      : `INV${String(inv.id).padStart(3, "0")}`
                     return (
                       <TableRow key={inv.id} className="hover:bg-muted/50">
-                        <TableCell className="font-medium">INV{String(inv.id).padStart(3, "0")}</TableCell>
+                        <TableCell className="font-medium">
+                          <div>{rcpNo}</div>
+                          {inv.offline_receipt_number && (
+                            <div className="text-[10px] text-muted-foreground">Off: {inv.offline_receipt_number}</div>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div className="font-semibold text-slate-800">{inv.student_name}</div>
                           <div className="text-[11px] text-muted-foreground mt-0.5">
@@ -1181,12 +762,19 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
                               <Edit2 className="h-4 w-4" />
                             </Button>
                             <Button size="sm" variant="outline" className="h-8 w-8 p-0"
-                              onClick={() => handlePrint(inv)}>
+                              onClick={() => openPrintDialog(inv)}>
                               <Printer className="h-4 w-4" />
                             </Button>
                             <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-teal-600 hover:text-teal-700 hover:border-teal-300"
-                              title="Download Invoice"
-                              onClick={() => handleDownloadInvoice(inv)}>
+                              title="Download Receipt"
+                              onClick={() => {
+                                const receiptData: ReceiptData = {
+                                  ...inv,
+                                  amount: Number(inv.amount),
+                                  paid_amount: Number(inv.paid_amount),
+                                };
+                                downloadReceipt(receiptData, "full");
+                              }}>
                               <Download className="h-4 w-4" />
                             </Button>
                             <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:border-green-300"
@@ -1209,9 +797,9 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
         </CardContent>
       </Card>
 
-      {/* ── Create Invoice Modal ─────────────────────────────── */}
+      {/* ── Create / Edit Invoice Modal ────────────────────── */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
           </DialogHeader>
@@ -1318,7 +906,7 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
                   )}
                   {showDropdown && students.length === 0 && studentSearch.length > 0 && !studentsLoading && (
                     <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg px-4 py-3 text-sm text-muted-foreground">
-                      No students found for "{studentSearch}"
+                      No students found for &quot;{studentSearch}&quot;
                     </div>
                   )}
                 </div>
@@ -1351,6 +939,16 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
                     disabled={form.scholarship_type === "None"}
                   />
                 </div>
+                {/* Scholarship Reason */}
+                <div className="space-y-1 col-span-2">
+                  <Label>Scholarship Reason/Category <span className="text-xs text-muted-foreground">(Optional)</span></Label>
+                  <Input
+                    value={form.scholarship_reason}
+                    onChange={e => f("scholarship_reason", e.target.value)}
+                    placeholder="e.g. Merit, Sports, Economically Weaker"
+                    className="bg-white"
+                  />
+                </div>
               </div>
             )}
 
@@ -1369,20 +967,26 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
             {/* Installment Date + Transaction Type */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Installment Date</Label>
+                <Label>Payment Date</Label>
                 <Input type="date" value={form.install_date} onChange={e => f("install_date", e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Transaction Type <span className="text-destructive">*</span></Label>
+                <Label>Payment Mode <span className="text-destructive">*</span></Label>
                 <Select value={form.transaction_type} onValueChange={v => f("transaction_type", v)}>
-                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Cash"> Cash</SelectItem>
-                    <SelectItem value="Online">Online</SelectItem>
-                    <SelectItem value="Cheque"> Cheque</SelectItem>
+                    {PAYMENT_MODES.map(mode => (
+                      <SelectItem key={mode} value={mode}>{mode}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Transaction Reference */}
+            <div className="space-y-2">
+              <Label>Transaction Reference Number <span className="text-xs text-muted-foreground">(Optional)</span></Label>
+              <Input value={form.transaction_ref} onChange={e => f("transaction_ref", e.target.value)} placeholder="e.g. UPI ID, Cheque No, Card last 4" />
             </div>
 
             {/* Due Date */}
@@ -1395,6 +999,24 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
             <div className="space-y-2">
               <Label>Description</Label>
               <Input value={form.description} onChange={e => f("description", e.target.value)} placeholder="e.g. Tuition Fee – January" />
+            </div>
+
+            {/* Offline Receipt Number */}
+            <div className="space-y-2">
+              <Label>Offline Receipt Number <span className="text-xs text-muted-foreground">(Optional – for manual receipts)</span></Label>
+              <Input value={form.offline_receipt_number} onChange={e => f("offline_receipt_number", e.target.value)} placeholder="e.g. Manual receipt book number" />
+            </div>
+
+            {/* Remarks */}
+            <div className="space-y-2">
+              <Label>Remarks <span className="text-xs text-muted-foreground">(Optional)</span></Label>
+              <Input value={form.remarks} onChange={e => f("remarks", e.target.value)} placeholder="Any additional notes..." />
+            </div>
+
+            {/* Generated By */}
+            <div className="space-y-2">
+              <Label>Generated By</Label>
+              <Input value={form.generated_by} onChange={e => f("generated_by", e.target.value)} placeholder="Auto-filled from login" />
             </div>
           </div>
 
@@ -1410,15 +1032,21 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
 
       {/* ── View Modal ───────────────────────────────────────── */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Invoice Details</DialogTitle></DialogHeader>
           {selected && (() => {
             const status = getStatus(selected)
+            const rcpNo = selected.receipt_number
+              ? `RCP-${String(selected.receipt_number).padStart(4, "0")}`
+              : `INV${String(selected.id).padStart(3, "0")}`
             return (
               <div className="space-y-3">
                 <div className="text-center pb-4 border-b">
                   <h3 className="text-lg font-bold text-blue-600">Vidyaaniketan Professional Academy</h3>
-                  <p className="text-muted-foreground">Invoice #INV{String(selected.id).padStart(3, "0")}</p>
+                  <p className="text-muted-foreground">Receipt #{rcpNo}</p>
+                  {selected.offline_receipt_number && (
+                    <p className="text-xs text-muted-foreground">Offline: {selected.offline_receipt_number}</p>
+                  )}
                 </div>
                 {([
                   ["Student",          selected.student_name],
@@ -1426,8 +1054,9 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
                   ["Batch",            selected.student_batch || selected.course],
                   ["Branch",           selected.student_branch],
                   ["Description",      selected.description],
-                  ["Transaction Type", selected.transaction_type],
-                  ["Install Date",     fmtDate(selected.install_date)],
+                  ["Payment Mode",     selected.transaction_type],
+                  ["Txn Reference",    selected.transaction_ref],
+                  ["Payment Date",     fmtDate(selected.install_date)],
                   ["Next Installment Date", fmtDate(selected.due_date)],
                   ...(Number(selected.student_school_fee || 0) + Number(selected.student_academy_fee || 0) + Number(selected.student_hostel_fee || 0) > 0 ? [
                     ["Original Fee", `₹${(Number(selected.student_school_fee || 0) + Number(selected.student_academy_fee || 0) + Number(selected.student_hostel_fee || 0)).toLocaleString()}`]
@@ -1435,9 +1064,12 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
                   ...(Number(selected.student_scholarship_amount || 0) > 0 ? [
                     ["Scholarship / Concession", `-₹${Number(selected.student_scholarship_amount).toLocaleString()} (${selected.student_scholarship_type === "Percent" ? `${selected.student_scholarship_value}%` : "Flat"})`]
                   ] : []),
+                  ...(selected.scholarship_reason ? [["Scholarship Reason", selected.scholarship_reason]] : []),
                   ["Total Payable",    `₹${Number(selected.amount).toLocaleString()}`],
                   ["Paid Amount",      `₹${Number(selected.paid_amount).toLocaleString()}`],
                   ["Outstanding Balance", `₹${(Number(selected.amount) - Number(selected.paid_amount)).toLocaleString()}`],
+                  ...(selected.remarks ? [["Remarks", selected.remarks]] : []),
+                  ...(selected.generated_by ? [["Generated By", selected.generated_by]] : []),
                 ] as [string, string | undefined][]).map(([l, v]) => (
                   <div key={l} className="flex justify-between">
                     <span className="text-muted-foreground">{l}:</span>
@@ -1449,16 +1081,132 @@ ${Number(inv.student_scholarship_amount || 0) > 0 ? `
                   <Badge className={statusColor(status)}>{status}</Badge>
                 </div>
                 <div className="flex justify-end gap-2 pt-4 border-t">
-                  <Button variant="outline" size="sm" onClick={() => handlePrint(selected)}>
-                    <Printer className="h-4 w-4 mr-2" /> Print
-                  </Button>
-                  <Button className="bg-teal-600 hover:bg-teal-700 text-white" size="sm" onClick={() => handleDownloadInvoice(selected)}>
-                    <Download className="h-4 w-4 mr-2" /> Download
+                  <Button variant="outline" size="sm" onClick={() => { setViewOpen(false); openPrintDialog(selected) }}>
+                    <Printer className="h-4 w-4 mr-2" /> Print Receipt
                   </Button>
                 </div>
               </div>
             )
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Print Preview Dialog ─────────────────────────────── */}
+      <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Printer className="h-5 w-5" /> Print Receipt
+            </DialogTitle>
+          </DialogHeader>
+
+          {printInvoice && (
+            <div className="space-y-5 py-2">
+              {/* Receipt Info */}
+              <div className="rounded-lg bg-slate-50 p-4 space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Student:</span>
+                  <span className="font-semibold">{printInvoice.student_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Amount:</span>
+                  <span className="font-semibold">₹{Number(printInvoice.amount).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Paid:</span>
+                  <span className="font-semibold text-emerald-600">₹{Number(printInvoice.paid_amount).toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Layout Selection */}
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">Select Print Layout</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Top Half */}
+                  <button
+                    onClick={() => setPrintLayout("top")}
+                    className={`relative rounded-lg border-2 p-3 text-center transition-all hover:border-blue-400 ${printLayout === "top" ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200" : "border-gray-200"}`}
+                  >
+                    <div className="mb-2 mx-auto w-12 h-16 border border-gray-300 rounded overflow-hidden">
+                      <div className="h-1/2 bg-blue-500 flex items-center justify-center">
+                        <span className="text-[6px] text-white font-bold">PRINT</span>
+                      </div>
+                      <div className="h-1/2 bg-gray-100"></div>
+                    </div>
+                    <p className="text-xs font-semibold">Top Half</p>
+                  </button>
+
+                  {/* Bottom Half */}
+                  <button
+                    onClick={() => setPrintLayout("bottom")}
+                    className={`relative rounded-lg border-2 p-3 text-center transition-all hover:border-blue-400 ${printLayout === "bottom" ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200" : "border-gray-200"}`}
+                  >
+                    <div className="mb-2 mx-auto w-12 h-16 border border-gray-300 rounded overflow-hidden">
+                      <div className="h-1/2 bg-gray-100"></div>
+                      <div className="h-1/2 bg-blue-500 flex items-center justify-center">
+                        <span className="text-[6px] text-white font-bold">PRINT</span>
+                      </div>
+                    </div>
+                    <p className="text-xs font-semibold">Bottom Half</p>
+                  </button>
+
+                  {/* Full A4 */}
+                  <button
+                    onClick={() => setPrintLayout("full")}
+                    className={`relative rounded-lg border-2 p-3 text-center transition-all hover:border-blue-400 ${printLayout === "full" ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200" : "border-gray-200"}`}
+                  >
+                    <div className="mb-2 mx-auto w-12 h-16 border border-gray-300 rounded overflow-hidden">
+                      <div className="h-1/2 bg-blue-500 flex items-center justify-center">
+                        <span className="text-[6px] text-white font-bold">PRINT</span>
+                      </div>
+                      <div className="h-1/2 bg-blue-500 flex items-center justify-center border-t border-blue-300">
+                        <span className="text-[6px] text-white font-bold">PRINT</span>
+                      </div>
+                    </div>
+                    <p className="text-xs font-semibold">Full A4</p>
+                  </button>
+                </div>
+
+                {/* Layout description */}
+                <div className="text-xs text-muted-foreground bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  {printLayout === "top" && (
+                    <>⬆ <b>Top Half Printing:</b> Left side = ORIGINAL COPY, Right side = OFFICE COPY. Bottom half remains blank for reuse.</>
+                  )}
+                  {printLayout === "bottom" && (
+                    <>⬇ <b>Bottom Half Printing:</b> Top half remains blank. Bottom: Left = ORIGINAL COPY, Right = OFFICE COPY.</>
+                  )}
+                  {printLayout === "full" && (
+                    <>◼ <b>Full A4 Printing:</b> All 4 receipt sections printed. Top & Bottom both have ORIGINAL (left) and OFFICE (right) copies.</>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0 flex sm:flex-row flex-col">
+            <Button variant="outline" onClick={() => setPrintDialogOpen(false)}>Cancel</Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="text-teal-600 border-teal-200 hover:bg-teal-50"
+                onClick={() => {
+                  if (!printInvoice) return
+                  const receiptData: ReceiptData = {
+                    ...printInvoice,
+                    amount: Number(printInvoice.amount),
+                    paid_amount: Number(printInvoice.paid_amount),
+                  }
+                  downloadReceipt(receiptData, printLayout)
+                  setPrintDialogOpen(false)
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" /> Download HTML
+              </Button>
+              <Button onClick={executePrint} className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Printer className="h-4 w-4 mr-2" /> Print Now
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
