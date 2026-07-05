@@ -187,6 +187,7 @@ export const invoicesApi = {
     get(`/invoices${qs(filters)}`),
 
   summary: () => get("/invoices/summary"),
+  getNextReceiptNumber: () => get("/invoices/next-receipt-number"),
   getOne:  (id: string | number) => get(`/invoices/${id}`),
   create:  (data: Record<string, unknown>) => post("/invoices", data),
   update:  (id: string | number, data: Record<string, unknown>) =>

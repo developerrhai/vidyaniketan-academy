@@ -1105,14 +1105,17 @@ export default function StudentPerformanceDashboard() {
                 />
               </div>
 
-              <div className="mb-6 grid gap-6 lg:grid-cols-3">
+              <div className="mb-6 grid gap-6 lg:grid-cols-2">
                 <div className="lg:col-span-1">
                   <PerformanceChart assessmentRows={filteredHistoryRows} />
                 </div>
                 <div className="lg:col-span-1">
-                  <SubjectMarksChart subjects={displayData!.subjects} average={displayData!.stats.overallPercentage} />
+                  <PerformanceInsights insights={insights} />
                 </div>
-                <div className="lg:col-span-1"><PerformanceInsights insights={insights} /></div>
+              </div>
+
+              <div className="mb-6">
+                <SubjectMarksChart assessmentRows={filteredHistoryRows} />
               </div>
 
               <DetailedAnalysis subjects={displayData!.subjects} />
@@ -1148,16 +1151,17 @@ export default function StudentPerformanceDashboard() {
                 </div>
               </div>
 
-              <div className="mb-6 grid gap-6 lg:grid-cols-3">
+              <div className="mb-6 grid gap-6 lg:grid-cols-2">
                 <div className="lg:col-span-1">
                   <PerformanceChart assessmentRows={classPerformanceChartRows} />
                 </div>
                 <div className="lg:col-span-1">
-                  <SubjectMarksChart subjects={classSubjects} average={classStats.overallPercentage} />
-                </div>
-                <div className="lg:col-span-1">
                   <PerformanceInsights insights={classInsights} />
                 </div>
+              </div>
+
+              <div className="mb-6">
+                <SubjectMarksChart assessmentRows={classAssessments} />
               </div>
 
               {/* Student rankings list */}
