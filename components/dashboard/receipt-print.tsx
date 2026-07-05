@@ -19,6 +19,7 @@ export interface ReceiptData {
   id: number
   receipt_number?: string
   offline_receipt_number?: string
+  student_receipt_serial_number?: number
   student_name: string
   student_phone?: string | number
   student_standard?: string
@@ -102,12 +103,10 @@ function fmtDateTime(): string {
 }
 
 /* ── Build single A6 receipt HTML ───────────────────────── */
-function buildReceiptA6(data: ReceiptData, copyLabel: "ORIGINAL COPY" | "OFFICE COPY"): string {
-  const receiptNo = data.receipt_number
-    ? `RCP-${String(data.receipt_number).padStart(4, "0")}`
-    : data.offline_receipt_number
-      ? `OFF-${data.offline_receipt_number}`
-      : `INV-${String(data.id).padStart(4, "0")}`
+export function buildReceiptA6(data: ReceiptData, copyLabel: "ORIGINAL COPY" | "OFFICE COPY"): string {
+  const onlineReceiptNo = `RCP-${String(data.receipt_number || data.id).padStart(4, "0")}`
+  const offlineReceiptNo = data.offline_receipt_number ? `OFF-${data.offline_receipt_number}` : "_________________"
+  const studentSerialNo = data.student_receipt_serial_number ? `${data.student_receipt_serial_number}` : "1"
 
   const originalFee = (Number(data.student_school_fee || 0) + Number(data.student_academy_fee || 0) + Number(data.student_hostel_fee || 0))
     || (Number(data.student_fee || 0) + Number(data.student_scholarship_amount || 0))
@@ -124,117 +123,146 @@ function buildReceiptA6(data: ReceiptData, copyLabel: "ORIGINAL COPY" | "OFFICE 
       : ""
 
   const badgeClass = copyLabel === "ORIGINAL COPY" ? "original" : "office"
+  const formattedCopyLabel = copyLabel === "ORIGINAL COPY" ? "Original Copy" : "Office Copy"
 
   return `
+    <!-- MAIN WRAPPER: Limits size to A6 proportions and sets background context -->
     <div class="receipt-a6">
-      <!-- Watermark background logo -->
+      
+      <!-- SUBTLE WATERMARK: Positioned absolutely in the center with very low opacity for peak readability -->
       <div class="watermark-bg">
         <img src="${WATERMARK_BASE64}" alt="" />
       </div>
-      <!-- Center Diagonal Copy text watermark -->
-      <div class="copy-watermark-text">${copyLabel}</div>
 
-      <!-- Banner -->
+      <!-- HEADER LOGO: Rendered via optimized embedded Base64 vector asset -->
       <div class="banner">
         <img src="${BANNER_BASE64}" alt="Vidyaniketan Academy" />
       </div>
 
-      <!-- Receipt title row -->
+      <!-- METADATA GRID: Balanced 3-column layout guiding the eye naturally across categories -->
       <div class="receipt-title-row">
-        <div class="receipt-title">
-          PAYMENT RECEIPT
-          <span class="copy-badge ${badgeClass}">${copyLabel}</span>
+        
+        <!-- Left Column: Shorter, cleaner labels to prevent line wrapping -->
+        <div class="receipt-meta-left">
+          <div style="display: flex; gap: 4px; white-space: nowrap;">
+            <span style="font-weight: 600; color: #475569;">Receipt No:</span>
+            <span style="color: #0f172a; font-weight: 700;">${onlineReceiptNo}</span>
+          </div>
+          <span style="color: #cbd5e1;">|</span>
+          <div style="display: flex; gap: 4px; white-space: nowrap;">
+            <span style="font-weight: 600; color: #475569;">Offline Ref:</span>
+            <span style="color: #0f172a; font-weight: 700;">${offlineReceiptNo}</span>
+          </div>
         </div>
-        <div class="receipt-meta">
-          <span><b>Receipt No:</b> ${receiptNo}</span>
-          <span><b>Date:</b> ${fmtDate(data.install_date)}</span>
+
+        <!-- Center Column: Primary Title and Pill-Shaped Security Badge -->
+        <div class="receipt-title-center">
+          <div class="receipt-title">PAYMENT RECEIPT</div>
+          <div style="margin-top: 1mm; display: flex; justify-content: center;">
+            <span class="copy-badge ${badgeClass}">${formattedCopyLabel}</span>
+          </div>
+        </div>
+
+        <!-- Right Column: Contextual tracking metadata aligned to the right margin -->
+        <div class="receipt-meta-right">
+          <div style="display: flex; justify-content: flex-end; gap: 4px; width: 100%;">
+            <span style="font-weight: 600; color: #475569;">Date:</span>
+            <span style="color: #0f172a; font-weight: 700;">${fmtDate(data.install_date)}</span>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 4px; width: 100%;">
+            <span style="font-weight: 600; color: #475569;">Student Serial No:</span>
+            <span style="color: #0f172a; font-weight: 700;">${studentSerialNo}</span>
+          </div>
         </div>
       </div>
 
-      <!-- Student Info Box -->
+      <!-- STUDENT DETAILS CARD: Low cognitive load block with modern typography and alignment -->
       <div class="info-box">
-        <div class="info-item">
-          <span class="info-icon">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </span>
-          <span class="info-label">Student Name</span>
-          <span class="info-separator">:</span>
-          <span class="info-value"><b>${data.student_name || "—"}</b></span>
-        </div>
-        <div class="info-item">
-          <span class="info-icon">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.91a2 2 0 0 0 1.66 0z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-          </span>
-          <span class="info-label">Standard/Class</span>
-          <span class="info-separator">:</span>
-          <span class="info-value">${data.student_standard || data.standard || "—"}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-icon">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 18h12"/><path d="M6 14h12"/><path d="M6 10h12"/><path d="M6 6h12"/><path d="M3 22h18"/></svg>
-          </span>
-          <span class="info-label">Branch</span>
-          <span class="info-separator">:</span>
-          <span class="info-value">${data.student_branch || data.student_batch || data.course || "—"}</span>
-        </div>
+        <!-- Student Name Row -->
+        <span class="info-icon">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
+        <span class="info-label">Student Name</span>
+        <span class="info-separator">:</span>
+        <span class="info-value"><b>${data.student_name || "—"}</b></span>
+
+        <!-- Academic Standard Row -->
+        <span class="info-icon">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.91a2 2 0 0 0 1.66 0z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+        </span>
+        <span class="info-label">Standard / Class</span>
+        <span class="info-separator">:</span>
+        <span class="info-value">${data.student_standard || data.standard || "—"}</span>
+
+        <!-- Branch / Batch Location Row -->
+        <span class="info-icon">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 18h12"/><path d="M6 14h12"/><path d="M6 10h12"/><path d="M6 6h12"/><path d="M3 22h18"/></svg>
+        </span>
+        <span class="info-label">Branch & Batch</span>
+        <span class="info-separator">:</span>
+        <span class="info-value">${data.student_branch || data.student_batch || data.course || "—"}</span>
       </div>
 
-      <!-- Fee Table -->
+      <!-- FINANCIAL SUMMARY TABLE: Tabular alignment of items with clean high-contrast values -->
       <div class="section-row">
         <table class="fee-table">
           <thead>
-            <tr><th colspan="2">FEE DETAILS</th></tr>
+            <tr>
+              <th style="width: 70%;">FEE PARTICULARS</th>
+              <th style="width: 30%; text-align: right;">AMOUNT (₹)</th>
+            </tr>
           </thead>
           <tbody>
-            ${originalFee > 0 ? `<tr><td>Total Fee</td><td class="amt">₹${originalFee.toLocaleString("en-IN")}</td></tr>` : ""}
-            ${scholarshipAmt > 0 ? `<tr><td>Scholarship ${scholarshipLabel ? `(${scholarshipLabel})` : ""}</td><td class="amt scholarship">-₹${scholarshipAmt.toLocaleString("en-IN")}</td></tr>` : ""}
-            ${scholarshipAmt > 0 ? `<tr><td>Fee After Scholarship</td><td class="amt">₹${totalPayable.toLocaleString("en-IN")}</td></tr>` : ""}
-            ${originalFee === 0 ? `<tr><td>Total Fee</td><td class="amt">₹${totalPayable.toLocaleString("en-IN")}</td></tr>` : ""}
-            <tr class="highlight"><td>Current Payment</td><td class="amt">₹${currentPayment.toLocaleString("en-IN")}</td></tr>
-            <tr><td>Total Paid Amount</td><td class="amt">₹${totalPaid.toLocaleString("en-IN")}</td></tr>
-            <tr class="due-row"><td>Remaining Due</td><td class="amt">₹${remainingDue.toLocaleString("en-IN")}</td></tr>
+            ${originalFee > 0 ? `<tr><td>Total Course Fee</td><td class="amt">₹${originalFee.toLocaleString("en-IN")}</td></tr>` : ""}
+            ${scholarshipAmt > 0 ? `<tr><td>Scholarship Benefit ${scholarshipLabel ? `(${scholarshipLabel})` : ""}</td><td class="amt scholarship">-₹${scholarshipAmt.toLocaleString("en-IN")}</td></tr>` : ""}
+            ${scholarshipAmt > 0 ? `<tr><td>Net Payable Fee</td><td class="amt">₹${totalPayable.toLocaleString("en-IN")}</td></tr>` : ""}
+            ${originalFee === 0 ? `<tr><td>Total Course Fee</td><td class="amt">₹${totalPayable.toLocaleString("en-IN")}</td></tr>` : ""}
+            
+            <!-- CURRENT PAYMENT: Highlighted with emerald tint for immediate transaction visibility -->
+            <tr class="highlight"><td>Current Payment (Paid Now)</td><td class="amt">₹${currentPayment.toLocaleString("en-IN")}</td></tr>
+            
+            <tr><td>Total Fee Collected So Far</td><td class="amt">₹${totalPaid.toLocaleString("en-IN")}</td></tr>
+            
+            <!-- BALANCE DUE: Bold red styling for attention without using heavy ink backgrounds -->
+            <tr class="due-row"><td>Remaining Balance Due</td><td class="amt">₹${remainingDue.toLocaleString("en-IN")}</td></tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Amount in words -->
+      <!-- LEGAL/COMPLIANCE METADATA: Ink-friendly rows for proof of transaction -->
       <div class="amount-words">
         Amount in words: <i>${numberToWords(Math.round(currentPayment))} Rupees Only</i>
       </div>
 
       ${data.scholarship_reason ? `<div class="mini-row"><b>Scholarship Reason:</b> ${data.scholarship_reason}</div>` : ""}
 
-      <!-- Payment Mode Info Row -->
+      <!-- PAYMENT MODE: Prominent details on transaction method -->
       <div class="payment-mode-row">
-        <span><b>Payment Mode :</b> ${data.transaction_type || "Cash"}</span>
-        <span><b>Txn Ref :</b> ${data.transaction_ref || "—"}</span>
+        <span><b>Payment Mode:</b> ${data.transaction_type || "Cash"}</span>
+        <span><b>Txn Ref:</b> ${data.transaction_ref || "—"}</span>
       </div>
 
-      ${data.remarks ? `<div class="mini-row"><b>Remarks:</b> ${data.remarks}</div>` : ""}
+      <!-- Invisible remarks spacer to maintain exact vertical whitespace budget -->
+      <div class="mini-row" style="visibility: hidden;">&nbsp;</div>
 
-      <!-- Footer / Signature / QR Area -->
+      <!-- SIGNATORY & FOOTER BLOCK: Authoritative signature zone and brand contact info -->
       <div class="receipt-footer-area">
-        <div class="generated-info">
-          <div><b>Generated By :</b> ${data.generated_by || "—"}</div>
-          <div><b>Generated On :</b> ${fmtDateTime()}</div>
+        <div class="footer-info-left">
+          <div><b>Generated On:</b> ${fmtDateTime()}</div>
+          <div style="font-size: 5.5pt; color: #64748b; margin-top: 0.8mm; font-style: italic;">* This is a system generated invoice.</div>
         </div>
-        
-        <div style="display:flex;align-items:flex-end;">
-          <div class="signature-block">
-            <div class="signature-graphic"></div>
-            <div class="sig-line"></div>
-            <div class="sig-text">Authorized Signatory</div>
-          </div>
+        <div class="footer-info-right">
+          <div><b>Generated By:</b> ${data.generated_by || "—"}</div>
         </div>
       </div>
 
-      <!-- Dark Full-width Brand Footer Band -->
+      <!-- DARK FOOTER ACCENT: Deep blue anchor giving the document an official, certified finish -->
       <div class="academy-footer-band">
-        <span class="footer-left">
+        <span class="footer-address">
           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline;margin-right:3px;vertical-align:middle;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-          VNPA Indapur | Arun Galaxy, Shreeram Chowk, Indapur, Maharashtra - 413106
+          Shreeram Chowk, Akluj Naka, Indapur, Maharashtra - 413106
         </span>
-        <span class="footer-right">
+        <span class="footer-phone">
           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline;margin-right:3px;vertical-align:middle;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
           8180802049
         </span>
@@ -243,7 +271,7 @@ function buildReceiptA6(data: ReceiptData, copyLabel: "ORIGINAL COPY" | "OFFICE 
   `
 }
 
-const styleCSS = `
+export const styleCSS = `
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
   @page {
@@ -331,7 +359,7 @@ const styleCSS = `
     position: relative;
     width: 100%;
     height: 100%;
-    padding: 5mm 5mm 0mm 5mm;
+    padding: 3mm 4mm 0mm 4mm; /* Compact padding to keep content budget within A6 height limit */
     display: flex;
     flex-direction: column;
     font-size: 7.5pt;
@@ -346,7 +374,7 @@ const styleCSS = `
     left: 50%;
     transform: translate(-50%, -50%);
     width: 58%;
-    opacity: 0.50; /* Clearly visible subtle logo watermark */
+    opacity: 0.50;
     pointer-events: none;
     z-index: 0;
   }
@@ -371,25 +399,25 @@ const styleCSS = `
 
   /* ── Badge copy label in header ──────────────────────── */
   .copy-badge {
-    font-size: 7pt;
+    font-size: 6.2pt; /* Tighter copy badge font size */
     font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 4px;
+    padding: 1.5px 6.5px; /* Compact padding for small pill stamp */
+    border-radius: 9999px; /* Official security stamp-like pill shape */
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-left: 10px;
-    display: inline-block;
-    vertical-align: middle;
+    letter-spacing: 0.8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   .copy-badge.original {
-    background-color: #eff6ff;
-    color: #2563eb;
-    border: 1px solid #bfdbfe;
+    background-color: #f0fdf4; /* Light emerald green background for distinct safety look */
+    color: #166534;
+    border: 1px solid #bbf7d0;
   }
   .copy-badge.office {
-    background-color: #f8fafc;
-    color: #64748b;
-    border: 1px solid #cbd5e1;
+    background-color: #f8fafc; /* Professional neutral slate background */
+    color: #475569;
+    border: 1px solid #e2e8f0;
   }
 
   /* ── Banner ──────────────────────────────────────────── */
@@ -397,13 +425,13 @@ const styleCSS = `
     position: relative;
     z-index: 1;
     text-align: center;
-    margin-bottom: 2mm;
+    margin-bottom: 1.5mm; /* Reduced space */
     flex-shrink: 0;
   }
   .banner img {
     width: 100%;
     height: auto;
-    max-height: 16mm;
+    max-height: 11mm; /* Compact brand logo height to save vertical budget */
     object-fit: contain;
   }
 
@@ -414,50 +442,65 @@ const styleCSS = `
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.5mm 0;
+    padding: 1.2mm 0; /* Compact vertical padding */
     border-top: 1.5px solid #1e40af;
     border-bottom: 1.5px solid #1e40af;
-    margin-bottom: 2.5mm;
+    margin-bottom: 2mm; /* Reduced margin */
     flex-shrink: 0;
+  }
+  .receipt-meta-left {
+    font-size: 7.2pt;
+    color: #334155;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    width: 42%;
+  }
+  .receipt-title-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 28%;
   }
   .receipt-title {
     font-size: 9pt;
     font-weight: 800;
     color: #1e40af;
-    letter-spacing: 1px;
-    display: flex;
-    align-items: center;
+    letter-spacing: 0.5px;
+    white-space: nowrap; /* Prevent title wrapping on small screens/containers */
   }
-  .receipt-meta {
-    text-align: right;
-    font-size: 7.5pt;
+  .receipt-meta-right {
+    font-size: 7.2pt;
     color: #334155;
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2.5px;
+    align-items: flex-end;
+    width: 30%;
   }
 
   /* ── Info Box Container ──────────────────────────────── */
   .info-box {
     border: 1px solid #e2e8f0;
-    border-radius: 5px;
-    padding: 2mm 3mm;
-    background-color: rgba(248, 250, 252, 0.45);
-    margin-bottom: 2.5mm;
+    border-radius: 6px; /* Smooth professional border radius */
+    padding: 2mm 3.2mm; /* Reduced card padding */
+    background-color: #f8fafc; /* Modern light card background for clean separation */
+    margin-bottom: 1.8mm; /* Reduced card margin */
     position: relative;
     z-index: 1;
-  }
-  .info-item {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto auto auto 1fr;
+    row-gap: 1.2mm; /* Compact gap */
+    column-gap: 2mm;
     align-items: center;
-    font-size: 7.5pt;
-    margin-bottom: 1.2mm;
   }
-  .info-item:last-child { margin-bottom: 0; }
   .info-icon {
     width: 14px;
     height: 14px;
-    margin-right: 8px;
     color: #475569;
     display: inline-flex;
     align-items: center;
@@ -466,14 +509,15 @@ const styleCSS = `
   .info-label {
     font-weight: 600;
     color: #475569;
-    width: 90px;
+    font-size: 7.5pt;
   }
   .info-separator {
-    margin-right: 8px;
     color: #94a3b8;
+    font-size: 7.5pt;
   }
   .info-value {
     color: #0f172a;
+    font-size: 7.5pt;
   }
 
   /* Transparency Overrides */
@@ -489,19 +533,18 @@ const styleCSS = `
     z-index: 1;
   }
   .fee-table th {
-    background: #0b2e5c;
-    color: #fff;
+    background: #0f172a; /* Premium dark slate header to highlight branding */
+    color: #ffffff;
     font-size: 7.5pt;
     font-weight: 700;
-    padding: 1.5mm 2.5mm;
+    padding: 1.4mm 2.2mm; /* Compact header cell padding */
     text-align: left;
-    letter-spacing: .5px;
-    border-radius: 4px 4px 0 0;
+    letter-spacing: 0.5px;
   }
   .fee-table td {
-    padding: 1.2mm 2.5mm;
+    padding: 1.1mm 2.2mm; /* Compact body cell padding */
     font-size: 7.5pt;
-    border-bottom: 0.5px solid #e2e8f0;
+    border-bottom: 1px solid #f1f5f9; /* Ink-friendly modern divider lines */
     color: #334155;
   }
   .fee-table .amt {
@@ -510,18 +553,20 @@ const styleCSS = `
     color: #0f172a;
     white-space: nowrap;
   }
-  .fee-table .scholarship { color: #dc2626; }
+  .fee-table .scholarship { color: #b91c1c; } /* Distinct deep red scholarship color */
   .fee-table .highlight td {
-    background-color: rgba(240, 253, 244, 0.5) !important;
+    background-color: #f0fdf4 !important; /* Soft emerald background for current payment tracking */
     font-weight: 700;
     color: #166534;
+    border-bottom: 1px solid #bbf7d0;
   }
   .fee-table .due-row td {
-    border-top: 1.5px solid #334155;
-    border-bottom: none;
-    color: #dc2626;
+    background-color: #fef2f2 !important; /* Soft rose background for immediate attention on pending dues */
+    color: #991b1b;
     font-size: 8pt;
     font-weight: 700;
+    border-top: 1px solid #fecaca;
+    border-bottom: 1px solid #fecaca;
   }
 
   /* ── Amount in words ─────────────────────────────────── */
@@ -530,7 +575,7 @@ const styleCSS = `
     z-index: 1;
     font-size: 7pt;
     color: #475569;
-    padding: 1.5mm 1.5mm 1.5mm 0;
+    padding: 1mm 1.5mm 1mm 0; /* Compact amount padding */
     border-bottom: 0.5px solid #e2e8f0;
     flex-shrink: 0;
   }
@@ -540,7 +585,7 @@ const styleCSS = `
     position: relative;
     z-index: 1;
     font-size: 7.5pt;
-    padding: 2mm 0;
+    padding: 1.5mm 0; /* Compact padding */
     display: flex;
     justify-content: space-between;
     border-bottom: 0.5px solid #e2e8f0;
@@ -577,10 +622,17 @@ const styleCSS = `
     padding-bottom: 2mm;
     flex-shrink: 0;
   }
-  .generated-info {
+  .footer-info-left {
     font-size: 6.5pt;
     color: #64748b;
     line-height: 1.45;
+    text-align: left;
+  }
+  .footer-info-right {
+    font-size: 6.5pt;
+    color: #64748b;
+    line-height: 1.45;
+    text-align: right;
   }
   .signature-block {
     text-align: center;
@@ -638,15 +690,19 @@ const styleCSS = `
   .academy-footer-band {
     background-color: #0b2e5c;
     color: #ffffff;
-    font-size: 6pt;
+    font-size: 7.2pt;
     display: flex;
-    justify-content: space-between;
-    padding: 1.5mm 3mm;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2.5px;
+    padding: 2.5mm 4mm;
     border-radius: 0 0 4px 4px;
     position: relative;
     z-index: 1;
     flex-shrink: 0;
     width: 100%;
+    text-align: center;
   }
 
   /* ── Print overrides ─────────────────────────────────── */
@@ -661,7 +717,7 @@ const styleCSS = `
   }
 `;
 
-function buildPageHtml(gridHtml: string, title: string, layout: string): string {
+export function buildPageHtml(gridHtml: string, title: string, layout: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
