@@ -92,14 +92,26 @@ function numberToWords(num: number): string {
 function fmtDate(d?: string): string {
   if (!d) return "—"
   const date = new Date(d)
-  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+  const day = String(date.getDate()).padStart(2, "0")
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const year = date.getFullYear()
+  return `${day}/${month}/${year}`
 }
 
 function fmtDateTime(): string {
-  return new Date().toLocaleString("en-IN", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: true,
-  })
+  const date = new Date()
+  const day = String(date.getDate()).padStart(2, "0")
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const year = date.getFullYear()
+  
+  let hours = date.getHours()
+  const minutes = String(date.getMinutes()).padStart(2, "0")
+  const ampm = hours >= 12 ? 'pm' : 'am'
+  hours = hours % 12
+  hours = hours ? hours : 12
+  const strTime = String(hours).padStart(2, "0") + ':' + minutes + ' ' + ampm
+  
+  return `${day}/${month}/${year}, ${strTime}`
 }
 
 /* ── Build single A6 receipt HTML ───────────────────────── */
@@ -111,10 +123,10 @@ export function buildReceiptA6(data: ReceiptData, copyLabel: "ORIGINAL COPY" | "
   const originalFee = (Number(data.student_school_fee || 0) + Number(data.student_academy_fee || 0) + Number(data.student_hostel_fee || 0))
     || (Number(data.student_fee || 0) + Number(data.student_scholarship_amount || 0))
   const scholarshipAmt = Number(data.student_scholarship_amount || 0)
-  const totalPayable = Number(data.amount || 0)
+  const totalPayable = Number(data.student_fee || data.amount || 0)
   const currentPayment = Number(data.paid_amount || 0)
   const totalPaid = Number(data.student_paid_fee || data.paid_amount || 0)
-  const remainingDue = Math.max(0, totalPayable - currentPayment)
+  const remainingDue = Math.max(0, totalPayable - totalPaid)
 
   const scholarshipLabel = data.student_scholarship_type === "Percent"
     ? `${data.student_scholarship_value}%`
