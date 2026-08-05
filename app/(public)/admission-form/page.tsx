@@ -2,6 +2,7 @@
 
 import { Header } from "@/components/ui/header"
 import { useState } from "react"
+import { useCourseBatches } from "@/hooks/useCourseBatches"
 
 const STANDARDS = [
   "1st Standard", "2nd Standard", "3rd Standard", "4th Standard", "5th Standard",
@@ -10,22 +11,7 @@ const STANDARDS = [
 ]
 
 const BRANCHES = ["Main Branch", "SOF Branch"]
-const JUNIOR_BATCHES = [
-  "1st Standard", "2nd Standard", "3rd Standard",
-  "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
-  "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
-  "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
-  "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
-  "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
-]
-const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"]
 
-const getBatchOptions = (std: string) => {
-  if (std === "11th Standard" || std === "12th Standard") {
-    return SENIOR_BATCHES;
-  }
-  return JUNIOR_BATCHES;
-}
 
 const RULES = [
   "माझ्या पाल्याची अकॅडमीमधील उपस्थिती किमान 85% ठेवणे बंधनकारक राहील.",
@@ -77,6 +63,13 @@ const initial: FormData = {
 type Step = "form" | "consent" | "done"
 
 export default function AdmissionFormPage() {
+  const { juniorBatches: JUNIOR_BATCHES, seniorBatches: SENIOR_BATCHES, allBatches: ALL_BATCHES } = useCourseBatches();
+  const getBatchOptions = (std: string) => {
+    if (std === "11th Standard" || std === "12th Standard") {
+      return SENIOR_BATCHES;
+    }
+    return JUNIOR_BATCHES;
+  };
   const [form, setForm]             = useState<FormData>(initial)
   const [step, setStep]             = useState<Step>("form")
   const [submitting, setSubmitting] = useState(false)
@@ -95,11 +88,22 @@ export default function AdmissionFormPage() {
     setError("")
   }
 
-  // All fields are optional — no validation errors shown
-  const fieldError = (_key: keyof FormData) => ""
+  // All fields are optional except Aadhar — no validation errors shown
+  const fieldError = (key: keyof FormData) => {
+    if (key === "aadharNumber" && touched[key] && !form[key]) {
+      return "Aadhar Number is mandatory"
+    }
+    return ""
+  }
 
-  // No required fields — always passes
-  const validate = (): string | undefined => undefined
+  // Validate aadhar
+  const validate = (): string | undefined => {
+    if (!form.aadharNumber) {
+      setTouched(prev => ({ ...prev, aadharNumber: true }))
+      return "Aadhar Number is mandatory"
+    }
+    return undefined
+  }
 
   // Step 1 → go to consent screen
   const handleNext = (e: React.FormEvent) => {

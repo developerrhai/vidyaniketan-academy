@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import { Header } from "@/components/ui/header"
+import { useCourseBatches } from "@/hooks/useCourseBatches"
 
 const STEPS = ["Basic Details", "Academic", "Family & Contact", "Other Info"]
 
@@ -12,22 +13,7 @@ const STANDARDS = [
   "11th Standard", "12th Standard"
 ]
 
-const JUNIOR_BATCHES = [
-  "1st Standard", "2nd Standard", "3rd Standard",
-  "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
-  "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
-  "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
-  "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
-  "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
-]
-const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"]
 
-const getBatchOptions = (std: string) => {
-  if (std === "11th Standard" || std === "12th Standard") {
-    return SENIOR_BATCHES;
-  }
-  return JUNIOR_BATCHES;
-}
 
 const REFERENCES = [
   "Social Media (Instagram/Facebook)",
@@ -90,6 +76,13 @@ const initial: FormData = {
 
 
 export default function InquiryFormPage() {
+  const { juniorBatches: JUNIOR_BATCHES, seniorBatches: SENIOR_BATCHES, allBatches: ALL_BATCHES } = useCourseBatches();
+  const getBatchOptions = (std: string) => {
+    if (std === "11th Standard" || std === "12th Standard") {
+      return SENIOR_BATCHES;
+    }
+    return JUNIOR_BATCHES;
+  };
   const [step, setStep] = useState(0)
   const [form, setForm] = useState<FormData>(initial)
   const [submitting, setSubmitting] = useState(false)

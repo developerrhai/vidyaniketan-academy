@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Receipt, Plus, Eye, Printer, Trash2, CheckCircle, Clock, AlertCircle, Loader2, Search, X, Edit2, FileSpreadsheet, MessageCircle, Download } from "lucide-react"
 import { invoicesApi, studentsApi } from "@/lib/api"
 import { printReceipt, downloadReceipt, type ReceiptData, type PrintLayout } from "./receipt-print"
+import { useCourseBatches } from "@/hooks/useCourseBatches";
 
 interface Invoice {
   id: number
@@ -101,20 +102,21 @@ const STANDARDS = [
 
 const BRANCHES = ["Main Branch", "SOF Branch"]
 
-const JUNIOR_BATCHES = [
-  "1st Standard", "2nd Standard", "3rd Standard",
-  "4th Standard", "4th Scholarship", "5th Standard", "5th Scholarship(नवोदय / सैनिक)",
-  "6th Standard", "6th Foundation", "7th Standard", "7th Scholarship", "7th Foundation",
-  "6th–7th Foundation", "8th Standard", "8th Foundation", "8th Regular",
-  "9th Standard", "9th Photon", "9th Foundation", "10th Standard",
-  "Basic Foundation 1 (4th to 6th)", "Basic Foundation 2 (7th to 9th)"
-]
-const SENIOR_BATCHES = ["JEE", "NEET", "Foundation", "CET"]
-const ALL_BATCHES = Array.from(new Set([...JUNIOR_BATCHES, ...SENIOR_BATCHES]))
+
+
+
 
 const PAYMENT_MODES = ["Cash", "UPI", "Card", "Bank Transfer", "Cheque"]
 
 export function InvoicesContent() {
+
+  const { juniorBatches: JUNIOR_BATCHES, seniorBatches: SENIOR_BATCHES, allBatches: ALL_BATCHES } = useCourseBatches();
+  const getBatchOptions = (std: string) => {
+    if (std === "11th Standard" || std === "12th Standard") {
+      return SENIOR_BATCHES;
+    }
+    return JUNIOR_BATCHES;
+  };
   const [invoices,     setInvoices]     = useState<Invoice[]>([])
   const [summary,      setSummary]      = useState<Summary>({ total_invoiced: 0, total_paid: 0, total_pending: 0 })
   const [loading,      setLoading]      = useState(true)
@@ -197,7 +199,7 @@ export function InvoicesContent() {
     const timer = setTimeout(async () => {
       setStudentsLoading(true)
       try {
-        const res: any = await studentsApi.getAll({ search: studentSearch })
+        const res: any = await studentsApi.getAll({ search: studentSearch.trim() })
         setStudents(res.data || [])
         setShowDropdown(true)
       } catch {
@@ -218,8 +220,8 @@ export function InvoicesContent() {
     ...prev,
     student_name: s.name,
     student_id:   String(s.id),
-    amount:       remaining > 0 ? String(remaining) : String(s.fee),
-    paid_amount:  String(s.paid_fee),
+    amount:       String(remaining > 0 ? remaining : 0),
+    paid_amount:  "",
     description:  `Tuition Fee – ${s.course || s.standard + "th Std"}`,
     scholarship_type: s.scholarship_type || "None",
     scholarship_value: String(s.scholarship_value || 0),

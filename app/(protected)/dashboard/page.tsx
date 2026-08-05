@@ -15,9 +15,11 @@ import { AppointmentsContent }            from "@/components/dashboard/appointme
 import { FinanceContent }                 from "@/components/dashboard/finance-content"
 import { TeacherUpdatesContent }          from "@/components/dashboard/teacher-updates"
 import { StudentManagementContent } from "@/components/dashboard/StudentManagementContent"
+import { SettingsBatchesContent }         from "@/components/dashboard/settings-batches-content"
 import { RecycleBinContent }              from "@/components/dashboard/recycle-bin-content"
 import { FeeReportsContent }              from "@/components/dashboard/fee-reports-content"
 import { HostelStudentsContent }          from "@/components/dashboard/hostel-students-content"
+import { DuplicateStudentsContent } from "@/components/dashboard/duplicate-students-content"
 import { getToken }                       from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -75,6 +77,8 @@ export default function DashboardPage() {
       case "appointments":      return <AppointmentsContent />
       case "finance":           return <FinanceContent />
       case "recycleBin":        return <RecycleBinContent />
+      case "settingsBatches":   return <SettingsBatchesContent />
+      case "duplicate-students": return <DuplicateStudentsContent />
       default:                  return <DashboardContent />
     }
   }

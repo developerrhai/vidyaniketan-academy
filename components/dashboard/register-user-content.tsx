@@ -67,6 +67,10 @@ export function RegisterUserContent() {
       setMsg({ text: "Name and role are required", ok: false })
       return
     }
+    if (formData.role === "student" && !formData.aadhar) {
+      setMsg({ text: "Aadhar Number is required for students", ok: false })
+      return
+    }
     setLoading(true); setMsg(null)
     const admin_id = localStorage.getItem("userInfo") ? JSON.parse(localStorage.getItem("userInfo") as string)?.id : null
 
@@ -253,7 +257,7 @@ export function RegisterUserContent() {
                   <Input value={formData.address} onChange={e => set("address", e.target.value)} placeholder="Full address" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2"><User className="h-4 w-4 text-emerald-500" /> Aadhar Number</Label>
+                  <Label className="flex items-center gap-2"><User className="h-4 w-4 text-emerald-500" /> Aadhar Number <span className="text-destructive">*</span></Label>
                   <Input value={formData.aadhar} onChange={e => set("aadhar", e.target.value)} placeholder="Aadhar number" />
                 </div>
                 <div className="space-y-2">

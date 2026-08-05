@@ -287,4 +287,9 @@ export const studentRankHistoryApi = {
   snapshotAll: () => post("/student-rank-history/snapshot", {}),
 };
 
-
+export const courseBatchesApi = {
+  getAll: () => get("/course-batches"),
+  create: (data: { batch_name: string; category: "JUNIOR" | "SENIOR" }) => post("/course-batches", data),
+  update: (id: string | number, data: { batch_name: string; category: "JUNIOR" | "SENIOR" }) => put(`/course-batches/${id}`, data),
+  remove: (id: string | number) => del(`/course-batches/${id}`),
+};
