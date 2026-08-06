@@ -36,8 +36,8 @@ export function StudentsContent() {
 
   const load = async () => {
     try {
-      const data = await studentsApi.getAll() as Student[]
-      setStudents(data)
+      const res = await studentsApi.getAll() as { success: boolean; data: Student[] }
+      setStudents(Array.isArray(res.data) ? res.data : [])
     } catch (err) {
       console.error(err)
     } finally {

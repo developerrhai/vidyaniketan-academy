@@ -19,3 +19,6 @@ node_modules
 .next/
 .DS_Store
 .vercel
+
+deployment_guide.md
+development_session_summary.md
