@@ -27,6 +27,8 @@ export type SectionType =
   | "appointments"
   | "finance"
   | "recycleBin"
+  | "settingsBatches"
+  | "duplicate-students"
 
 interface SidebarProps {
   activeSection: SectionType
