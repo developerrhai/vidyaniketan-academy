@@ -2,7 +2,7 @@
 
 import {
   Home, User, UserPlus, GraduationCap, Users,
-  Receipt, ClipboardList, Calendar, Wallet, LogOut, Menu, X, Trash2
+  Receipt, ClipboardList, Calendar, Wallet, LogOut, Menu, X, Trash2, Settings
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
@@ -45,6 +45,7 @@ const menuItems: { id: SectionType; label: string; icon: React.ReactNode }[] = [
   { id: "invoices",     label: "Invoices",      icon: <Receipt className="h-5 w-5" /> },
   { id: "appointments", label: "Appointments",  icon: <Calendar className="h-5 w-5" /> },
   { id: "finance",      label: "Finance",       icon: <Wallet className="h-5 w-5" /> },
+  { id: "settingsBatches", label: "Settings & Batches", icon: <Settings className="h-5 w-5" /> },
   { id: "recycleBin",   label: "Recycle Bin",   icon: <Trash2 className="h-5 w-5" /> },
 ]
 
@@ -91,7 +92,8 @@ export function Sidebar({
               activeSection === "inquiryStudents"    ||
               activeSection === "studentManagementContent" ||
               activeSection === "hostelStudents" ||
-              activeSection === "feeReports"
+              activeSection === "feeReports" ||
+              activeSection === "duplicate-students"
 
             return (
               <div key={item.id}>
@@ -160,6 +162,15 @@ export function Sidebar({
                       )}
                     >
                       Fee Reports
+                    </button>
+                    <button
+                      onClick={() => { onSectionChange("duplicate-students"); setMobileOpen(false) }}
+                      className={cn(
+                        "block w-full text-left px-3 py-2 text-sm hover:text-amber-400",
+                        activeSection === "duplicate-students" ? "text-amber-400" : "text-slate-300"
+                      )}
+                    >
+                      Duplicate Students
                     </button>
                   </div>
                 )}
