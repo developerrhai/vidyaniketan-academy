@@ -140,6 +140,7 @@ export function InvoicesContent() {
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false)
   const [whatsappInvoice,    setWhatsappInvoice]    = useState<Invoice | null>(null)
   const [whatsappPhone,      setWhatsappPhone]      = useState("")
+  const [whatsappLanguage,   setWhatsappLanguage]   = useState("en")
   const [whatsappSending,    setWhatsappSending]    = useState(false)
   const [whatsappStatus,     setWhatsappStatus]     = useState<{ type: "success" | "error"; message: string } | null>(null)
 
@@ -571,7 +572,7 @@ export function InvoicesContent() {
     setWhatsappSending(true)
     setWhatsappStatus(null)
     try {
-      const res: any = await invoicesApi.sendWhatsApp(whatsappInvoice.id, { phone: cleanPhone })
+      const res: any = await invoicesApi.sendWhatsApp(whatsappInvoice.id, { phone: cleanPhone, language: whatsappLanguage })
       if (res.success) {
         setWhatsappStatus({
           type: "success",
@@ -1293,21 +1294,40 @@ export function InvoicesContent() {
                     <Badge variant="outline" className="border-emerald-300 text-emerald-800 bg-white">{rcpNo}</Badge>
                   </div>
 
-                  <div className="pt-2">
-                    <Label htmlFor="whatsapp-phone" className="text-xs text-emerald-800 font-medium flex items-center gap-1 mb-1">
-                      <Phone className="h-3.5 w-3.5" /> Receiver Phone Number <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="whatsapp-phone"
-                      value={whatsappPhone}
-                      onChange={(e) => setWhatsappPhone(e.target.value)}
-                      placeholder="e.g. 9876543210 or 919876543210"
-                      className="bg-white border-emerald-300 focus-visible:ring-emerald-500 font-mono text-sm"
-                    />
-                    <p className="text-[11px] text-emerald-700 mt-1">
-                      10-digit mobile numbers will automatically use country code +91.
-                    </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    <div>
+                      <Label htmlFor="whatsapp-phone" className="text-xs text-emerald-800 font-medium flex items-center gap-1 mb-1">
+                        <Phone className="h-3.5 w-3.5" /> Receiver Phone Number <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="whatsapp-phone"
+                        value={whatsappPhone}
+                        onChange={(e) => setWhatsappPhone(e.target.value)}
+                        placeholder="e.g. 9876543210 or 919876543210"
+                        className="bg-white border-emerald-300 focus-visible:ring-emerald-500 font-mono text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="whatsapp-lang" className="text-xs text-emerald-800 font-medium flex items-center gap-1 mb-1">
+                        Template Language
+                      </Label>
+                      <Select value={whatsappLanguage} onValueChange={setWhatsappLanguage}>
+                        <SelectTrigger id="whatsapp-lang" className="bg-white border-emerald-300 text-xs">
+                          <SelectValue placeholder="Select Language" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="en">English (en)</SelectItem>
+                          <SelectItem value="en_us">English US (en_us)</SelectItem>
+                          <SelectItem value="mr">Marathi (mr)</SelectItem>
+                          <SelectItem value="hi">Hindi (hi)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+                  <p className="text-[11px] text-emerald-700 mt-1">
+                    10-digit mobile numbers will automatically use country code +91. Select language matching your approved template in RHAI Tech.
+                  </p>
                 </div>
 
                 {/* Template Variables Preview Card */}
