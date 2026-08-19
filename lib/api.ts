@@ -39,12 +39,12 @@ async function request<T = unknown>(
   return json;
 }
 
-const get  = (path: string) => request(path);
+const get = (path: string) => request(path);
 const post = (path: string, body: unknown) =>
   request(path, { method: "POST", body: JSON.stringify(body) });
-const put  = (path: string, body: unknown) =>
-  request(path, { method: "PUT",  body: JSON.stringify(body) });
-const del  = (path: string) => request(path, { method: "DELETE" });
+const put = (path: string, body: unknown) =>
+  request(path, { method: "PUT", body: JSON.stringify(body) });
+const del = (path: string) => request(path, { method: "DELETE" });
 
 /* ── query-string builder ───────────────────────────────── */
 function qs(params: Record<string, string | undefined>) {
@@ -162,7 +162,7 @@ export const inquiryExtraApi = {
   //   });
   //   return res.json();
   // },
-   create: (payload: Record<string, unknown>) => post("/inquiry-extra", payload),
+  create: (payload: Record<string, unknown>) => post("/inquiry-extra", payload),
 };
 
 /* ══════════════════════════════════════════════════════════
@@ -188,12 +188,12 @@ export const invoicesApi = {
 
   summary: () => get("/invoices/summary"),
   getNextReceiptNumber: () => get("/invoices/next-receipt-number"),
-  getOne:  (id: string | number) => get(`/invoices/${id}`),
-  create:  (data: Record<string, unknown>) => post("/invoices", data),
-  update:  (id: string | number, data: Record<string, unknown>) =>
+  getOne: (id: string | number) => get(`/invoices/${id}`),
+  create: (data: Record<string, unknown>) => post("/invoices", data),
+  update: (id: string | number, data: Record<string, unknown>) =>
     put(`/invoices/${id}`, data),
-  remove:  (id: string | number) => del(`/invoices/${id}`),
-  sendWhatsApp: (id: string | number, payload: { phone?: string; file?: string; language?: string; var_format?: string } = {}) =>
+  remove: (id: string | number) => del(`/invoices/${id}`),
+  sendWhatsApp: (id: string | number, payload: { phone?: string } = {}) =>
     post(`/invoices/${id}/send-whatsapp`, payload),
 };
 
@@ -239,12 +239,12 @@ export const staffApi = {
    DASHBOARD
 ══════════════════════════════════════════════════════════ */
 export const dashboardApi = {
-  stats:               () => get("/dashboard/stats"),
-  paymentStatus:       () => get("/dashboard/payment-status"),
-  studentsByStandard:  () => get("/dashboard/students-by-standard"),
-  studentsByLocation:  () => get("/dashboard/students-by-location"),
-  feeCollection:       () => get("/dashboard/fee-collection"),
-  financeOverview:     () => get("/dashboard/finance-overview"),
+  stats: () => get("/dashboard/stats"),
+  paymentStatus: () => get("/dashboard/payment-status"),
+  studentsByStandard: () => get("/dashboard/students-by-standard"),
+  studentsByLocation: () => get("/dashboard/students-by-location"),
+  feeCollection: () => get("/dashboard/fee-collection"),
+  financeOverview: () => get("/dashboard/finance-overview"),
 };
 
 export const recycleBinApi = {
