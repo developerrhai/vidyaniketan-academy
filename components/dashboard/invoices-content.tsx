@@ -8,8 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Receipt, Plus, Eye, Printer, Trash2, CheckCircle, Clock, AlertCircle, Loader2, Search, X, Edit2, FileSpreadsheet, MessageCircle, Download } from "lucide-react"
+import { Receipt, Plus, Eye, Printer, Trash2, CheckCircle, Clock, AlertCircle, Loader2, Search, X, Edit2, FileSpreadsheet, MessageCircle, Download, Send, Phone } from "lucide-react"
 import { invoicesApi, studentsApi } from "@/lib/api"
 import { printReceipt, downloadReceipt, type ReceiptData, type PrintLayout } from "./receipt-print"
 import { useCourseBatches } from "@/hooks/useCourseBatches";
@@ -135,6 +134,13 @@ export function InvoicesContent() {
   const [printDialogOpen, setPrintDialogOpen] = useState(false)
   const [printInvoice,    setPrintInvoice]    = useState<Invoice | null>(null)
   const [printLayout,     setPrintLayout]     = useState<PrintLayout>("full")
+
+  // WhatsApp dialog state
+  const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false)
+  const [whatsappInvoice,    setWhatsappInvoice]    = useState<Invoice | null>(null)
+  const [whatsappPhone,      setWhatsappPhone]      = useState("")
+  const [whatsappSending,    setWhatsappSending]    = useState(false)
+  const [whatsappStatus,     setWhatsappStatus]     = useState<{ type: "success" | "error"; message: string } | null>(null)
 
   const [students,        setStudents]        = useState<Student[]>([])
   const [studentSearch,   setStudentSearch]   = useState("")
@@ -547,31 +553,74 @@ export function InvoicesContent() {
     setPrintDialogOpen(false)
   }
 
-  const handleWhatsAppShare = (inv: Invoice) => {
+  const openWhatsAppModal = (inv: Invoice) => {
+    setWhatsappInvoice(inv)
+    setWhatsappPhone(String(inv.student_phone || ""))
+    setWhatsappStatus(null)
+    setWhatsappDialogOpen(true)
+  }
+
+  const executeSendWhatsApp = async () => {
+    if (!whatsappInvoice) return
+    const cleanPhone = whatsappPhone.replace(/\D/g, "")
+    if (!cleanPhone) {
+      setWhatsappStatus({ type: "error", message: "Please enter a valid phone number." })
+      return
+    }
+    setWhatsappSending(true)
+    setWhatsappStatus(null)
+    try {
+      const res: any = await invoicesApi.sendWhatsApp(whatsappInvoice.id, { phone: cleanPhone })
+      if (res.success) {
+        setWhatsappStatus({
+          type: "success",
+          message: res.message || "WhatsApp message sent successfully via RHAI Tech API!",
+        })
+      } else {
+        setWhatsappStatus({
+          type: "error",
+          message: res.message || "Failed to send WhatsApp message.",
+        })
+      }
+    } catch (err: any) {
+      setWhatsappStatus({
+        type: "error",
+        message: err.message || "Error connecting to WhatsApp API service.",
+      })
+    } finally {
+      setWhatsappSending(false)
+    }
+  }
+
+  const handleWhatsAppWebFallback = () => {
+    if (!whatsappInvoice) return
+    const inv = whatsappInvoice
     const invoiceNo = inv.receipt_number
       ? `RCP-${String(inv.receipt_number).padStart(4, "0")}`
-      : `INV${String(inv.id).padStart(3, "0")}`
+      : inv.offline_receipt_number || `INV${String(inv.id).padStart(3, "0")}`
     const amount = Number(inv.amount || 0)
     const paid = Number(inv.paid_amount || 0)
-    const balance = amount - paid
+    const balance = Math.max(0, (inv.student_fee ?? amount) - (inv.student_paid_fee ?? paid))
+    const dateStr = inv.install_date ? fmtDate(inv.install_date) : fmtDate(new Date().toISOString())
+
     const message = [
-      "Hello,",
+      "विद्यानिकेतन प्रोफेशनल अकॅडमी, इंदापूर",
+      "Fee Payment Confirmation",
       "",
-      `Receipt: ${invoiceNo}`,
-      `Student: ${inv.student_name || "-"}`,
-      `Standard: ${inv.student_standard || inv.standard || "-"}`,
-      `Batch: ${inv.student_batch || inv.course || "-"}`,
-      `Branch: ${inv.student_branch || "-"}`,
-      `Next Installment Date: ${fmtDate(inv.due_date)}`,
-      `Total Amount: Rs ${amount.toLocaleString()}`,
-      `Paid Amount: Rs ${paid.toLocaleString()}`,
-      `Balance: Rs ${balance.toLocaleString()}`,
+      `विद्यार्थ्याचे नाव: ${inv.student_name || "-"}`,
+      `पावती क्रमांक: ${invoiceNo}`,
+      `पेमेंट तारीख: ${dateStr}`,
+      `जमा झालेली रक्कम: ₹${paid.toLocaleString("en-IN")}`,
+      `आतापर्यंत एकूण जमा: ₹${Number(inv.student_paid_fee ?? paid).toLocaleString("en-IN")}`,
+      `फीची एकूण शिल्लक: ₹${balance.toLocaleString("en-IN")}`,
       "",
-      "Please find your receipt details above.",
+      "फी भरल्याबद्दल मनःपूर्वक धन्यवाद.",
+      "आपल्या सहकार्याबद्दल आम्ही आपले आभारी आहोत.",
     ].join("\n")
 
-    const phone = ""
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+    const cleanPhone = whatsappPhone.replace(/\D/g, "")
+    const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone
+    const url = `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`
     window.open(url, "_blank", "noopener,noreferrer")
   }
 
@@ -780,7 +829,8 @@ export function InvoicesContent() {
                               <Download className="h-4 w-4" />
                             </Button>
                             <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:border-green-300"
-                              onClick={() => handleWhatsAppShare(inv)}>
+                              title="Send WhatsApp Receipt"
+                              onClick={() => openWhatsAppModal(inv)}>
                               <MessageCircle className="h-4 w-4" />
                             </Button>
                             <Button size="sm" variant="destructive" className="h-8 w-8 p-0"
@@ -1206,6 +1256,140 @@ export function InvoicesContent() {
               </Button>
               <Button onClick={executePrint} className="bg-blue-600 hover:bg-blue-700 text-white">
                 <Printer className="h-4 w-4 mr-2" /> Print Now
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── WhatsApp Send Dialog ─────────────────────────────── */}
+      <Dialog open={whatsappDialogOpen} onOpenChange={setWhatsappDialogOpen}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-700">
+              <MessageCircle className="h-5 w-5 text-emerald-600" /> Send WhatsApp Confirmation
+            </DialogTitle>
+          </DialogHeader>
+
+          {whatsappInvoice && (() => {
+            const inv = whatsappInvoice
+            const rcpNo = inv.receipt_number
+              ? `RCP-${String(inv.receipt_number).padStart(4, "0")}`
+              : inv.offline_receipt_number || `INV${String(inv.id).padStart(3, "0")}`
+            const dateStr = inv.install_date ? fmtDate(inv.install_date) : fmtDate(new Date().toISOString())
+            const paid = Number(inv.paid_amount || 0).toLocaleString("en-IN")
+            const totalPaid = Number(inv.student_paid_fee ?? inv.paid_amount ?? 0).toLocaleString("en-IN")
+            const studentTotalFee = Number(inv.student_fee ?? inv.amount ?? 0)
+            const studentTotalPaid = Number(inv.student_paid_fee ?? inv.paid_amount ?? 0)
+            const totalPending = Number(Math.max(0, studentTotalFee - studentTotalPaid)).toLocaleString("en-IN")
+
+            return (
+              <div className="space-y-4 py-2">
+                {/* Recipient Details & Phone Input */}
+                <div className="space-y-2 rounded-lg bg-emerald-50/70 p-3.5 border border-emerald-200/80">
+                  <div className="flex justify-between items-center text-sm font-semibold text-emerald-900">
+                    <span>Student: {inv.student_name}</span>
+                    <Badge variant="outline" className="border-emerald-300 text-emerald-800 bg-white">{rcpNo}</Badge>
+                  </div>
+
+                  <div className="pt-2">
+                    <Label htmlFor="whatsapp-phone" className="text-xs text-emerald-800 font-medium flex items-center gap-1 mb-1">
+                      <Phone className="h-3.5 w-3.5" /> Receiver Phone Number <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="whatsapp-phone"
+                      value={whatsappPhone}
+                      onChange={(e) => setWhatsappPhone(e.target.value)}
+                      placeholder="e.g. 9876543210 or 919876543210"
+                      className="bg-white border-emerald-300 focus-visible:ring-emerald-500 font-mono text-sm"
+                    />
+                    <p className="text-[11px] text-emerald-700 mt-1">
+                      10-digit mobile numbers will automatically use country code +91.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Template Variables Preview Card */}
+                <div className="space-y-2 rounded-lg border bg-slate-50 p-3.5 text-xs">
+                  <div className="flex justify-between items-center border-b pb-1.5 font-semibold text-slate-700">
+                    <span>RHAI Tech Template Variables</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">Template: administration_department</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-1 text-slate-600">
+                    <div>
+                      <span className="text-muted-foreground">Student Name:</span>
+                      <p className="font-semibold text-slate-800 truncate">{inv.student_name || "-"}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Receipt No.:</span>
+                      <p className="font-semibold text-slate-800">{rcpNo}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Payment Date:</span>
+                      <p className="font-semibold text-slate-800">{dateStr}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Paid Amount:</span>
+                      <p className="font-semibold text-emerald-700">₹{paid}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Total Paid:</span>
+                      <p className="font-semibold text-slate-800">₹{totalPaid}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Total Pending:</span>
+                      <p className="font-semibold text-amber-700">₹{totalPending}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Feedback Banner */}
+                {whatsappStatus && (
+                  <div className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${
+                    whatsappStatus.type === "success"
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-900"
+                      : "bg-red-50 border-red-300 text-red-900"
+                  }`}>
+                    {whatsappStatus.type === "success" ? (
+                      <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <p className="font-medium">{whatsappStatus.message}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
+          <DialogFooter className="gap-2 sm:gap-0 flex sm:flex-row flex-col">
+            <Button variant="outline" onClick={() => setWhatsappDialogOpen(false)}>Cancel</Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="text-emerald-700 border-emerald-300 hover:bg-emerald-50 text-xs"
+                onClick={handleWhatsAppWebFallback}
+                title="Open via WhatsApp Web browser link"
+              >
+                <MessageCircle className="h-3.5 w-3.5 mr-1.5 text-emerald-600" /> WhatsApp Web
+              </Button>
+              <Button
+                onClick={executeSendWhatsApp}
+                disabled={whatsappSending}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold"
+              >
+                {whatsappSending ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-3.5 w-3.5 mr-1.5" /> Send WhatsApp API
+                  </>
+                )}
               </Button>
             </div>
           </DialogFooter>

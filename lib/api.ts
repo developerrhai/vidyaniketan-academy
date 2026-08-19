@@ -193,6 +193,8 @@ export const invoicesApi = {
   update:  (id: string | number, data: Record<string, unknown>) =>
     put(`/invoices/${id}`, data),
   remove:  (id: string | number) => del(`/invoices/${id}`),
+  sendWhatsApp: (id: string | number, payload: { phone?: string; file?: string } = {}) =>
+    post(`/invoices/${id}/send-whatsapp`, payload),
 };
 
 /* ══════════════════════════════════════════════════════════
