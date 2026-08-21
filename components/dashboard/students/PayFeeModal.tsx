@@ -16,13 +16,13 @@ interface PayFeeModalProps {
 
 export function PayFeeModal({ open, onOpenChange, student, onSuccess }: PayFeeModalProps) {
   const [payAmount, setPayAmount] = useState("")
-  const [payMode, setPayMode] = useState<"add" | "set">("add")
+  const [payMode, setPayMode] = useState<"add" | "set">("set")
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (open) {
       setPayAmount("")
-      setPayMode("add")
+      setPayMode("set")
     }
   }, [open])
 
@@ -89,7 +89,7 @@ export function PayFeeModal({ open, onOpenChange, student, onSuccess }: PayFeeMo
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 hidden">
               <Label>Payment Type</Label>
               <div className="grid grid-cols-2 gap-2">
                 <button

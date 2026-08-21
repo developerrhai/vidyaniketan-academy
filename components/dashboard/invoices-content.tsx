@@ -644,7 +644,7 @@ export function InvoicesContent() {
     <div className="space-y-6 pt-12 lg:pt-0">
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="hidden grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: "Total Invoiced",  value: summary.total_invoiced, cls: "from-blue-500 to-blue-600" },
           { label: "Total Collected", value: summary.total_paid,     cls: "from-emerald-500 to-emerald-600" },
@@ -750,15 +750,15 @@ export function InvoicesContent() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-900">
-                    <TableHead className="text-white font-semibold">ID</TableHead>
-                    <TableHead className="text-white font-semibold">Student</TableHead>
-                    <TableHead className="text-white font-semibold hidden sm:table-cell">Amount</TableHead>
-                    <TableHead className="text-white font-semibold hidden md:table-cell">Paid</TableHead>
+                    <TableHead className="text-white font-semibold w-[100px]">ID</TableHead>
+                    <TableHead className="text-white font-semibold min-w-[200px] w-[25%]">Student</TableHead>
+                    <TableHead className="text-white font-semibold hidden sm:table-cell w-[120px]">Amount</TableHead>
+                    <TableHead className="text-white font-semibold hidden md:table-cell w-[120px]">Paid</TableHead>
                     {/* ── NEW column ── */}
-                    <TableHead className="text-white font-semibold hidden lg:table-cell">Install Date</TableHead>
-                    <TableHead className="text-white font-semibold hidden lg:table-cell">Next Installment Date</TableHead>
-                    <TableHead className="text-white font-semibold">Status</TableHead>
-                    <TableHead className="text-white font-semibold text-center">Actions</TableHead>
+                    <TableHead className="text-white font-semibold hidden lg:table-cell w-[120px]">Install Date</TableHead>
+                    <TableHead className="text-white font-semibold hidden lg:table-cell w-[150px]">Next Installment Date</TableHead>
+                    <TableHead className="text-white font-semibold w-[100px]">Status</TableHead>
+                    <TableHead className="text-white font-semibold text-center w-auto">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
