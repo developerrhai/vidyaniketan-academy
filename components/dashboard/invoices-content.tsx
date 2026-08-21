@@ -752,6 +752,7 @@ export function InvoicesContent() {
                   <TableRow className="bg-slate-900">
                     <TableHead className="text-white font-semibold w-[100px]">ID</TableHead>
                     <TableHead className="text-white font-semibold min-w-[200px] w-[25%]">Student</TableHead>
+                    <TableHead className="text-white font-semibold hidden sm:table-cell w-[120px]">Total Fee</TableHead>
                     <TableHead className="text-white font-semibold hidden sm:table-cell w-[120px]">Amount</TableHead>
                     <TableHead className="text-white font-semibold hidden md:table-cell w-[120px]">Paid</TableHead>
                     {/* ── NEW column ── */}
@@ -791,6 +792,7 @@ export function InvoicesContent() {
                             ].filter(Boolean).join(" · ")}
                           </div>
                         </TableCell>
+                        <TableCell className="hidden sm:table-cell text-blue-600 font-medium">₹{Number(inv.student_fee || 0).toLocaleString()}</TableCell>
                         <TableCell className="hidden sm:table-cell">₹{Number(inv.amount).toLocaleString()}</TableCell>
                         <TableCell className="hidden md:table-cell">₹{Number(inv.paid_amount).toLocaleString()}</TableCell>
                         {/* ── NEW cell ── */}
