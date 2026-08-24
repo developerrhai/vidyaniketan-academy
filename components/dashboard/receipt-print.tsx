@@ -125,7 +125,8 @@ export function buildReceiptA6(data: ReceiptData, copyLabel: "ORIGINAL COPY" | "
   const scholarshipAmt = Number(data.student_scholarship_amount || 0)
   const totalPayable = Number(data.student_fee || data.amount || 0)
   const currentPayment = Number(data.paid_amount || 0)
-  const totalPaid = Number(data.student_paid_fee || data.paid_amount || 0)
+  const backendPaid = Number(data.student_paid_fee)
+  const totalPaid = Math.max(!isNaN(backendPaid) ? backendPaid : 0, currentPayment)
   const remainingDue = Math.max(0, totalPayable - totalPaid)
 
   const scholarshipLabel = data.student_scholarship_type === "Percent"
