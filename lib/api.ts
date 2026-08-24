@@ -47,10 +47,16 @@ const put = (path: string, body: unknown) =>
 const del = (path: string) => request(path, { method: "DELETE" });
 
 /* ── query-string builder ───────────────────────────────── */
-function qs(params: Record<string, string | undefined>) {
+function qs(params: Record<string, any>) {
   const p = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
-    if (v && v !== "all") p.set(k, v);
+    if (v && v !== "all") {
+      if (Array.isArray(v)) {
+        if (v.length > 0) p.set(k, v.join(","));
+      } else {
+        p.set(k, String(v));
+      }
+    }
   });
   const s = p.toString();
   return s ? `?${s}` : "";
@@ -82,7 +88,7 @@ export const profileApi = {
    STUDENTS
 ══════════════════════════════════════════════════════════ */
 export const studentsApi = {
-  getAll: (filters: { standard?: string; board?: string; location?: string; search?: string; course?: string; batch?: string; branch?: string } = {}) =>
+  getAll: (filters: { standard?: string | string[]; board?: string | string[]; location?: string | string[]; search?: string; course?: string | string[]; batch?: string | string[]; branch?: string | string[] } = {}) =>
     get(`/students${qs(filters)}`),
 
   getOne: (id: string | number) => get(`/students/${id}`),
@@ -98,7 +104,7 @@ export const studentsApi = {
 };
 
 export const studentsUniversalApi = {
-  getAll: (filters: { standard?: string; board?: string; location?: string; search?: string; course?: string; batch?: string; branch?: string } = {}) =>
+  getAll: (filters: { standard?: string | string[]; board?: string | string[]; location?: string | string[]; search?: string; course?: string | string[]; batch?: string | string[]; branch?: string | string[] } = {}) =>
     get(`/students-universal${qs(filters)}`),
 };
 
@@ -138,7 +144,7 @@ export const teacherUpdatesApi = {
    INQUIRIES
 ══════════════════════════════════════════════════════════ */
 export const inquiriesApi = {
-  getAll: (filters: { date_filter?: string; location?: string; standard?: string; batch?: string; search?: string } = {}) =>
+  getAll: (filters: { date_filter?: string; location?: string | string[]; standard?: string | string[]; batch?: string | string[]; search?: string } = {}) =>
     get(`/inquiries${qs(filters)}`),
 
   getOne: (id: string | number) => get(`/inquiries/${id}`),
@@ -169,7 +175,7 @@ export const inquiryExtraApi = {
    APPOINTMENTS
 ══════════════════════════════════════════════════════════ */
 export const appointmentsApi = {
-  getAll: (filters: { date_filter?: string; location?: string; standard?: string; batch?: string; search?: string } = {}) =>
+  getAll: (filters: { date_filter?: string; location?: string | string[]; standard?: string | string[]; batch?: string | string[]; search?: string } = {}) =>
     get(`/appointments${qs(filters)}`),
 
   getOne: (id: string | number) => get(`/appointments/${id}`),

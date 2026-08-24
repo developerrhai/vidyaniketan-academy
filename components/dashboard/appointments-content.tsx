@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Plus, Edit2, Trash2, MessageCircle, Loader2 } from "lucide-react"
 import { appointmentsApi } from "@/lib/api"
+import { MultiSelect } from "@/components/teacher/ui/multi-select"
 
 interface Appointment {
   id: number; name: string; standard: string; board: string; course: string; batch?: string
@@ -59,10 +60,10 @@ export function AppointmentsContent() {
   const [apts,           setApts]           = useState<Appointment[]>([])
   const [loading,        setLoading]        = useState(true)
   const [saving,         setSaving]         = useState(false)
-  const [filterLoc,      setFilterLoc]      = useState("all")
+  const [filterLoc,      setFilterLoc]      = useState<string[]>([])
   const [filterDate,     setFilterDate]     = useState("all")
-  const [filterStandard, setFilterStandard] = useState("all")
-  const [filterBatch,    setFilterBatch]    = useState("all")
+  const [filterStandard, setFilterStandard] = useState<string[]>([])
+  const [filterBatch,    setFilterBatch]    = useState<string[]>([])
   const [modalOpen,      setModalOpen]      = useState(false)
   const [editing,        setEditing]        = useState<Appointment | null>(null)
   const [form,           setForm]           = useState<Record<string,string>>(blank)
@@ -72,9 +73,9 @@ export function AppointmentsContent() {
     try {
       const res: any = await appointmentsApi.getAll({
         date_filter: filterDate !== "all" ? filterDate : undefined,
-        location:    filterLoc  !== "all" ? filterLoc  : undefined,
-        standard:    filterStandard !== "all" ? filterStandard : undefined,
-        batch:       filterBatch    !== "all" ? filterBatch    : undefined,
+        location:    filterLoc.length > 0 ? filterLoc  : undefined,
+        standard:    filterStandard.length > 0 ? filterStandard : undefined,
+        batch:       filterBatch.length > 0 ? filterBatch    : undefined,
       })
       setApts(res.data)
     } catch (err) { console.error(err) }
@@ -130,15 +131,13 @@ export function AppointmentsContent() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <Select value={filterLoc} onValueChange={setFilterLoc}>
-              <SelectTrigger><SelectValue placeholder="All Branches" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Branches</SelectItem>
-                {BRANCHES.map((b) => (
-                  <SelectItem key={b} value={b}>{b}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <MultiSelect 
+              placeholder="All Branches"
+              options={BRANCHES.map(b => ({ label: b, value: b }))} 
+              selected={filterLoc} 
+              onChange={setFilterLoc} 
+              className="bg-background"
+            />
             <Select value={filterDate} onValueChange={setFilterDate}>
               <SelectTrigger><SelectValue placeholder="All Dates" /></SelectTrigger>
               <SelectContent>
@@ -149,24 +148,20 @@ export function AppointmentsContent() {
                 <SelectItem value="lastWeek">Last Week</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterStandard} onValueChange={setFilterStandard}>
-              <SelectTrigger><SelectValue placeholder="All Standards" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Standards</SelectItem>
-                {STANDARDS.map(s => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterBatch} onValueChange={setFilterBatch}>
-              <SelectTrigger><SelectValue placeholder="All Batches" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Batches</SelectItem>
-                {ALL_BATCHES.map(b => (
-                  <SelectItem key={b} value={b}>{b}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <MultiSelect 
+              placeholder="All Standards"
+              options={STANDARDS.map(s => ({ label: s, value: s }))} 
+              selected={filterStandard} 
+              onChange={setFilterStandard} 
+              className="bg-background"
+            />
+            <MultiSelect 
+              placeholder="All Batches"
+              options={ALL_BATCHES.map(b => ({ label: b, value: b }))} 
+              selected={filterBatch} 
+              onChange={setFilterBatch} 
+              className="bg-background"
+            />
           </div>
 
           {loading ? (

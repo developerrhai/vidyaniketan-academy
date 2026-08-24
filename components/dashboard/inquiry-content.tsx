@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { ClipboardList, Plus, Edit2, Trash2, Video, Loader2 } from "lucide-react"
 import { inquiriesApi } from "@/lib/api"
+import { MultiSelect } from "@/components/teacher/ui/multi-select"
 
 interface Inquiry {
   id: number; name: string; phone: string; father_name: string; father_phone: string
@@ -62,9 +63,9 @@ export function InquiryContent() {
   const [loading,         setLoading]         = useState(true)
   const [saving,          setSaving]          = useState(false)
   const [filterDate,      setFilterDate]      = useState("all")
-  const [filterLocation,  setFilterLocation]  = useState("all")
-  const [filterStandard,  setFilterStandard]  = useState("all")
-  const [filterBatch,     setFilterBatch]     = useState("all")
+  const [filterLocation,  setFilterLocation]  = useState<string[]>([])
+  const [filterStandard,  setFilterStandard]  = useState<string[]>([])
+  const [filterBatch,     setFilterBatch]     = useState<string[]>([])
   const [modalOpen,       setModalOpen]       = useState(false)
   const [editing,         setEditing]         = useState<Inquiry | null>(null)
   const [form,            setForm]            = useState<Record<string, string>>(blank)
@@ -74,9 +75,9 @@ export function InquiryContent() {
     try {
       const res: any = await inquiriesApi.getAll({
         date_filter: filterDate     !== "all" ? filterDate     : undefined,
-        location:    filterLocation !== "all" ? filterLocation : undefined,
-        standard:    filterStandard !== "all" ? filterStandard : undefined,
-        batch:       filterBatch    !== "all" ? filterBatch    : undefined,
+        location:    filterLocation.length > 0 ? filterLocation : undefined,
+        standard:    filterStandard.length > 0 ? filterStandard : undefined,
+        batch:       filterBatch.length > 0 ? filterBatch    : undefined,
       })
       setInquiries(res.data)
     } catch (err) { console.error(err) }
@@ -140,33 +141,27 @@ export function InquiryContent() {
                 <SelectItem value="last30">Last 30 Days</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterLocation} onValueChange={setFilterLocation}>
-              <SelectTrigger><SelectValue placeholder="All Branches" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Branches</SelectItem>
-                {BRANCHES.map((b) => (
-                  <SelectItem key={b} value={b}>{b}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterStandard} onValueChange={setFilterStandard}>
-              <SelectTrigger><SelectValue placeholder="All Standards" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Standards</SelectItem>
-                {STANDARDS.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterBatch} onValueChange={setFilterBatch}>
-              <SelectTrigger><SelectValue placeholder="All Batches" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Batches</SelectItem>
-                {ALL_BATCHES.map((b) => (
-                  <SelectItem key={b} value={b}>{b}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <MultiSelect 
+              placeholder="All Branches"
+              options={BRANCHES.map(b => ({ label: b, value: b }))} 
+              selected={filterLocation} 
+              onChange={setFilterLocation} 
+              className="bg-background"
+            />
+            <MultiSelect 
+              placeholder="All Standards"
+              options={STANDARDS.map(s => ({ label: s, value: s }))} 
+              selected={filterStandard} 
+              onChange={setFilterStandard} 
+              className="bg-background"
+            />
+            <MultiSelect 
+              placeholder="All Batches"
+              options={ALL_BATCHES.map(b => ({ label: b, value: b }))} 
+              selected={filterBatch} 
+              onChange={setFilterBatch} 
+              className="bg-background"
+            />
           </div>
 
           {loading ? (

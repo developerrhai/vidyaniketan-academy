@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/teacher/ui/select";
+import { MultiSelect } from "@/components/teacher/ui/multi-select";
 import {
   Table,
   TableBody,
@@ -257,10 +258,10 @@ export default function StudentManagementContent() {
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [standardFilter, setStandardFilter] = useState("all");
-  const [batchFilter, setBatchFilter] = useState("all");
-  const [boardFilter, setBoardFilter] = useState("all");
-  const [branchFilter, setBranchFilter] = useState("all");
+  const [standardFilter, setStandardFilter] = useState<string[]>([]);
+  const [batchFilter, setBatchFilter] = useState<string[]>([]);
+  const [boardFilter, setBoardFilter] = useState<string[]>([]);
+  const [branchFilter, setBranchFilter] = useState<string[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -353,10 +354,10 @@ export default function StudentManagementContent() {
         student.name.toLowerCase().includes(query) ||
         student.phone.toLowerCase().includes(query) ||
         String(student.father_phone || "").toLowerCase().includes(query);
-      const matchesStandard = standardFilter === "all" || student.standard === standardFilter;
-      const matchesBatch = batchFilter === "all" || student.batch === batchFilter;
-      const matchesBoard = boardFilter === "all" || student.board === boardFilter;
-      const matchesBranch = branchFilter === "all" || student.branch === branchFilter;
+      const matchesStandard = standardFilter.length === 0 || standardFilter.includes(student.standard);
+      const matchesBatch = batchFilter.length === 0 || (student.batch && batchFilter.includes(student.batch));
+      const matchesBoard = boardFilter.length === 0 || boardFilter.includes(student.board);
+      const matchesBranch = branchFilter.length === 0 || branchFilter.includes(student.branch);
       return matchesQuery && matchesStandard && matchesBatch && matchesBoard && matchesBranch;
     });
   }, [students, searchTerm, standardFilter, batchFilter, boardFilter, branchFilter]);
@@ -777,34 +778,34 @@ export default function StudentManagementContent() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by name or phone..." className="h-10 rounded-full pl-10" />
         </div>
-        <Select value={standardFilter} onValueChange={setStandardFilter}>
-          <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Standards" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Standards</SelectItem>
-            {STANDARDS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={batchFilter} onValueChange={setBatchFilter}>
-          <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Batches" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Batches</SelectItem>
-            {ALL_BATCHES.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={boardFilter} onValueChange={setBoardFilter}>
-          <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Boards" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Boards</SelectItem>
-            {boards.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={branchFilter} onValueChange={setBranchFilter}>
-          <SelectTrigger className="h-10 rounded-full"><SelectValue placeholder="All Branches" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Branches</SelectItem>
-            {BRANCHES.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <MultiSelect 
+          placeholder="All Standards"
+          options={STANDARDS.map(s => ({ label: s, value: s }))} 
+          selected={standardFilter} 
+          onChange={setStandardFilter} 
+          className="rounded-full bg-background"
+        />
+        <MultiSelect 
+          placeholder="All Batches"
+          options={ALL_BATCHES.map(b => ({ label: b, value: b }))} 
+          selected={batchFilter} 
+          onChange={setBatchFilter} 
+          className="rounded-full bg-background"
+        />
+        <MultiSelect 
+          placeholder="All Boards"
+          options={boards.map(b => ({ label: b, value: b }))} 
+          selected={boardFilter} 
+          onChange={setBoardFilter} 
+          className="rounded-full bg-background"
+        />
+        <MultiSelect 
+          placeholder="All Branches"
+          options={BRANCHES.map(b => ({ label: b, value: b }))} 
+          selected={branchFilter} 
+          onChange={setBranchFilter} 
+          className="rounded-full bg-background"
+        />
       </div>
 
       {/* Table */}
