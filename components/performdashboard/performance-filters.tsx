@@ -284,7 +284,7 @@ export function PerformanceFilters({
                   onClick={async () => {
                     // call backend to delete examination
                     const examToDelete = safeValue.examinations[0];
-                    if (!window.confirm(`Are you sure you want to delete all assessments for the examination "${examToDelete}"? This cannot be undone.`)) {
+                    if (!window.confirm(`Are you sure you want to delete all assessments for the examination "${examToDelete}"? You can restore it later from the Recycle Bin.`)) {
                       return;
                     }
                     try {

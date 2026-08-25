@@ -7,11 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import {
   Trash2, RotateCcw, Loader2, GraduationCap, Users,
-  ClipboardList, Calendar, Receipt, Wallet, BookOpen, AlertTriangle
+  ClipboardList, Calendar, Receipt, Wallet, BookOpen, AlertTriangle, FlaskConical
 } from "lucide-react"
 import { recycleBinApi } from "@/lib/api"
 
-type TabType = "students" | "teachers" | "inquiries" | "appointments" | "invoices" | "finance" | "updates"
+type TabType = "students" | "teachers" | "inquiries" | "appointments" | "invoices" | "finance" | "updates" | "examinations"
 
 interface DeletedData {
   students: any[]
@@ -21,6 +21,7 @@ interface DeletedData {
   invoices: any[]
   finance: any[]
   updates: any[]
+  examinations: any[]
 }
 
 export function RecycleBinContent() {
@@ -32,6 +33,7 @@ export function RecycleBinContent() {
     invoices: [],
     finance: [],
     updates: [],
+    examinations: [],
   })
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>("students")
@@ -55,12 +57,12 @@ export function RecycleBinContent() {
     fetchDeleted()
   }, [])
 
-  const handleRestore = async (type: string, id: number) => {
+  const handleRestore = async (type: string, id: number | string) => {
     if (!confirm(`Are you sure you want to restore this ${type}?`)) return
-    setActioningId(id)
+    setActioningId(typeof id === 'string' ? null : id)
     try {
       const apiType = type === "class update" ? "update" : type
-      const res = await recycleBinApi.restore(apiType, id)
+      const res = await recycleBinApi.restore(apiType, id as any)
       if (res.success) {
         alert(`${type.charAt(0).toUpperCase() + type.slice(1)} restored successfully!`)
         fetchDeleted()
@@ -72,12 +74,12 @@ export function RecycleBinContent() {
     }
   }
 
-  const handleDeletePermanently = async (type: string, id: number) => {
+  const handleDeletePermanently = async (type: string, id: number | string) => {
     if (!confirm(`⚠️ WARNING: This will permanently delete this ${type} and cannot be undone. Are you absolutely sure?`)) return
-    setActioningId(id)
+    setActioningId(typeof id === 'string' ? null : id)
     try {
       const apiType = type === "class update" ? "update" : type
-      const res = await recycleBinApi.deletePermanently(apiType, id)
+      const res = await recycleBinApi.deletePermanently(apiType, id as any)
       if (res.success) {
         alert(`${type.charAt(0).toUpperCase() + type.slice(1)} permanently deleted!`)
         fetchDeleted()
@@ -97,6 +99,7 @@ export function RecycleBinContent() {
     { id: "invoices", label: "Invoices", icon: <Receipt className="h-4 w-4" />, count: data.invoices.length },
     { id: "finance", label: "Finance", icon: <Wallet className="h-4 w-4" />, count: data.finance.length },
     { id: "updates", label: "Class Updates", icon: <BookOpen className="h-4 w-4" />, count: data.updates.length },
+    { id: "examinations", label: "Examinations", icon: <FlaskConical className="h-4 w-4" />, count: data.examinations.length },
   ]
 
   const formatDateTime = (dateStr: string) => {
@@ -333,13 +336,45 @@ export function RecycleBinContent() {
             </TableBody>
           </Table>
         )
+
+      case "examinations":
+        return (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-900/60">
+                <TableHead className="text-white font-semibold">Examination</TableHead>
+                <TableHead className="text-white font-semibold">Subject</TableHead>
+                <TableHead className="text-white font-semibold">Students</TableHead>
+                <TableHead className="text-white font-semibold">Exam Date</TableHead>
+                <TableHead className="text-white font-semibold">Deleted At</TableHead>
+                <TableHead className="text-white font-semibold text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {list.map((item: any) => (
+                <TableRow key={item.examination} className="hover:bg-slate-800/40">
+                  <TableCell className="font-medium text-slate-300">{item.examination}</TableCell>
+                  <TableCell className="text-slate-400">{item.subject}</TableCell>
+                  <TableCell className="text-slate-400">
+                    <Badge variant="outline" className="border-amber-600 text-amber-400">
+                      {item.student_count} Students
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-slate-400">{item.exam_date ? item.exam_date.split("T")[0] : "N/A"}</TableCell>
+                  <TableCell className="text-slate-400">{formatDateTime(item.deleted_at)}</TableCell>
+                  <TableCell>{renderActions("examination", item.examination)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )
       default:
         return null
     }
   }
 
-  const renderActions = (type: string, id: number) => {
-    const isRunning = actioningId === id
+  const renderActions = (type: string, id: number | string) => {
+    const isRunning = actioningId === id || (typeof id === 'string' && actioningId === -1)
     return (
       <div className="flex items-center justify-center gap-2">
         <Button

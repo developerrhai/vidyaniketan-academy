@@ -264,6 +264,7 @@ export const recycleBinApi = {
       invoices: any[];
       finance: any[];
       updates: any[];
+      examinations: any[];
     };
   }>,
   restore: (type: string, id: number) => post("/recycle-bin/restore", { type, id }) as Promise<any>,
