@@ -206,18 +206,20 @@ export const invoicesApi = {
 };
 
 export const whatsappApi = {
-  sendFeeReminder: async (payload: Record<string, unknown>) => {
-    try {
-      const res = await fetch("/api/whatsapp/fee-reminder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      return await res.json();
-    } catch {
-      return post("/whatsapp/fee-reminder", payload);
-    }
-  },
+  sendTemplateMessage: (data: {
+    to: string;
+    template_id?: string;
+    language?: string;
+    schedule?: string;
+    file?: string;
+    variables?: Record<string, string | number> | (string | number)[];
+    buttons?: Array<{ type: string; value: string }> | Record<string, string>;
+  }) => post("/whatsapp/send-template", data),
+
+  sendFeeReminder: (payload: Record<string, unknown>) =>
+    post("/whatsapp/fee-reminder", payload),
+
+  getConfigStatus: () => get("/whatsapp/config-status"),
 };
 
 /* ══════════════════════════════════════════════════════════

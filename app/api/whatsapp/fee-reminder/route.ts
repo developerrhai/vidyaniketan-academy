@@ -163,13 +163,25 @@ export async function POST(request: NextRequest) {
           }),
         });
 
-        if (backendRes.ok) {
-          const backendJson = await backendRes.json();
+        const backendJson = await backendRes.json().catch(() => null);
+        if (backendRes.ok && backendJson?.success) {
           return NextResponse.json({
             success: true,
             provider: "express_backend",
             message: backendJson.message || "Fee reminder sent via backend service!",
+            data: backendJson,
           });
+        }
+        if (backendJson) {
+          return NextResponse.json(
+            {
+              success: false,
+              provider: "express_backend",
+              message: backendJson.message || "Backend WhatsApp API error",
+              errorDetails: backendJson,
+            },
+            { status: backendRes.status || 400 }
+          );
         }
       } catch {
         // Express backend route not available
