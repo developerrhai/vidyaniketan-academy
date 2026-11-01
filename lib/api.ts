@@ -201,6 +201,23 @@ export const invoicesApi = {
   remove: (id: string | number) => del(`/invoices/${id}`),
   sendWhatsApp: (id: string | number, payload: { phone?: string } = {}) =>
     post(`/invoices/${id}/send-whatsapp`, payload),
+  sendFeeReminder: (payload: Record<string, unknown>) =>
+    post("/whatsapp/fee-reminder", payload),
+};
+
+export const whatsappApi = {
+  sendFeeReminder: async (payload: Record<string, unknown>) => {
+    try {
+      const res = await fetch("/api/whatsapp/fee-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch {
+      return post("/whatsapp/fee-reminder", payload);
+    }
+  },
 };
 
 /* ══════════════════════════════════════════════════════════

@@ -9,8 +9,35 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Receipt, Plus, Eye, Printer, Trash2, CheckCircle, Clock, AlertCircle, Loader2, Search, X, Edit2, FileSpreadsheet, MessageCircle, Download, Send, Phone } from "lucide-react"
-import { invoicesApi, studentsApi } from "@/lib/api"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Progress } from "@/components/ui/progress"
+import {
+  Receipt,
+  Plus,
+  Eye,
+  Printer,
+  Trash2,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Loader2,
+  Search,
+  X,
+  Edit2,
+  FileSpreadsheet,
+  MessageCircle,
+  Download,
+  Send,
+  Phone,
+  Check,
+  Copy,
+  Users,
+  Settings,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react"
+import { invoicesApi, studentsApi, whatsappApi } from "@/lib/api"
 import { printReceipt, downloadReceipt, type ReceiptData, type PrintLayout } from "./receipt-print"
 import { useCourseBatches } from "@/hooks/useCourseBatches";
 
@@ -143,6 +170,21 @@ export function InvoicesContent() {
   const [whatsappSending,    setWhatsappSending]    = useState(false)
   const [whatsappStatus,     setWhatsappStatus]     = useState<{ type: "success" | "error"; message: string } | null>(null)
 
+  // Fee Reminder Modal states (WABA)
+  const [feeReminderModalOpen,     setFeeReminderModalOpen]     = useState(false)
+  const [feeReminderFilterMode,    setFeeReminderFilterMode]    = useState<"pending" | "all">("pending")
+  const [feeReminderSelectedIds,   setFeeReminderSelectedIds]   = useState<Set<number>>(new Set())
+  const [feeReminderCustomData,    setFeeReminderCustomData]    = useState<Record<number, { phone: string; installmentNo: string; dueDate: string }>>({})
+  const [feeReminderPreviewId,     setFeeReminderPreviewId]     = useState<number | null>(null)
+  const [feeReminderBulkSending,   setFeeReminderBulkSending]   = useState(false)
+  const [feeReminderProgress,      setFeeReminderProgress]      = useState({ current: 0, total: 0, success: 0, failed: 0 })
+  const [feeReminderResults,       setFeeReminderResults]       = useState<Record<number, { status: "pending" | "sending" | "success" | "error"; message?: string }>>({})
+  const [feeReminderSettingsOpen,  setFeeReminderSettingsOpen]  = useState(false)
+  const [wabaConfig,               setWabaConfig]               = useState({ token: "", phoneNumberId: "" })
+  const [feeReminderCopied,        setFeeReminderCopied]        = useState(false)
+  const [manualStepIndex,          setManualStepIndex]          = useState(0)
+  const [feeReminderSearch,        setFeeReminderSearch]        = useState("")
+
   const [students,        setStudents]        = useState<Student[]>([])
   const [studentSearch,   setStudentSearch]   = useState("")
   const [showDropdown,    setShowDropdown]    = useState(false)
@@ -181,6 +223,23 @@ export function InvoicesContent() {
       }
     } catch { /* ignore */ }
   }, [])
+
+  // Auto-populate WABA config from local storage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("waba_config")
+      if (stored) {
+        setWabaConfig(JSON.parse(stored))
+      }
+    } catch { /* ignore */ }
+  }, [])
+
+  const saveWabaConfig = (newConfig: { token: string; phoneNumberId: string }) => {
+    setWabaConfig(newConfig)
+    try {
+      localStorage.setItem("waba_config", JSON.stringify(newConfig))
+    } catch { /* ignore */ }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -640,6 +699,365 @@ export function InvoicesContent() {
     return matchesSearch && matchesStandard && matchesBatch && matchesBranch
   })
 
+  // ─── Fee Installment Reminder (WABA) Helpers ─────────────────────────────
+  const calculateInstallmentNo = useCallback((inv: Invoice, allInvs: Invoice[]): string => {
+    if (inv.description) {
+      const match = inv.description.match(/(?:installment|inst|हप्ता|हप्त्या)\s*#?:?\s*(\d+)/i)
+      if (match && match[1]) return match[1]
+    }
+    const studentInvoices = allInvs
+      .filter(i => {
+        if (inv.student_id && i.student_id) return String(i.student_id) === String(inv.student_id)
+        return i.student_name?.trim().toLowerCase() === inv.student_name?.trim().toLowerCase()
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.install_date || a.due_date || 0).getTime()
+        const dateB = new Date(b.install_date || b.due_date || 0).getTime()
+        if (dateA !== dateB) return dateA - dateB
+        return a.id - b.id
+      })
+    const index = studentInvoices.findIndex(i => i.id === inv.id)
+    return index >= 0 ? String(index + 1) : "1"
+  }, [])
+
+  const buildFeeReminderParams = useCallback((
+    inv: Invoice,
+    custom?: { phone?: string; installmentNo?: string; dueDate?: string }
+  ) => {
+    const studentName = inv.student_name || "विद्यार्थी"
+    const installmentNo = custom?.installmentNo || calculateInstallmentNo(inv, invoices)
+    const dueDate = custom?.dueDate || (inv.due_date ? fmtDate(inv.due_date) : "देय तारीख लवकरच")
+    const installmentAmount = Number(inv.amount || 0).toLocaleString("en-IN")
+    const paidAmount = Number(inv.paid_amount || 0).toLocaleString("en-IN")
+    const pendingAmount = Math.max(0, Number(inv.amount || 0) - Number(inv.paid_amount || 0)).toLocaleString("en-IN")
+    const totalPaid = Number(inv.student_paid_fee ?? inv.paid_amount ?? 0).toLocaleString("en-IN")
+    const totalPending = Math.max(
+      0,
+      Number(inv.student_fee ?? inv.amount ?? 0) - Number(inv.student_paid_fee ?? inv.paid_amount ?? 0)
+    ).toLocaleString("en-IN")
+    const rawPhone = custom?.phone !== undefined ? custom.phone : String(inv.student_phone || "")
+
+    return {
+      studentName,
+      installmentNo,
+      dueDate,
+      installmentAmount,
+      paidAmount,
+      pendingAmount,
+      totalPaid,
+      totalPending,
+      phone: rawPhone,
+    }
+  }, [calculateInstallmentNo, invoices])
+
+  const generateFeeReminderMessage = useCallback((params: {
+    studentName: string
+    installmentNo: string | number
+    dueDate: string
+    installmentAmount: string | number
+    paidAmount: string | number
+    pendingAmount: string | number
+    totalPaid: string | number
+    totalPending: string | number
+  }) => {
+    return [
+      "विद्यानिकेतन प्रोफेशनल अकॅडमी, इंदापूर",
+      "",
+      "आदरणीय पालक,",
+      "",
+      "आपल्या पाल्याच्या अकॅडमी फीच्या पुढील हप्त्याची देय तारीख जवळ आलेली आहे. कृपया खालील फी तपशीलाची नोंद घ्यावी.",
+      "",
+      `विद्यार्थ्याचे नाव: ${params.studentName}`,
+      `हप्ता क्रमांक: ${params.installmentNo}`,
+      `देय तारीख: ${params.dueDate}`,
+      `हप्त्याची एकूण रक्कम: ₹${params.installmentAmount}`,
+      `या हप्त्यात जमा: ₹${params.paidAmount}`,
+      `या हप्त्याची शिल्लक: ₹${params.pendingAmount}`,
+      `आतापर्यंत एकूण जमा: ₹${params.totalPaid}`,
+      `आतापर्यंत एकूण शिल्लक: ₹${params.totalPending}`,
+      "",
+      "कृपया शिल्लक रक्कम देय तारखेपूर्वी किंवा देय तारखेस जमा करून आपल्या पाल्याची फी अद्ययावत ठेवावी.",
+      "",
+      "आपल्या सहकार्याबद्दल धन्यवाद.",
+      "",
+      "Administration Department",
+      "विद्यानिकेतन प्रोफेशनल अकॅडमी, इंदापूर",
+    ].join("\n")
+  }, [])
+
+  const cleanPhoneForWhatsApp = (rawPhone: string | number) => {
+    const digits = String(rawPhone || "").replace(/\D/g, "")
+    if (digits.length === 10) return `91${digits}`
+    return digits
+  }
+
+  const getFeeReminderTargetInvoices = useCallback(() => {
+    let list = filteredInvoices
+    if (feeReminderFilterMode === "pending") {
+      list = filteredInvoices.filter(inv => {
+        const amount = Number(inv.amount || 0)
+        const paid = Number(inv.paid_amount || 0)
+        const status = getStatus(inv)
+        return paid < amount || status === "Pending" || status === "Partial" || status === "Overdue"
+      })
+    }
+    if (feeReminderSearch.trim()) {
+      const q = feeReminderSearch.trim().toLowerCase()
+      list = list.filter(inv =>
+        inv.student_name?.toLowerCase().includes(q) ||
+        String(inv.student_phone || "").includes(q)
+      )
+    }
+    return list
+  }, [filteredInvoices, feeReminderFilterMode, feeReminderSearch])
+
+  const openFeeReminderModal = () => {
+    setFeeReminderFilterMode("pending")
+    setFeeReminderSearch("")
+    const pendingInvs = filteredInvoices.filter(inv => {
+      const amount = Number(inv.amount || 0)
+      const paid = Number(inv.paid_amount || 0)
+      const status = getStatus(inv)
+      return paid < amount || status === "Pending" || status === "Partial" || status === "Overdue"
+    })
+
+    const targetList = pendingInvs.length > 0 ? pendingInvs : filteredInvoices
+    setFeeReminderSelectedIds(new Set(targetList.map(i => i.id)))
+
+    if (targetList.length > 0) {
+      setFeeReminderPreviewId(targetList[0].id)
+    }
+
+    const dataMap: Record<number, { phone: string; installmentNo: string; dueDate: string }> = {}
+    filteredInvoices.forEach(inv => {
+      dataMap[inv.id] = {
+        phone: String(inv.student_phone || ""),
+        installmentNo: calculateInstallmentNo(inv, invoices),
+        dueDate: inv.due_date ? fmtDate(inv.due_date) : "",
+      }
+    })
+    setFeeReminderCustomData(dataMap)
+    setFeeReminderResults({})
+    setFeeReminderProgress({ current: 0, total: 0, success: 0, failed: 0 })
+    setManualStepIndex(0)
+    setFeeReminderCopied(false)
+    setFeeReminderModalOpen(true)
+  }
+
+  const switchFeeReminderMode = (mode: "pending" | "all") => {
+    setFeeReminderFilterMode(mode)
+    let list: Invoice[] = []
+    if (mode === "pending") {
+      list = filteredInvoices.filter(inv => {
+        const amount = Number(inv.amount || 0)
+        const paid = Number(inv.paid_amount || 0)
+        const status = getStatus(inv)
+        return paid < amount || status === "Pending" || status === "Partial" || status === "Overdue"
+      })
+    } else {
+      list = filteredInvoices
+    }
+    setFeeReminderSelectedIds(new Set(list.map(i => i.id)))
+    if (list.length > 0 && (!feeReminderPreviewId || !list.some(i => i.id === feeReminderPreviewId))) {
+      setFeeReminderPreviewId(list[0].id)
+    }
+  }
+
+  const toggleSelectAllFeeReminders = () => {
+    const currentTargets = getFeeReminderTargetInvoices()
+    if (feeReminderSelectedIds.size === currentTargets.length && currentTargets.length > 0) {
+      setFeeReminderSelectedIds(new Set())
+    } else {
+      setFeeReminderSelectedIds(new Set(currentTargets.map(i => i.id)))
+    }
+  }
+
+  const toggleSelectFeeReminder = (id: number) => {
+    setFeeReminderSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const updateFeeReminderCustomField = (id: number, field: "phone" | "installmentNo" | "dueDate", value: string) => {
+    setFeeReminderCustomData(prev => ({
+      ...prev,
+      [id]: {
+        ...(prev[id] || { phone: "", installmentNo: "1", dueDate: "" }),
+        [field]: value,
+      }
+    }))
+  }
+
+  const handleSendIndividualReminderWeb = (inv: Invoice) => {
+    const custom = feeReminderCustomData[inv.id]
+    const params = buildFeeReminderParams(inv, custom)
+    const phone = cleanPhoneForWhatsApp(params.phone)
+    if (!phone) {
+      alert(`Please enter a valid phone number for ${params.studentName}.`)
+      return
+    }
+    const message = generateFeeReminderMessage(params)
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+    window.open(url, "_blank", "noopener,noreferrer")
+
+    setFeeReminderResults(prev => ({
+      ...prev,
+      [inv.id]: { status: "success", message: "Opened in WhatsApp Web" }
+    }))
+  }
+
+  const sendFeeReminderAPI = async (inv: Invoice) => {
+    const custom = feeReminderCustomData[inv.id]
+    const params = buildFeeReminderParams(inv, custom)
+    const phone = cleanPhoneForWhatsApp(params.phone)
+
+    if (!phone) {
+      return { success: false, message: "Missing or invalid phone number" }
+    }
+
+    try {
+      // Send purely the input variables to the WABA template API (NO Marathi text body sent)
+      const payload = {
+        phone,
+        template_name: "fee_installment_reminder",
+        template_id: "fee_installment_reminder",
+        language: "en",
+        // The 8 input variables for the approved WABA template
+        studentName: params.studentName,
+        installmentNo: params.installmentNo,
+        dueDate: params.dueDate,
+        installmentAmount: params.installmentAmount,
+        paidAmount: params.paidAmount,
+        pendingAmount: params.pendingAmount,
+        totalPaid: params.totalPaid,
+        totalPending: params.totalPending,
+        // Array of input variables corresponding to {{1}} through {{8}}
+        parameters: [
+          params.studentName,
+          params.installmentNo,
+          params.dueDate,
+          params.installmentAmount,
+          params.paidAmount,
+          params.pendingAmount,
+          params.totalPaid,
+          params.totalPending,
+        ],
+        // Key-value variables for gateways supporting named keys
+        variables: {
+          "Student Name": params.studentName,
+          "Installment No.": params.installmentNo,
+          "Due Date": params.dueDate,
+          "Installment Amount": params.installmentAmount,
+          "Paid Amount": params.paidAmount,
+          "Pending Amount": params.pendingAmount,
+          "Total Paid": params.totalPaid,
+          "Total Pending": params.totalPending,
+        },
+        invoiceId: inv.id,
+        wabaConfig: wabaConfig.token && wabaConfig.phoneNumberId ? wabaConfig : undefined,
+      }
+
+      const res: any = await whatsappApi.sendFeeReminder(payload)
+      return res
+    } catch (err: any) {
+      return { success: false, message: err.message || "Network request failed" }
+    }
+  }
+
+  const handleSendIndividualReminderAPI = async (inv: Invoice) => {
+    setFeeReminderResults(prev => ({
+      ...prev,
+      [inv.id]: { status: "sending" }
+    }))
+    const res = await sendFeeReminderAPI(inv)
+    if (res.success) {
+      setFeeReminderResults(prev => ({
+        ...prev,
+        [inv.id]: { status: "success", message: res.message || "Reminder sent successfully via WABA API!" }
+      }))
+    } else {
+      setFeeReminderResults(prev => ({
+        ...prev,
+        [inv.id]: { status: "error", message: res.message || "Failed to send message" }
+      }))
+    }
+  }
+
+  const handleBulkSendFeeReminders = async () => {
+    if (feeReminderBulkSending) return
+    const targetList = getFeeReminderTargetInvoices().filter(i => feeReminderSelectedIds.has(i.id))
+
+    if (targetList.length === 0) {
+      alert("Please select at least one student to send fee reminders.")
+      return
+    }
+
+    const confirm = window.confirm(
+      `Send WhatsApp fee reminder to ${targetList.length} students using approved template "fee_installment_reminder"?`
+    )
+    if (!confirm) return
+
+    setFeeReminderBulkSending(true)
+    setFeeReminderProgress({
+      current: 0,
+      total: targetList.length,
+      success: 0,
+      failed: 0,
+    })
+
+    let succ = 0
+    let fail = 0
+
+    for (let i = 0; i < targetList.length; i++) {
+      const inv = targetList[i]
+      setFeeReminderResults(prev => ({
+        ...prev,
+        [inv.id]: { status: "sending" }
+      }))
+
+      const res = await sendFeeReminderAPI(inv)
+
+      if (res.success) {
+        succ++
+        setFeeReminderResults(prev => ({
+          ...prev,
+          [inv.id]: { status: "success", message: res.message || "Reminder sent" }
+        }))
+      } else {
+        fail++
+        setFeeReminderResults(prev => ({
+          ...prev,
+          [inv.id]: { status: "error", message: res.message || "Sending failed" }
+        }))
+      }
+
+      setFeeReminderProgress({
+        current: i + 1,
+        total: targetList.length,
+        success: succ,
+        failed: fail,
+      })
+
+      if (i < targetList.length - 1) {
+        await new Promise(r => setTimeout(r, 600))
+      }
+    }
+
+    setFeeReminderBulkSending(false)
+  }
+
+  const handleNextManualWebSend = () => {
+    const targetList = getFeeReminderTargetInvoices().filter(i => feeReminderSelectedIds.has(i.id))
+    if (targetList.length === 0) return
+    const safeIndex = manualStepIndex % targetList.length
+    const inv = targetList[safeIndex]
+    handleSendIndividualReminderWeb(inv)
+    setManualStepIndex((safeIndex + 1) % targetList.length)
+  }
+
   return (
     <div className="space-y-6 pt-12 lg:pt-0">
 
@@ -687,7 +1105,20 @@ export function InvoicesContent() {
             <Button onClick={handleExportExcel} variant="outline">
               <FileSpreadsheet className="h-4 w-4 mr-2" /> Export Excel
             </Button>
-            <Button onClick={openModal} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button
+              onClick={openFeeReminderModal}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition-all flex items-center gap-2"
+              title="Send WhatsApp Fee Installment Reminder to students"
+            >
+              <MessageCircle className="h-4 w-4 text-emerald-100" />
+              <span>Send Fee Reminder</span>
+              {filteredInvoices.length > 0 && (
+                <Badge variant="secondary" className="bg-emerald-800 text-emerald-100 text-[11px] px-1.5 py-0 h-5">
+                  {filteredInvoices.length}
+                </Badge>
+              )}
+            </Button>
+            <Button onClick={openModal} className="bg-slate-900 hover:bg-slate-800 text-white">
               <Plus className="h-4 w-4 mr-2" /> New Invoice
             </Button>
           </div>
@@ -1391,6 +1822,419 @@ export function InvoicesContent() {
                 ) : (
                   <>
                     <Send className="h-3.5 w-3.5 mr-1.5" /> Send WhatsApp API
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Fee Installment Reminder (WABA) Dialog ────────────── */}
+      <Dialog open={feeReminderModalOpen} onOpenChange={setFeeReminderModalOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto p-4 sm:p-6 space-y-4">
+          <DialogHeader className="space-y-1 border-b pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <DialogTitle className="flex items-center gap-2 text-emerald-700 text-lg sm:text-xl font-bold">
+                  <MessageCircle className="h-5 w-5 text-emerald-600" /> WhatsApp Fee Installment Reminder
+                </DialogTitle>
+                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                  <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-[11px] font-mono font-medium">
+                    Template: fee_installment_reminder
+                  </Badge>
+                  <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-0 text-[10px] font-semibold">
+                    APPROVED
+                  </Badge>
+                  <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-0 text-[10px] font-semibold">
+                    UTILITY
+                  </Badge>
+                  <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-0 text-[10px] font-semibold">
+                    Language: en
+                  </Badge>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFeeReminderSettingsOpen(prev => !prev)}
+                className="text-xs flex items-center gap-1.5 text-slate-700 border-slate-300 hover:bg-slate-100 self-start sm:self-auto"
+              >
+                <Settings className="h-3.5 w-3.5 text-slate-600" />
+                <span>WABA API Settings</span>
+                {feeReminderSettingsOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </Button>
+            </div>
+          </DialogHeader>
+
+          {/* ── Meta Cloud API Settings Drawer ── */}
+          {feeReminderSettingsOpen && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 text-xs space-y-3 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                  <Settings className="h-3.5 w-3.5 text-emerald-600" /> Meta WhatsApp Business Cloud API Configuration
+                </span>
+                <Badge variant="outline" className="text-[10px] bg-white">
+                  {wabaConfig.token && wabaConfig.phoneNumberId ? "Configured" : "Not Configured (Optional)"}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[11px] font-medium text-slate-700 mb-1 block">Meta Phone Number ID</Label>
+                  <Input
+                    value={wabaConfig.phoneNumberId}
+                    onChange={e => saveWabaConfig({ ...wabaConfig, phoneNumberId: e.target.value })}
+                    placeholder="e.g. 104598239012345"
+                    className="h-8 text-xs bg-white font-mono"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px] font-medium text-slate-700 mb-1 block">Meta System User / Permanent Token</Label>
+                  <Input
+                    type="password"
+                    value={wabaConfig.token}
+                    onChange={e => saveWabaConfig({ ...wabaConfig, token: e.target.value })}
+                    placeholder="EAAG... (Meta Cloud API Token)"
+                    className="h-8 text-xs bg-white font-mono"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-normal">
+                Credentials entered here are saved in your browser localStorage. When configured, clicking <strong>Send WABA API</strong> triggers automated delivery through Meta. You can always use <strong>WhatsApp Web</strong> to send messages instantly without API credentials.
+              </p>
+            </div>
+          )}
+
+          {/* ── Audience Selector & Stats Bar ── */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50/60 p-3 rounded-lg border border-emerald-200/80">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-emerald-950 flex items-center gap-1">
+                <Users className="h-3.5 w-3.5 text-emerald-700" /> Filter:
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant={feeReminderFilterMode === "pending" ? "default" : "outline"}
+                onClick={() => switchFeeReminderMode("pending")}
+                className={`h-7 text-xs ${
+                  feeReminderFilterMode === "pending"
+                    ? "bg-emerald-700 hover:bg-emerald-800 text-white"
+                    : "bg-white text-slate-700 hover:bg-emerald-100/50 border-emerald-200"
+                }`}
+              >
+                Pending Dues Only ({
+                  filteredInvoices.filter(inv => {
+                    const amount = Number(inv.amount || 0)
+                    const paid = Number(inv.paid_amount || 0)
+                    const status = getStatus(inv)
+                    return paid < amount || status === "Pending" || status === "Partial" || status === "Overdue"
+                  }).length
+                })
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={feeReminderFilterMode === "all" ? "default" : "outline"}
+                onClick={() => switchFeeReminderMode("all")}
+                className={`h-7 text-xs ${
+                  feeReminderFilterMode === "all"
+                    ? "bg-emerald-700 hover:bg-emerald-800 text-white"
+                    : "bg-white text-slate-700 hover:bg-emerald-100/50 border-emerald-200"
+                }`}
+              >
+                All Filtered Invoices ({filteredInvoices.length})
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-slate-600">
+                Selected: <strong className="text-emerald-800">{feeReminderSelectedIds.size}</strong> of {getFeeReminderTargetInvoices().length}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleSelectAllFeeReminders}
+                className="h-7 text-xs bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 px-2.5"
+              >
+                {feeReminderSelectedIds.size === getFeeReminderTargetInvoices().length && getFeeReminderTargetInvoices().length > 0
+                  ? "Deselect All"
+                  : "Select All"}
+              </Button>
+            </div>
+          </div>
+
+          {/* ── Approved Template Live Preview ── */}
+          {(() => {
+            const currentTargets = getFeeReminderTargetInvoices()
+            const previewInvoice = invoices.find(i => i.id === feeReminderPreviewId) || currentTargets[0] || null
+            const previewParams = previewInvoice ? buildFeeReminderParams(previewInvoice, feeReminderCustomData[previewInvoice.id]) : null
+            const previewTextMessage = previewParams ? generateFeeReminderMessage(previewParams) : ""
+
+            return (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50/20 overflow-hidden text-xs">
+                <div className="bg-emerald-100/70 px-3.5 py-2 flex items-center justify-between border-b border-emerald-200">
+                  <div className="flex items-center gap-1.5 font-semibold text-emerald-950">
+                    <Eye className="h-3.5 w-3.5 text-emerald-700" />
+                    <span>Template Live Preview</span>
+                    {previewInvoice && (
+                      <Badge variant="outline" className="bg-white text-emerald-800 border-emerald-300 font-normal text-[11px] ml-1">
+                        Student: {previewInvoice.student_name}
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (previewTextMessage) {
+                        navigator.clipboard.writeText(previewTextMessage)
+                        setFeeReminderCopied(true)
+                        setTimeout(() => setFeeReminderCopied(false), 2000)
+                      }
+                    }}
+                    className="h-6 text-[11px] text-emerald-800 hover:bg-emerald-200/50 flex items-center gap-1 px-2"
+                  >
+                    {feeReminderCopied ? <Check className="h-3 w-3 text-emerald-700" /> : <Copy className="h-3 w-3" />}
+                    <span>{feeReminderCopied ? "Copied!" : "Copy Text"}</span>
+                  </Button>
+                </div>
+                <div className="p-3.5 bg-white font-sans text-slate-800 leading-relaxed whitespace-pre-line border-l-4 border-l-emerald-600 max-h-48 overflow-y-auto font-mono text-[11.5px]">
+                  {previewTextMessage || "No student selected for preview"}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* ── Student Recipients List Table ── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-slate-700">
+                Recipients Queue ({getFeeReminderTargetInvoices().length} students):
+              </span>
+              <div className="relative w-48 sm:w-64">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  value={feeReminderSearch}
+                  onChange={e => setFeeReminderSearch(e.target.value)}
+                  placeholder="Search student or phone..."
+                  className="h-7 text-xs pl-8"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-md border border-slate-200 overflow-x-auto max-h-64 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-100/80 text-[11px] h-8">
+                    <TableHead className="w-10 text-center p-1">
+                      <Checkbox
+                        checked={
+                          getFeeReminderTargetInvoices().length > 0 &&
+                          getFeeReminderTargetInvoices().every(i => feeReminderSelectedIds.has(i.id))
+                        }
+                        onCheckedChange={toggleSelectAllFeeReminders}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                    <TableHead className="min-w-[150px] font-semibold text-slate-700">Student</TableHead>
+                    <TableHead className="min-w-[130px] font-semibold text-slate-700">Phone</TableHead>
+                    <TableHead className="w-[80px] font-semibold text-slate-700">Inst. #</TableHead>
+                    <TableHead className="w-[100px] font-semibold text-slate-700">Due Date</TableHead>
+                    <TableHead className="w-[90px] font-semibold text-slate-700 text-right">Pending (₹)</TableHead>
+                    <TableHead className="w-[110px] font-semibold text-slate-700 text-center">Status</TableHead>
+                    <TableHead className="w-[110px] font-semibold text-slate-700 text-center">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {getFeeReminderTargetInvoices().length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-6 text-xs text-muted-foreground">
+                        No students matching the current filter.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    getFeeReminderTargetInvoices().map(inv => {
+                      const isSelected = feeReminderSelectedIds.has(inv.id)
+                      const isPreview = feeReminderPreviewId === inv.id
+                      const custom = feeReminderCustomData[inv.id] || {
+                        phone: String(inv.student_phone || ""),
+                        installmentNo: calculateInstallmentNo(inv, invoices),
+                        dueDate: inv.due_date ? fmtDate(inv.due_date) : "",
+                      }
+                      const result = feeReminderResults[inv.id]
+                      const pendingAmount = Math.max(0, Number(inv.amount || 0) - Number(inv.paid_amount || 0))
+
+                      return (
+                        <TableRow
+                          key={inv.id}
+                          className={`text-xs hover:bg-slate-50 transition-colors ${
+                            isPreview ? "bg-emerald-50/40" : ""
+                          }`}
+                        >
+                          <TableCell className="p-1 text-center">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleSelectFeeReminder(inv.id)}
+                            />
+                          </TableCell>
+                          <TableCell
+                            className="cursor-pointer"
+                            onClick={() => setFeeReminderPreviewId(inv.id)}
+                            title="Click to preview message"
+                          >
+                            <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                              <span>{inv.student_name}</span>
+                              {isPreview && (
+                                <Badge className="bg-emerald-600 text-white text-[9px] px-1 py-0 h-4">
+                                  Previewing
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {[inv.student_standard || inv.standard, inv.student_batch || inv.course].filter(Boolean).join(" · ")}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={custom.phone}
+                              onChange={e => updateFeeReminderCustomField(inv.id, "phone", e.target.value)}
+                              placeholder="Phone"
+                              className="h-7 text-xs font-mono w-28 bg-white border-slate-200"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={custom.installmentNo}
+                              onChange={e => updateFeeReminderCustomField(inv.id, "installmentNo", e.target.value)}
+                              placeholder="1"
+                              className="h-7 text-xs w-14 text-center bg-white border-slate-200"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={custom.dueDate}
+                              onChange={e => updateFeeReminderCustomField(inv.id, "dueDate", e.target.value)}
+                              placeholder="DD/MM/YYYY"
+                              className="h-7 text-xs font-mono w-24 bg-white border-slate-200"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-amber-700">
+                            ₹{pendingAmount.toLocaleString("en-IN")}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {result?.status === "sending" && (
+                              <Badge className="bg-blue-100 text-blue-800 border-0 flex items-center justify-center gap-1 text-[10px] py-0.5">
+                                <Loader2 className="h-2.5 w-2.5 animate-spin" /> Sending
+                              </Badge>
+                            )}
+                            {result?.status === "success" && (
+                              <Badge className="bg-emerald-100 text-emerald-800 border-0 flex items-center justify-center gap-1 text-[10px] py-0.5" title={result.message}>
+                                <CheckCircle className="h-2.5 w-2.5" /> Sent
+                              </Badge>
+                            )}
+                            {result?.status === "error" && (
+                              <Badge className="bg-red-100 text-red-800 border-0 flex items-center justify-center gap-1 text-[10px] py-0.5" title={result.message}>
+                                <AlertCircle className="h-2.5 w-2.5" /> Failed
+                              </Badge>
+                            )}
+                            {(!result || result.status === "pending") && (
+                              <span className="text-[10px] text-muted-foreground">Ready</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50 text-[11px]"
+                                title="Open WhatsApp Web with Marathi reminder"
+                                onClick={() => handleSendIndividualReminderWeb(inv)}
+                              >
+                                <MessageCircle className="h-3 w-3 mr-1 text-emerald-600" /> Web
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-2 text-blue-700 border-blue-300 hover:bg-blue-50 text-[11px]"
+                                title="Send via WABA API"
+                                disabled={result?.status === "sending"}
+                                onClick={() => handleSendIndividualReminderAPI(inv)}
+                              >
+                                <Send className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* ── Bulk Sending Progress Bar ── */}
+          {feeReminderBulkSending && (
+            <div className="space-y-1.5 bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <div className="flex items-center justify-between text-xs font-medium text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />
+                  Sending Reminders: {feeReminderProgress.current} / {feeReminderProgress.total}
+                </span>
+                <span className="text-emerald-700 font-semibold">
+                  {Math.round((feeReminderProgress.current / (feeReminderProgress.total || 1)) * 100)}%
+                </span>
+              </div>
+              <Progress
+                value={(feeReminderProgress.current / (feeReminderProgress.total || 1)) * 100}
+                className="h-2"
+              />
+              <div className="flex justify-between text-[11px] text-muted-foreground pt-1">
+                <span className="text-emerald-700 font-medium">✓ {feeReminderProgress.success} Successful</span>
+                <span className="text-red-700 font-medium">✕ {feeReminderProgress.failed} Failed</span>
+              </div>
+            </div>
+          )}
+
+          {/* ── Dialog Footer with Bulk Actions ── */}
+          <DialogFooter className="gap-2 sm:gap-0 flex flex-col sm:flex-row sm:justify-between items-center border-t pt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFeeReminderModalOpen(false)}
+              disabled={feeReminderBulkSending}
+              className="text-xs w-full sm:w-auto"
+            >
+              Close
+            </Button>
+
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextManualWebSend}
+                disabled={feeReminderBulkSending || feeReminderSelectedIds.size === 0}
+                className="text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50"
+                title="Send via WhatsApp Web for each selected student step-by-step"
+              >
+                <ExternalLink className="h-3.5 w-3.5 mr-1 text-emerald-600" />
+                Step-by-Step Web Send
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={handleBulkSendFeeReminders}
+                disabled={feeReminderBulkSending || feeReminderSelectedIds.size === 0}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm"
+              >
+                {feeReminderBulkSending ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending ({feeReminderProgress.current}/{feeReminderProgress.total})...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-3.5 w-3.5 mr-1.5" />
+                    <span>Send WABA Reminders ({feeReminderSelectedIds.size})</span>
                   </>
                 )}
               </Button>
