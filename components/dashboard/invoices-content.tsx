@@ -172,7 +172,7 @@ export function InvoicesContent() {
 
   // Fee Reminder Modal states (WABA)
   const [feeReminderModalOpen,     setFeeReminderModalOpen]     = useState(false)
-  const [feeReminderFilterMode,    setFeeReminderFilterMode]    = useState<"pending" | "all">("pending")
+  const [feeReminderFilterMode,    setFeeReminderFilterMode]    = useState<"pending" | "all" | "due2days">("pending")
   const [feeReminderSelectedIds,   setFeeReminderSelectedIds]   = useState<Set<number>>(new Set())
   const [feeReminderCustomData,    setFeeReminderCustomData]    = useState<Record<number, { phone: string; installmentNo: string; dueDate: string }>>({})
   const [feeReminderPreviewId,     setFeeReminderPreviewId]     = useState<number | null>(null)
@@ -750,6 +750,21 @@ export function InvoicesContent() {
     }
   }, [calculateInstallmentNo, invoices])
 
+  const isInvoiceDueIn2Days = useCallback((inv: Invoice) => {
+    if (!inv.due_date) return false
+    const amount = Number(inv.amount || 0)
+    const paid = Number(inv.paid_amount || 0)
+    if (paid >= amount && amount > 0) return false
+    const d = new Date(inv.due_date)
+    if (isNaN(d.getTime())) return false
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const target = new Date(d)
+    target.setHours(0, 0, 0, 0)
+    const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    return diffDays === 2
+  }, [])
+
   const generateFeeReminderMessage = useCallback((params: {
     studentName: string
     installmentNo: string | number
@@ -765,7 +780,9 @@ export function InvoicesContent() {
       "",
       "आदरणीय पालक,",
       "",
-      "आपल्या पाल्याच्या अकॅडमी फीच्या पुढील हप्त्याची देय तारीख जवळ आलेली आहे. कृपया खालील फी तपशीलाची नोंद घ्यावी.",
+      "आपल्या पाल्याच्या अकॅडमी फीच्या हप्त्याची देय तारीख निघून गेलेली असून, सदर रक्कम अद्याप शिल्लक आहे.",
+      "",
+      "फीचा अद्ययावत तपशील खालीलप्रमाणे:",
       "",
       `विद्यार्थ्याचे नाव: ${params.studentName}`,
       `हप्ता क्रमांक: ${params.installmentNo}`,
@@ -776,9 +793,9 @@ export function InvoicesContent() {
       `आतापर्यंत एकूण जमा: ₹${params.totalPaid}`,
       `आतापर्यंत एकूण शिल्लक: ₹${params.totalPending}`,
       "",
-      "कृपया शिल्लक रक्कम देय तारखेपूर्वी किंवा देय तारखेस जमा करून आपल्या पाल्याची फी अद्ययावत ठेवावी.",
+      "कृपया प्रलंबित रक्कम लवकरात लवकर जमा करून आपल्या पाल्याचे फी खाते अद्ययावत करावे.",
       "",
-      "आपल्या सहकार्याबद्दल धन्यवाद.",
+      "कृपया या सूचनेची नोंद घ्यावी.",
       "",
       "Administration Department",
       "विद्यानिकेतन प्रोफेशनल अकॅडमी, इंदापूर",
@@ -800,6 +817,8 @@ export function InvoicesContent() {
         const status = getStatus(inv)
         return paid < amount || status === "Pending" || status === "Partial" || status === "Overdue"
       })
+    } else if (feeReminderFilterMode === "due2days") {
+      list = filteredInvoices.filter(isInvoiceDueIn2Days)
     }
     if (feeReminderSearch.trim()) {
       const q = feeReminderSearch.trim().toLowerCase()
@@ -809,7 +828,7 @@ export function InvoicesContent() {
       )
     }
     return list
-  }, [filteredInvoices, feeReminderFilterMode, feeReminderSearch])
+  }, [filteredInvoices, feeReminderFilterMode, feeReminderSearch, isInvoiceDueIn2Days])
 
   const openFeeReminderModal = () => {
     setFeeReminderFilterMode("pending")
@@ -844,7 +863,7 @@ export function InvoicesContent() {
     setFeeReminderModalOpen(true)
   }
 
-  const switchFeeReminderMode = (mode: "pending" | "all") => {
+  const switchFeeReminderMode = (mode: "pending" | "all" | "due2days") => {
     setFeeReminderFilterMode(mode)
     let list: Invoice[] = []
     if (mode === "pending") {
@@ -854,6 +873,8 @@ export function InvoicesContent() {
         const status = getStatus(inv)
         return paid < amount || status === "Pending" || status === "Partial" || status === "Overdue"
       })
+    } else if (mode === "due2days") {
+      list = filteredInvoices.filter(isInvoiceDueIn2Days)
     } else {
       list = filteredInvoices
     }
@@ -922,8 +943,8 @@ export function InvoicesContent() {
       // Send purely the input variables to the WABA template API (NO Marathi text body sent)
       const payload = {
         phone,
-        template_name: "fee_installment_reminder",
-        template_id: "fee_installment_reminder",
+        template_name: "pending_fee_payment_reminder",
+        template_id: "pending_fee_payment_reminder",
         language: "en",
         // The 8 input variables for the approved WABA template
         studentName: params.studentName,
@@ -1841,7 +1862,7 @@ export function InvoicesContent() {
                 </DialogTitle>
                 <div className="flex flex-wrap items-center gap-2 mt-1.5">
                   <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-[11px] font-mono font-medium">
-                    Template: fee_installment_reminder
+                    Template: pending_fee_payment_reminder
                   </Badge>
                   <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-0 text-[10px] font-semibold">
                     APPROVED
@@ -1911,6 +1932,19 @@ export function InvoicesContent() {
               <span className="text-xs font-semibold text-emerald-950 flex items-center gap-1">
                 <Users className="h-3.5 w-3.5 text-emerald-700" /> Filter:
               </span>
+              <Button
+                type="button"
+                size="sm"
+                variant={feeReminderFilterMode === "due2days" ? "default" : "outline"}
+                onClick={() => switchFeeReminderMode("due2days")}
+                className={`h-7 text-xs ${
+                  feeReminderFilterMode === "due2days"
+                    ? "bg-amber-600 hover:bg-amber-700 text-white font-semibold"
+                    : "bg-white text-slate-700 hover:bg-amber-50 border-amber-300"
+                }`}
+              >
+                ⏰ Due in 2 Days ({filteredInvoices.filter(isInvoiceDueIn2Days).length})
+              </Button>
               <Button
                 type="button"
                 size="sm"

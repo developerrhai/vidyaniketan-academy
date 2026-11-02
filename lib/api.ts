@@ -219,6 +219,15 @@ export const whatsappApi = {
   sendFeeReminder: (payload: Record<string, unknown>) =>
     post("/whatsapp/fee-reminder", payload),
 
+  sendPendingFeeReminder: (payload: Record<string, unknown>) =>
+    post("/whatsapp/send-pending-reminder", payload),
+
+  getUpcomingReminders: (days = 2) =>
+    get(`/whatsapp/upcoming-reminders?days=${days}`),
+
+  sendUpcomingReminders: (data: { days?: number; invoiceIds?: number[]; template_id?: string } = {}) =>
+    post("/whatsapp/send-upcoming-reminders", data),
+
   getConfigStatus: () => get("/whatsapp/config-status"),
 };
 
