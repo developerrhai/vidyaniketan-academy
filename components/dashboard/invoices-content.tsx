@@ -943,8 +943,8 @@ export function InvoicesContent() {
       // Send purely the input variables to the WABA template API (NO Marathi text body sent)
       const payload = {
         phone,
-        template_name: "pending_fee_payment_reminder",
-        template_id: "pending_fee_payment_reminder",
+        template_name: "fee_installment_reminder",
+        template_id: "fee_installment_reminder",
         language: "en",
         // The 8 input variables for the approved WABA template
         studentName: params.studentName,
@@ -978,7 +978,7 @@ export function InvoicesContent() {
           "Total Pending": params.totalPending,
         },
         invoiceId: inv.id,
-        wabaConfig: wabaConfig.token && wabaConfig.phoneNumberId ? wabaConfig : undefined,
+
       }
 
       const res: any = await whatsappApi.sendFeeReminder(payload)
@@ -1862,7 +1862,7 @@ export function InvoicesContent() {
                 </DialogTitle>
                 <div className="flex flex-wrap items-center gap-2 mt-1.5">
                   <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-[11px] font-mono font-medium">
-                    Template: pending_fee_payment_reminder
+                    Template: fee_installment_reminder
                   </Badge>
                   <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-0 text-[10px] font-semibold">
                     APPROVED
