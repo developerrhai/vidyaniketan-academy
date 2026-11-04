@@ -184,6 +184,7 @@ export function InvoicesContent() {
   const [feeReminderCopied,        setFeeReminderCopied]        = useState(false)
   const [manualStepIndex,          setManualStepIndex]          = useState(0)
   const [feeReminderSearch,        setFeeReminderSearch]        = useState("")
+  const [feeReminderSendVars,      setFeeReminderSendVars]      = useState(false)
 
   const [students,        setStudents]        = useState<Student[]>([])
   const [studentSearch,   setStudentSearch]   = useState("")
@@ -945,6 +946,7 @@ export function InvoicesContent() {
         phone,
         template_name: "fee_installment_reminder",
         template_id: "fee_installment_reminder",
+        send_vars: feeReminderSendVars,
         language: "en",
         // The 8 input variables for the approved WABA template
         studentName: params.studentName,
@@ -1873,6 +1875,9 @@ export function InvoicesContent() {
                   <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-0 text-[10px] font-semibold">
                     Language: en
                   </Badge>
+                  <Badge className={feeReminderSendVars ? "bg-purple-100 text-purple-800 border-0 text-[10px] font-semibold" : "bg-amber-100 text-amber-800 border-0 text-[10px] font-semibold"}>
+                    {feeReminderSendVars ? "Mode: 8 Variables (Dynamic)" : "Mode: 0 Variables (Static)"}
+                  </Badge>
                 </div>
               </div>
               <Button
@@ -1891,6 +1896,46 @@ export function InvoicesContent() {
           {/* ── Meta Cloud API Settings Drawer ── */}
           {feeReminderSettingsOpen && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 text-xs space-y-3 animate-in fade-in">
+              {/* WhatsApp Variables Delivery Mode */}
+              <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <div className="text-xs font-semibold text-slate-800">WhatsApp Variables Delivery Mode</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Current Meta template is approved with 0 variables. Use 0 Variables Mode to avoid parameter mismatch.
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={!feeReminderSendVars ? "default" : "outline"}
+                      onClick={() => setFeeReminderSendVars(false)}
+                      className={`h-7 text-xs ${!feeReminderSendVars ? "bg-amber-600 hover:bg-amber-700 text-white font-semibold" : "text-slate-700"}`}
+                    >
+                      0 Variables (Static)
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={feeReminderSendVars ? "default" : "outline"}
+                      onClick={() => setFeeReminderSendVars(true)}
+                      className={`h-7 text-xs ${feeReminderSendVars ? "bg-purple-600 hover:bg-purple-700 text-white font-semibold" : "text-slate-700"}`}
+                    >
+                      8 Variables (Dynamic)
+                    </Button>
+                  </div>
+                </div>
+                {!feeReminderSendVars ? (
+                  <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded border border-amber-200">
+                    ✓ <strong>0 Variables Mode (Active)</strong>: Sends the approved template without body parameters. Guaranteed delivery to student/parent WhatsApp phone.
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-purple-800 bg-purple-50 p-2 rounded border border-purple-200">
+                    ℹ️ <strong>8 Variables Mode</strong>: Sends all 8 fee details. Use only after your template in Meta is updated with <code>{"{{1}}"}</code> through <code>{"{{8}}"}</code>.
+                  </p>
+                )}
+              </div>
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-800 flex items-center gap-1.5">
                   <Settings className="h-3.5 w-3.5 text-emerald-600" /> Meta WhatsApp Business Cloud API Configuration

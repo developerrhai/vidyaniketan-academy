@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
             totalPaid,
             totalPending,
             invoiceId,
+            send_vars: body.send_vars,
           }),
         });
 
