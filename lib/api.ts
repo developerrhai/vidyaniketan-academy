@@ -225,7 +225,7 @@ export const invoicesApi = {
 
 
   sendFeeReminder: (payload: Record<string, unknown>) =>
-    post("/whatsapp/fee-reminder", payload),
+    whatsappApi.sendFeeReminder(payload),
 };
 
 export const whatsappApi = {
@@ -239,8 +239,29 @@ export const whatsappApi = {
     buttons?: Array<{ type: string; value: string }> | Record<string, string>;
   }) => post("/whatsapp/send-template", data),
 
-  sendFeeReminder: (payload: Record<string, unknown>) =>
-    post("/whatsapp/fee-reminder", payload),
+  sendFeeReminder: async (payload: Record<string, unknown>) => {
+    if (typeof window !== "undefined") {
+      try {
+        const localRes = await fetch("/api/whatsapp/fee-reminder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const localJson = await localRes.json().catch(() => null);
+        if (localRes.ok && localJson?.success) {
+          return localJson;
+        }
+        if (localJson && localRes.status !== 404) {
+          throw new Error(localJson.message || "Failed to send fee reminder.");
+        }
+      } catch (err: any) {
+        if (!err.message?.includes("404") && !err.message?.includes("Failed to fetch")) {
+          throw err;
+        }
+      }
+    }
+    return post("/whatsapp/fee-reminder", payload);
+  },
 
   sendPendingFeeReminder: (payload: Record<string, unknown>) =>
     post("/whatsapp/send-pending-reminder", payload),

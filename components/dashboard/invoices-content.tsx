@@ -184,7 +184,7 @@ export function InvoicesContent() {
   const [feeReminderCopied,        setFeeReminderCopied]        = useState(false)
   const [manualStepIndex,          setManualStepIndex]          = useState(0)
   const [feeReminderSearch,        setFeeReminderSearch]        = useState("")
-  const [feeReminderSendVars,      setFeeReminderSendVars]      = useState(false)
+  const [feeReminderSendVars,      setFeeReminderSendVars]      = useState(true)
 
   const [students,        setStudents]        = useState<Student[]>([])
   const [studentSearch,   setStudentSearch]   = useState("")
@@ -1932,7 +1932,7 @@ export function InvoicesContent() {
                   </p>
                 ) : (
                   <p className="text-[11px] text-purple-800 bg-purple-50 p-2 rounded border border-purple-200">
-                    ℹ️ <strong>8 Variables Mode</strong>: Sends all 8 fee details. Use only after your template in Meta is updated with <code>{"{{1}}"}</code> through <code>{"{{8}}"}</code>.
+                    ✓ <strong>8 Variables Mode (Active)</strong>: Sends all 8 fee details dynamically to Meta template with placeholders <code>{"{{1}}"}</code> through <code>{"{{8}}"}</code>.
                   </p>
                 )}
               </div>
