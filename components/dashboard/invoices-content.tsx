@@ -631,7 +631,7 @@ export function InvoicesContent() {
     setWhatsappSending(true)
     setWhatsappStatus(null)
     try {
-      const res: any = await invoicesApi.sendWhatsApp(whatsappInvoice.id, { phone: cleanPhone })
+      const res: any = await invoicesApi.sendWhatsApp(whatsappInvoice.id, { phone: cleanPhone, invoice: whatsappInvoice })
       if (res.success) {
         setWhatsappStatus({
           type: "success",

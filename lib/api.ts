@@ -199,8 +199,31 @@ export const invoicesApi = {
   update: (id: string | number, data: Record<string, unknown>) =>
     put(`/invoices/${id}`, data),
   remove: (id: string | number) => del(`/invoices/${id}`),
-  sendWhatsApp: (id: string | number, payload: { phone?: string } = {}) =>
-    post(`/invoices/${id}/send-whatsapp`, payload),
+  sendWhatsApp: async (id: string | number, payload: Record<string, unknown> = {}) => {
+    if (typeof window !== "undefined") {
+      try {
+        const localRes = await fetch(`/api/invoices/${id}/send-whatsapp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const localJson = await localRes.json().catch(() => null);
+        if (localRes.ok && localJson?.success) {
+          return localJson;
+        }
+        if (localJson && localRes.status !== 404) {
+          throw new Error(localJson.message || "Failed to send WhatsApp confirmation.");
+        }
+      } catch (err: any) {
+        if (!err.message?.includes("404") && !err.message?.includes("Failed to fetch")) {
+          throw err;
+        }
+      }
+    }
+    return post(`/invoices/${id}/send-whatsapp`, payload);
+  },
+
+
   sendFeeReminder: (payload: Record<string, unknown>) =>
     post("/whatsapp/fee-reminder", payload),
 };
